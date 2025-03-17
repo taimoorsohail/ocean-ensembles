@@ -125,9 +125,9 @@ simulation.output_writers[:global_depth_int] = JLD2OutputWriter(ocean.model, dep
                                                   filename = "depth_integrated_tracer_data",
                                                   overwrite_existing = true)
 
-simulation.output_writers[:global_zonal_int] = JLD2OutputWriter(ocean.model, zonal_int_tracer_outputs;
-                                                  schedule = TimeInterval(1days),
-                                                  filename = "zonal_integrated_tracer_data",
-                                                  overwrite_existing = true)
+# simulation.output_writers[:global_zonal_int] = JLD2OutputWriter(ocean.model, zonal_int_tracer_outputs;
+#                                                   schedule = TimeInterval(1days),
+#                                                   filename = "zonal_integrated_tracer_data",
+#                                                   overwrite_existing = true)
 
 run!(simulation)
