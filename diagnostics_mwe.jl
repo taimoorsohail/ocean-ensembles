@@ -93,9 +93,11 @@ zonal_int_tracer_outputs = merge(
     NamedTuple((key => Oceananigans.AbstractOperations.Integral(ocean.model.tracers[key]; dims=1)) for key in keys(ocean.model.tracers)),
     dV_tuple_zonal)
 
-# ρₒ = simulation.model.interfaces.ocean_properties.reference_density
-# cₚ = simulation.model.interfaces.ocean_properties.heat_capacity
-# S₀ = 35 #g/kg
+ρₒ = simulation.model.interfaces.ocean_properties.reference_density
+cₚ = simulation.model.interfaces.ocean_properties.heat_capacity
+S₀ = 35 #g/kg
+
+constants = NamedTuple{(:reference_density, :heat_capacity, :reference_salinity)}((ρₒ, cₚ, S₀))
 
 simulation.output_writers[:surface] = JLD2OutputWriter(ocean.model, outputs;
                                                   schedule = TimeInterval(5days),
@@ -128,6 +130,11 @@ simulation.output_writers[:global_depth_int] = JLD2OutputWriter(ocean.model, dep
 simulation.output_writers[:global_zonal_int] = JLD2OutputWriter(ocean.model, zonal_int_tracer_outputs;
                                                   schedule = TimeInterval(1days),
                                                   filename = "zonal_integrated_tracer_data",
+                                                  overwrite_existing = true)
+
+simulation.output_writers[:constants] = JLD2OutputWriter(ocean.model, constants;
+                                                  schedule = TimeInterval(1days),
+                                                  filename = "constants",
                                                   overwrite_existing = true)
 
 run!(simulation)
