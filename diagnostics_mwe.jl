@@ -82,8 +82,8 @@ zonal_avg_outputs = merge(zonal_avg_tracer_outputs, zonal_avg_velocity_outputs)
 # Save NamedTuples of depth integrated tracers
 c = CenterField(grid)
 volmask =  set!(c, 1)
-dV_tuple_depth = NamedTuple{(:dV,)}((:dV => Oceananigans.AbstractOperations.Integral(volmask, dims=(1,2)),))
-dV_tuple_zonal = NamedTuple{(:dV,)}((:dV => Oceananigans.AbstractOperations.Integral(volmask, dims=1),))
+dV_tuple_depth = NamedTuple{(:dV,)}((dV = Oceananigans.AbstractOperations.Integral(volmask, dims=(1,2)),))
+dV_tuple_zonal = NamedTuple{(:dV,)}((dV = Oceananigans.AbstractOperations.Integral(volmask, dims=1),))
 
 depth_int_tracer_outputs = merge(
     NamedTuple((key => Oceananigans.AbstractOperations.Integral(ocean.model.tracers[key]; dims=(1,2))) for key in keys(ocean.model.tracers)),
@@ -125,9 +125,9 @@ simulation.output_writers[:global_depth_int] = JLD2OutputWriter(ocean.model, dep
                                                   filename = "depth_integrated_tracer_data",
                                                   overwrite_existing = true)
 
-# simulation.output_writers[:global_zonal_int] = JLD2OutputWriter(ocean.model, zonal_int_tracer_outputs;
-#                                                   schedule = TimeInterval(1days),
-#                                                   filename = "zonal_integrated_tracer_data",
-#                                                   overwrite_existing = true)
+simulation.output_writers[:global_zonal_int] = JLD2OutputWriter(ocean.model, zonal_int_tracer_outputs;
+                                                  schedule = TimeInterval(1days),
+                                                  filename = "zonal_integrated_tracer_data",
+                                                  overwrite_existing = true)
 
 run!(simulation)
