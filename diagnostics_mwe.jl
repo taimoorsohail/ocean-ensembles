@@ -35,7 +35,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(41))
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=30minutes, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=30minutes, stop_time=50days)
 
 wall_time = Ref(time_ns())
 
@@ -82,6 +82,9 @@ zonal_avg_outputs = merge(zonal_avg_tracer_outputs, zonal_avg_velocity_outputs)
 # Save NamedTuples of depth integrated tracers
 c = CenterField(grid)
 volmask =  set!(c, 1)
+dV_tuple_depth_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=(1,2)),))
+dV_tuple_zonal_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=1),))
+
 dV_tuple_depth = NamedTuple{(:dV,)}((dV = Oceananigans.AbstractOperations.Integral(volmask, dims=(1,2)),))
 dV_tuple_zonal = NamedTuple{(:dV,)}((dV = Oceananigans.AbstractOperations.Integral(volmask, dims=1),))
 
@@ -109,32 +112,32 @@ simulation.output_writers[:surface] = JLD2OutputWriter(ocean.model, outputs;
 
 simulation.output_writers[:global_avg] = JLD2OutputWriter(ocean.model, avg_tracer_outputs;
                                                   schedule = TimeInterval(1days),
-                                                  filename = "averaged_tracer_data",
+                                                  filename = "averaged_data",
                                                   overwrite_existing = true)
 
-simulation.output_writers[:global_depth_avg] = JLD2OutputWriter(ocean.model, depth_avg_tracer_outputs;
+simulation.output_writers[:global_depth_avg] = JLD2OutputWriter(ocean.model, depth_avg_outputs;
                                                   schedule = TimeInterval(1days),
-                                                  filename = "depth_averaged_tracer_data",
+                                                  filename = "depth_averaged_data",
                                                   overwrite_existing = true)
 
-simulation.output_writers[:global_zonal_avg] = JLD2OutputWriter(ocean.model, zonal_avg_tracer_outputs;
+simulation.output_writers[:global_zonal_avg] = JLD2OutputWriter(ocean.model, zonal_avg_outputs;
                                                   schedule = TimeInterval(1days),
-                                                  filename = "zonal_averaged_tracer_data",
+                                                  filename = "zonal_averaged_data",
                                                   overwrite_existing = true)
 
 simulation.output_writers[:global_depth_int] = JLD2OutputWriter(ocean.model, depth_int_tracer_outputs;
                                                   schedule = TimeInterval(1days),
-                                                  filename = "depth_integrated_tracer_data",
+                                                  filename = "depth_integrated_data",
                                                   overwrite_existing = true)
 
 simulation.output_writers[:global_zonal_int] = JLD2OutputWriter(ocean.model, zonal_int_tracer_outputs;
                                                   schedule = TimeInterval(1days),
-                                                  filename = "zonal_integrated_tracer_data",
+                                                  filename = "zonal_integrated_data",
                                                   overwrite_existing = true)
 
-simulation.output_writers[:constants] = JLD2OutputWriter(ocean.model, constants;
-                                                  schedule = TimeInterval(1days),
-                                                  filename = "constants",
-                                                  overwrite_existing = true)
+# simulation.output_writers[:constants] = JLD2OutputWriter(ocean.model, constants;
+#                                                   schedule = TimeInterval(1days),
+#                                                   filename = "constants",
+#                                                   overwrite_existing = true)
 
 run!(simulation)
