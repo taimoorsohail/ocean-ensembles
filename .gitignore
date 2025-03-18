@@ -28,6 +28,7 @@ Manifest.toml
 
 ## Text files
 *.tab
+*.history
 
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/

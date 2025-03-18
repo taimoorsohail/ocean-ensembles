@@ -63,19 +63,22 @@ function progress(sim)
 end
 
 simulation.callbacks[:progress] = Callback(progress, TimeInterval(1days))
+tracers = model.ocean.tracers
+velocities = model.ocean.tracers
+using Oceananigans.AbstractOperations: Integral
 
-outputs = merge(ocean.model.tracers, ocean.model.velocities)
+outputs = merge(tracers, velocities)
 
 #### AVERAGING
 # Save NamedTuple of Global Averaged tracers
-avg_tracer_outputs = NamedTuple((key => Average(ocean.model.tracers[key]) for key in keys(ocean.model.tracers)))
+avg_tracer_outputs = NamedTuple((key => Average(tracers[key]) for key in keys(tracers)))
 # Save NamedTuples of depth averaged tracers & velocities
-depth_avg_velocity_outputs = NamedTuple((key => Average(ocean.model.velocities[key], dims=(1,2)) for key in keys(ocean.model.velocities)))
-depth_avg_tracer_outputs = NamedTuple((key => Average(ocean.model.tracers[key], dims=(1,2)) for key in keys(ocean.model.tracers)))
+depth_avg_velocity_outputs = NamedTuple((key => Average(velocities[key], dims=(1,2)) for key in keys(velocities)))
+depth_avg_tracer_outputs = NamedTuple((key => Average(tracers[key], dims=(1,2)) for key in keys(tracers)))
 depth_avg_outputs = merge(depth_avg_tracer_outputs, depth_avg_velocity_outputs)
 # Save NamedTuples of zonally-averaged tracers & velocities
-zonal_avg_velocity_outputs = NamedTuple((key => Average(ocean.model.velocities[key], dims=1) for key in keys(ocean.model.velocities)))
-zonal_avg_tracer_outputs = NamedTuple((key => Average(ocean.model.tracers[key], dims=1) for key in keys(ocean.model.tracers)))
+zonal_avg_velocity_outputs = NamedTuple((key => Average(velocities[key], dims=1) for key in keys(velocities)))
+zonal_avg_tracer_outputs = NamedTuple((key => Average(tracers[key], dims=1) for key in keys(tracers)))
 zonal_avg_outputs = merge(zonal_avg_tracer_outputs, zonal_avg_velocity_outputs)
 
 #### INTEGRATING
@@ -85,15 +88,15 @@ volmask =  set!(c, 1)
 dV_tuple_depth_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=(1,2)),))
 dV_tuple_zonal_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=1),))
 
-dV_tuple_depth = NamedTuple{(:dV,)}((dV = Oceananigans.AbstractOperations.Integral(volmask, dims=(1,2)),))
-dV_tuple_zonal = NamedTuple{(:dV,)}((dV = Oceananigans.AbstractOperations.Integral(volmask, dims=1),))
+dV_tuple_depth = NamedTuple{(:dV,)}((dV = Integral(volmask, dims=(1,2)),))
+dV_tuple_zonal = NamedTuple{(:dV,)}((dV = Integral(volmask, dims=1),))
 
 depth_int_tracer_outputs = merge(
-    NamedTuple((key => Oceananigans.AbstractOperations.Integral(ocean.model.tracers[key]; dims=(1,2))) for key in keys(ocean.model.tracers)),
+    NamedTuple((key => Integral(tracers[key]; dims=(1,2))) for key in keys(tracers)),
     dV_tuple_depth)
 # Save NamedTuples of zonally integrated tracers
 zonal_int_tracer_outputs = merge(
-    NamedTuple((key => Oceananigans.AbstractOperations.Integral(ocean.model.tracers[key]; dims=1)) for key in keys(ocean.model.tracers)),
+    NamedTuple((key => Integral(tracers[key]; dims=1)) for key in keys(tracers)),
     dV_tuple_zonal)
 
 ρₒ = simulation.model.interfaces.ocean_properties.reference_density
