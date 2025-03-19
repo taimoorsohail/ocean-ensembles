@@ -6,28 +6,17 @@ using Dates
 using Printf
 using ClimaOcean.ECCO
 using Oceananigans.AbstractOperations
+using BasinMask: basin_mask # This is the basin masking function
+using Oceananigans.AbstractOperations: Integral
 
 arch = CPU()
 
-Nx = 144
-Ny = 60
-Nz = 40
-
-depth = 6000meters
-z_faces = exponential_z_faces(; Nz, depth)
-
+Nx, Ny, Nz = 60, 30, 20
 
 grid = Oceananigans.OrthogonalSphericalShellGrids.TripolarGrid(arch; 
                                                                size=(Nx, Ny, Nz),
                                                                halo=(7, 7, 7),
-                                                               z=z_faces)
-
-# grid = LatitudeLongitudeGrid(arch;
-#                              size = (Nx, Ny, Nz),
-#                              halo = (7, 7, 7),
-#                              z = z_faces,
-#                              latitude  = (-75, 75),
-#                              longitude = (0, 360))
+                                                               z=(-6000,0))
 
 ocean = ocean_simulation(grid)
 
@@ -69,42 +58,94 @@ function progress(sim)
 end
 
 simulation.callbacks[:progress] = Callback(progress, TimeInterval(1days))
-tracers = model.ocean.tracers
-velocities = model.ocean.tracers
-using Oceananigans.AbstractOperations: Integral
+
+
+function average_tuple(ocean; volmask, dims::Tuple, conditions)
+    avg_tracer_outputs = NamedTuple((key => Average(ocean.model.tracers[key], dims=dims, condition=conditions) for key in keys(ocean.model.tracers)))
+    avg_velocities_outputs = NamedTuple((key => Average(ocean.model.velocities[key], dims=dims, condition=conditions) for key in keys(ocean.model.velocities)))
+    dV_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=dims, condition=conditions),))
+    avg_outputs = merge(avg_tracer_outputs, avg_velocities_outputs, dV_avg)
+    return avg_outputs
+end
+
+function integrate_tuple(ocean;  volmask, dims::Tuple, conditions)
+    int_tracer_outputs = NamedTuple((key => Integral(ocean.model.tracers[key], dims=dims, condition=conditions) for key in keys(ocean.model.tracers)))
+    int_velocities_outputs = NamedTuple((key => Integral(ocean.model.velocities[key], dims=dims, condition=conditions) for key in keys(ocean.model.velocities)))
+    dV_int = NamedTuple{(:dV,)}((dV = Integral(volmask, dims=dims, condition=conditions),))
+    int_outputs = merge(int_tracer_outputs, int_velocities_outputs, dV_int)
+    return int_outputs
+end
+
+c = CenterField(grid)
+volmask =  set!(c, 1)
+
+Global_mask = basin_mask(grid, "", ocean.model.tracers.T)
+Atlantic_mask = basin_mask(grid, "atlantic", ocean.model.tracers.T)
+IPac_mask = basin_mask(grid, "indo-pacific", ocean.model.tracers.T)
+
+#### SURFACE
+# ASK: how to integrate a boolean mask with a surface field? 
+tracers = ocean.model.tracers
+velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
 #### AVERAGING
-# Save NamedTuple of Global Averaged tracers
-avg_tracer_outputs = NamedTuple((key => Average(tracers[key]) for key in keys(tracers)))
-# Save NamedTuples of depth averaged tracers & velocities
-depth_avg_velocity_outputs = NamedTuple((key => Average(velocities[key], dims=(1,2)) for key in keys(velocities)))
-depth_avg_tracer_outputs = NamedTuple((key => Average(tracers[key], dims=(1,2)) for key in keys(tracers)))
-depth_avg_outputs = merge(depth_avg_tracer_outputs, depth_avg_velocity_outputs)
-# Save NamedTuples of zonally-averaged tracers & velocities
-zonal_avg_velocity_outputs = NamedTuple((key => Average(velocities[key], dims=1) for key in keys(velocities)))
-zonal_avg_tracer_outputs = NamedTuple((key => Average(tracers[key], dims=1) for key in keys(tracers)))
-zonal_avg_outputs = merge(zonal_avg_tracer_outputs, zonal_avg_velocity_outputs)
+# Save NamedTuples of averaged tracers
+global_avg_outputs = average_tuple(ocean; volmask, dims = (1,2,3), conditions = Global_mask)
+Atlantic_avg_outputs = average_tuple(ocean; volmask, dims = (1,2,3), conditions = Atlantic_mask)
+IPac_avg_outputs = average_tuple(ocean; volmask, dims = (1,2,3), conditions = IPac_mask)
+
+global_depth_avg_outputs = average_tuple(ocean; volmask, dims = (1,2), Global_mask)
+Atlantic_depth_avg_outputs = average_tuple(ocean; volmask, dims = (1,2), Atlantic_mask)
+IPac_depth_avg_outputs = average_tuple(ocean; volmask, dims = (1,2), IPac_mask)
+
+global_zonal_avg_outputs = average_tuple(ocean; volmask, dims = (1), Global_mask)
+Atlantic_zonal_avg_outputs = average_tuple(ocean; volmask, dims = (1), Atlantic_mask)
+IPac_zonal_avg_outputs = average_tuple(ocean; volmask, dims = (1), IPac_mask)
 
 #### INTEGRATING
-# Save NamedTuples of depth integrated tracers
-c = CenterField(grid)
-volmask =  set!(c, 1)
-dV_tuple_depth_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=(1,2)),))
-dV_tuple_zonal_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=1),))
+global_int_outputs = integrate_tuple(ocean; volmask, dims = (1,2,3), Global_mask)
+Atlantic_int_outputs = integrate_tuple(ocean; volmask, dims = (1,2,3), Atlantic_mask)
+IPac_int_outputs = integrate_tuple(ocean; volmask, dims = (1,2,3), IPac_mask)
 
-dV_tuple_depth = NamedTuple{(:dV,)}((dV = Integral(volmask, dims=(1,2)),))
-dV_tuple_zonal = NamedTuple{(:dV,)}((dV = Integral(volmask, dims=1),))
+global_depth_int_outputs = integrate_tuple(ocean; volmask, dims = (1,2), Global_mask)
+Atlantic_depth_int_outputs = integrate_tuple(ocean; volmask, dims = (1,2), Atlantic_mask)
+IPac_depth_int_outputs = integrate_tuple(ocean; volmask, dims = (1,2), IPac_mask)
 
-depth_int_tracer_outputs = merge(
-    NamedTuple((key => Integral(tracers[key]; dims=(1,2))) for key in keys(tracers)),
-    dV_tuple_depth)
-# Save NamedTuples of zonally integrated tracers
-zonal_int_tracer_outputs = merge(
-    NamedTuple((key => Integral(tracers[key]; dims=1)) for key in keys(tracers)),
-    dV_tuple_zonal)
+global_zonal_int_outputs = integrate_tuple(ocean; volmask, dims = (1), Global_mask)
+Atlantic_zonal_int_outputs = integrate_tuple(ocean; volmask, dims = (1), Atlantic_mask)
+IPac_zonal_int_outputs = integrate_tuple(ocean; volmask, dims = (1), IPac_mask)
 
+## TODO - turn this into nested tuples too? Make it more efficient? 
+
+# avg_tracer_outputs = NamedTuple((key => Average(tracers[key]) for key in keys(tracers)))
+# Save NamedTuples of depth averaged tracers & velocities
+# depth_avg_velocity_outputs = NamedTuple((key => Average(velocities[key], dims=(1,2)) for key in keys(velocities)))
+# depth_avg_tracer_outputs = NamedTuple((key => Average(tracers[key], dims=(1,2)) for key in keys(tracers)))
+# depth_avg_outputs = merge(depth_avg_tracer_outputs, depth_avg_velocity_outputs)
+# # Save NamedTuples of zonally-averaged tracers & velocities
+# zonal_avg_velocity_outputs = NamedTuple((key => Average(velocities[key], dims=1) for key in keys(velocities)))
+# zonal_avg_tracer_outputs = NamedTuple((key => Average(tracers[key], dims=1) for key in keys(tracers)))
+# zonal_avg_outputs = merge(zonal_avg_tracer_outputs, zonal_avg_velocity_outputs)
+
+# #### INTEGRATING
+# # Save NamedTuples of depth integrated tracers
+# dV_tuple_depth_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=(1,2)),))
+# dV_tuple_zonal_avg = NamedTuple{(:dV,)}((dV = Average(volmask, dims=1),))
+
+# dV_tuple_depth = NamedTuple{(:dV,)}((dV = Integral(volmask, dims=(1,2)),))
+# dV_tuple_zonal = NamedTuple{(:dV,)}((dV = Integral(volmask, dims=1),))
+
+# depth_int_tracer_outputs = merge(
+#     NamedTuple((key => Integral(tracers[key]; dims=(1,2))) for key in keys(tracers)),
+#     dV_tuple_depth)
+# # Save NamedTuples of zonally integrated tracers
+# zonal_int_tracer_outputs = merge(
+#     NamedTuple((key => Integral(tracers[key]; dims=1)) for key in keys(tracers)),
+#     dV_tuple_zonal)
+
+# TODO: Make these constants saved as well for OHC; OSC
 ρₒ = simulation.model.interfaces.ocean_properties.reference_density
 cₚ = simulation.model.interfaces.ocean_properties.heat_capacity
 S₀ = 35 #g/kg
