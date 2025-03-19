@@ -16,12 +16,18 @@ Nz = 40
 depth = 6000meters
 z_faces = exponential_z_faces(; Nz, depth)
 
-grid = LatitudeLongitudeGrid(arch;
-                             size = (Nx, Ny, Nz),
-                             halo = (7, 7, 7),
-                             z = z_faces,
-                             latitude  = (-75, 75),
-                             longitude = (0, 360))
+
+grid = Oceananigans.OrthogonalSphericalShellGrids.TripolarGrid(arch; 
+                                                               size=(Nx, Ny, Nz),
+                                                               halo=(7, 7, 7),
+                                                               z=z_faces)
+
+# grid = LatitudeLongitudeGrid(arch;
+#                              size = (Nx, Ny, Nz),
+#                              halo = (7, 7, 7),
+#                              z = z_faces,
+#                              latitude  = (-75, 75),
+#                              longitude = (0, 360))
 
 ocean = ocean_simulation(grid)
 

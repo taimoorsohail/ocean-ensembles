@@ -7,6 +7,7 @@ grid = Oceananigans.OrthogonalSphericalShellGrids.TripolarGrid(CPU(); size=(Nx, 
                                                                       halo=(7, 7, 7),
                                                                       z=(-1000, 0))
 
+
 c = CenterField(grid)
 
 set!(c, 1)
