@@ -173,7 +173,7 @@ Atlantic_mask = basin_mask(grid, "atlantic", c)
 IPac_mask = basin_mask(grid, "indo-pacific", c)
 
 #### SURFACE
-# TODO: Integrate the boolean mask with a surface field
+# ASK: how to integrate a boolean mask with a surface field?
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
@@ -221,62 +221,42 @@ S₀ = 35 #g/kg
 
 constants = NamedTuple{(:reference_density, :heat_capacity, :reference_salinity)}((ρₒ, cₚ, S₀))
 
-# Default properties should be saved in JLD2OutputWriters 
+simulation.output_writers[:surface] = JLD2Output(ocean.model, outputs;
+                                                 schedule = TimeInterval(5days),
+                                                 filename = "global_surface_fields",
+                                                 indices = (:, :, grid.Nz),
+                                                 with_halos = true,
+                                                 overwrite_existing = true,
+                                                 array_type = Array{Float32})
 
-simulation.output_writers[:surface] = JLD2OutputWriter(ocean.model, outputs;
-                                                  schedule = TimeInterval(4hours),
-                                                  filename = "global_surface_fields",
-                                                  indices = (:, :, grid.Nz),
-                                                  with_halos = true,
-                                                  overwrite_existing = true,
-                                                  array_type = Array{Float32})
+simulation.output_writers[:global_avg] = JLD2Output(ocean.model, avg_tracer_outputs;
+                                                    schedule = TimeInterval(1days),
+                                                    filename = "averaged_data",
+                                                    overwrite_existing = true)
 
-simulation.output_writers[:global_avg] = JLD2OutputWriter(ocean.model, avg_outputs;
-                                                  schedule = TimeInterval(4hours),
-                                                  filename = "averaged_data",
-                                                  overwrite_existing = true)
+simulation.output_writers[:global_depth_avg] = JLD2Output(ocean.model, depth_avg_outputs;
+                                                          schedule = TimeInterval(1days),
+                                                          filename = "depth_averaged_data",
+                                                          overwrite_existing = true)
 
-simulation.output_writers[:global_depth_avg] = JLD2OutputWriter(ocean.model, depth_avg_outputs;
-                                                  schedule = TimeInterval(4hours),
-                                                  filename = "depth_averaged_data",
-                                                  overwrite_existing = true)
+simulation.output_writers[:global_zonal_avg] = JLD2Output(ocean.model, zonal_avg_outputs;
+                                                          schedule = TimeInterval(1days),
+                                                          filename = "zonal_averaged_data",
+                                                          overwrite_existing = true)
 
-simulation.output_writers[:global_zonal_avg] = JLD2OutputWriter(ocean.model, zonal_avg_outputs;
-                                                  schedule = TimeInterval(4hours),
-                                                  filename = "zonal_averaged_data",
-                                                  overwrite_existing = true)
+simulation.output_writers[:global_depth_int] = JLD2Output(ocean.model, depth_int_tracer_outputs;
+                                                          schedule = TimeInterval(1days),
+                                                          filename = "depth_integrated_data",
+                                                          overwrite_existing = true)
 
-simulation.output_writers[:global_int] = JLD2OutputWriter(ocean.model, int_outputs;
-                                                  schedule = TimeInterval(4hours),
-                                                  filename = "integrated_data",
-                                                  overwrite_existing = true)
+simulation.output_writers[:global_zonal_int] = JLD2Output(ocean.model, zonal_int_tracer_outputs;
+                                                          schedule = TimeInterval(1days),
+                                                          filename = "zonal_integrated_data",
+                                                          overwrite_existing = true)
 
-simulation.output_writers[:global_depth_int] = JLD2OutputWriter(ocean.model, depth_int_outputs;
-                                                  schedule = TimeInterval(4hours),
-                                                  filename = "depth_integrated_data",
-                                                  overwrite_existing = true)
+# simulation.output_writers[:constants] = JLD2Output(ocean.model, constants;
+#                                                    schedule = TimeInterval(1days),
+#                                                    filename = "constants",
+#                                                    overwrite_existing = true)
 
-simulation.output_writers[:global_zonal_int] = JLD2OutputWriter(ocean.model, zonal_int_outputs;
-                                                  schedule = TimeInterval(4hours),
-                                                  filename = "zonal_integrated_data",
-                                                  overwrite_existing = true)
-
-# simulation.output_writers[:constants] = JLD2OutputWriter(ocean.model, constants;
-#                                                   schedule = TimeInterval(4hours),
-#                                                   filename = "constants",
-#                                                   overwrite_existing = true)
-simulation.output_writers[:checkpoint] = Checkpointer(ocean.model;
-                                                      schedule = TimeInterval(4hours),
-                                                      prefix = "checkpointer",
-                                                      dir = ".",
-                                                      verbose = true,
-                                                      overwrite_existing = true)
-
-run!(simulation, pickup=true)
-
-simulation.Δt = 20minutes
-simulation.stop_time = 360days
-
-run!(simulation, pickup=true)
-
-
+run!(simulation)
