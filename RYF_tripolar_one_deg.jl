@@ -7,7 +7,7 @@ using Printf
 using ClimaOcean.ECCO
 using ClimaOcean.ECCO: download_dataset
 # using Oceananigans.AbstractOperations
-include("BasinMask.jl")
+includet("BasinMask.jl")
 using .BasinMask
 
 arch = CPU()
