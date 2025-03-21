@@ -8,11 +8,7 @@ Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 Shapefile = "8e980c4a-a4fe-5da2-b3a7-4b4b0353a2f4"
 
 [compat]
-<<<<<<< HEAD
-=======
 
 Oceananigans = "0.96"
->>>>>>> main
 ClimaOcean = "0.5"
-Oceananigans = "0.95.28"
 julia = "1.10"
