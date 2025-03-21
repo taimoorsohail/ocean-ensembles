@@ -5,12 +5,37 @@ module BasinMask
     using StaticArrays
     using PolygonOps
     using Oceananigans.Fields: instantiate, location
-    
-    export basin_mask
 
-    function basin_mask(grid::Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}, LatitudeLongitudeGrid}, 
-        basin::AbstractString, 
-        var::Oceananigans.Field)
+    export basin_mask, get_coords_from_grid
+
+    ### At the moment, the mask doesn't deal properly with halos and is offset...
+
+    function get_coords_from_grid(grid::Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}, var)
+        lons = λnodes(grid, instantiate.(location(var))..., with_halos=true)
+        lats = φnodes(grid, instantiate.(location(var))..., with_halos=true)
+
+        points = vec(SVector.(lons, lats))
+
+        return lats, lons, points
+    end
+
+    function get_coords_from_grid(grid::LatitudeLongitudeGrid, var)
+        lons = λnodes(grid, instantiate.(location(var))..., with_halos=true)
+        lats = φnodes(grid, instantiate.(location(var))..., with_halos=true)
+
+        X = [lons[i] for i in 1:grid.Nx, j in 1:grid.Ny]
+        Y = [lats[j] for i in 1:grid.Nx, j in 1:grid.Ny]
+
+        lons, lats = X, Y
+
+        points = vec(SVector.(X, Y))
+
+        return lats, lons, points
+    end
+
+    const TripolarOrLatLonGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}, LatitudeLongitudeGrid}
+
+    function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Oceananigans.Field)
 
         GlobalLonsPts=[0,360,360,0,0]
         GlobalLatsPts=[-90,-90,90,90,-90]
@@ -37,48 +62,39 @@ module BasinMask
         Atlwestpolygon = SVector.(AtlwestLonsPts, AtlwestLatsPts)    # boundary of the polygon
         Atlarcticpolygon = SVector.(AtlarcticLonsPts, AtlarcticLatsPts)    # boundary of the polygon
 
-        lons = λnodes(grid, instantiate.(location(var))...)
-        lats = φnodes(grid, instantiate.(location(var))...)
+        lats, lons, points = get_coords_from_grid(grid, var)
 
-        if isa(grid, LatitudeLongitudeGrid)
-            X,Y = meshgrid(lons[1:Nx], lats[1:Ny])
-            points = vec(SVector.(X, Y))
-            lons, lats = X,Y
-        else
-            points = vec(SVector.(lons,lats))
-        end
-        
         if basin in ["indian", "Indian"]
             polygon = Indpolygon
-            mask = transpose(reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+            mask = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
         elseif basin in ["pacific", "Pacific"]
             polygon = Pacpolygon
-            mask = transpose(reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+            mask = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
         elseif basin in ["atlantic", "Atlantic"]
             polygon = Atleastpolygon
-            mask_1 = transpose(reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+            mask_1 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
             
             polygon = Atlwestpolygon
-            mask_2 = transpose(reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+            mask_2 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
             
             polygon = Atlarcticpolygon
-            mask_3 = transpose(reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+            mask_3 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
         
             mask = mask_1 .+ mask_3 .+ mask_2 
         
         elseif basin in ["indo-pacific", "Indo-pacific", "Indo-Pacific"]
             polygon = Indpolygon
-            mask_1 = transpose(reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+            mask_1 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
             
             polygon = Pacpolygon
-            mask_2 = transpose(reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+            mask_2 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
         
             mask = mask_1 .+ mask_2  
         elseif isempty(basin)
             polygon = Globalpolygon
-            mask = transpose(reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+            mask = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
         else
             throw("Basin unknown, must be one of Indian, Atlantic, Pacific, or Indo-Pacific")
         end
