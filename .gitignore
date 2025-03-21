@@ -25,6 +25,7 @@ Manifest.toml
 
 ## Output files
 *.jld2
+*.nc
 
 ## Text files
 *.tab
