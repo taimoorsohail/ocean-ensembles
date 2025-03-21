@@ -152,7 +152,7 @@ S₀ = 35 #g/kg
 
 constants = NamedTuple{(:reference_density, :heat_capacity, :reference_salinity)}((ρₒ, cₚ, S₀))
 
-simulation.output_writers[:surface] = JLD2Outpur(ocean.model, outputs;
+simulation.output_writers[:surface] = JLD2Output(ocean.model, outputs;
                                                  schedule = TimeInterval(5days),
                                                  filename = "global_surface_fields",
                                                  indices = (:, :, grid.Nz),
