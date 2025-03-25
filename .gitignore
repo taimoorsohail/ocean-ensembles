@@ -37,3 +37,6 @@ Manifest.toml
 
 # Ignore temporary Jupyter Notebook files
 *.~ipynb
+
+# ECCO authentication file
+**/auth.netrc

@@ -10,7 +10,17 @@ using ClimaOcean.ECCO: download_dataset
 includet("BasinMask.jl")
 using .BasinMask
 
-arch = GPU()
+## Argument is provided by the submission script!
+
+if ARGS[2] == "GPU"
+    arch = GPU()
+elseif ARGS[2] == "CPU"
+    arch = CPU()
+else 
+    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
+end
+
+@info "Using architecture: ", arch
 
 # ### Download necessary files to run the code
 
@@ -179,7 +189,7 @@ end
 add_callback!(simulation, progress, IterationInterval(10))
 
 ## Use ClimaOcean checkpointer branch
-@info "Defining averaging functions"
+@info "Defining integration functions"
 
 function integrate_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Ny, Nx, Nz)), suffix::AbstractString) # Add suffix kwarg
     int_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Integral(outputs[key]; dims, condition) for key in keys(outputs)))

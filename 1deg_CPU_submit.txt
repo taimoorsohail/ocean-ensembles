@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -P v46
+#PBS -q normalbw
+#PBS -l walltime=9:00:00
+#PBS -l mem=128GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=12 
+#PBS -l jobfs=10GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N CPU_Clima1deg
+
+julia --project RYF_tripolar_one_deg.jl --arch CPU
