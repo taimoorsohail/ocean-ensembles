@@ -1,7 +1,13 @@
 using ClimaOcean
 using Oceananigans
+using Oceananigans.Units
+using CFTime
+using Dates
+using Printf
 includet("BasinMask.jl")
 using .BasinMask
+
+arch = CPU()
 
 Nx = Integer(360/3)
 Ny = Integer(180/3)
@@ -15,7 +21,7 @@ z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = z_faces,
-                               halo = (5, 5, 4),
+                               halo = (7, 7, 3),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
 
@@ -25,12 +31,12 @@ bottom_height = regrid_bathymetry(underlying_grid;
 				                  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
-view(bottom_height, 102:103, 124, 1) .= -400
+# view(bottom_height, 102:103, 124, 1) .= -400
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
 #### We define our simulation
 
-function testbed_coupled_simulation(grid; stop_iteration=8)
+function testbed_coupled_simulation(arch, grid; stop_iteration=8)
     ocean = ocean_simulation(grid)
 
     radiation = Radiation(arch)
@@ -42,7 +48,7 @@ function testbed_coupled_simulation(grid; stop_iteration=8)
     return Simulation(coupled_model; Δt=10, stop_iteration)
 end
 
-simulation = testbed_coupled_simulation(grid; stop_iteration=8)
+simulation = testbed_coupled_simulation(arch, grid; stop_iteration=8)
 
 #### We define our callbacks
 
@@ -85,12 +91,12 @@ volmask =  set!(c, 1)
 
 #### And the basin masks
 
-Atlantic_mask = basin_mask(grid, "atlantic", c)
-IPac_mask = basin_mask(grid, "indo-pacific", c)
+Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
+IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
 
 #### SURFACE
-tracers = ocean.model.tracers
-velocities = ocean.model.velocities
+tracers = simulation.model.ocean.model.tracers
+velocities = simulation.model.ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
