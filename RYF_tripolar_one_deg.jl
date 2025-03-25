@@ -239,7 +239,7 @@ simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-simulation.output_writers[:global_zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
+simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
                                                           schedule = TimeInterval(5days),
                                                           filename = "zonally_integrated_data",
                                                           overwrite_existing = true)
