@@ -39,10 +39,10 @@ z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 
 @info "Defining tripolar grid"
 
-@time underlying_grid = TripolarGrid(arch;
+underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = z_faces,
-                               halo = (7, 7, 3),
+                               halo = (5, 5, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
 
@@ -103,9 +103,9 @@ free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 momentum_advection = WENOVectorInvariant(vorticity_order=3)
 tracer_advection   = Centered()
 
-@info "Defining simulation"
+@info "Defining ocean simulation"
 
-ocean = ocean_simulation(grid;
+@time ocean = ocean_simulation(grid;
                          momentum_advection,
                          tracer_advection,
                          closure,
@@ -181,14 +181,14 @@ add_callback!(simulation, progress, IterationInterval(10))
 ## Use ClimaOcean checkpointer branch
 @info "Defining averaging functions"
 
-function average_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Ny, Nx)), suffix::AbstractString)
+function average_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Ny, Nx, Nz)), suffix::AbstractString)
     avg_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Average(outputs[key]; dims, condition) for key in keys(outputs)))
     dV_avg = NamedTuple{(Symbol(:dV, suffix),)}((Average(volmask; dims, condition),))
     avg_outputs = merge(avg_model_outputs, dV_avg)
     return avg_outputs
 end
 
-function integrate_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Ny, Nx)), suffix::AbstractString) # Add suffix kwarg
+function integrate_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Ny, Nx, Nz)), suffix::AbstractString) # Add suffix kwarg
     int_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Integral(outputs[key]; dims, condition) for key in keys(outputs)))
     dV_int = NamedTuple{(Symbol(:dV, suffix),)}((Integral(volmask; dims, condition),))
     int_outputs = merge(int_model_outputs, dV_int)
@@ -215,90 +215,87 @@ outputs = merge(tracers, velocities)
 #### AVERAGING
 # Save NamedTuples of averaged tracers
 
-@info "Defining averaged outputs"
+# @info "Defining averaged outputs"
 
-global_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), suffix = "_global")
-Atlantic_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), condition = Atlantic_mask, suffix = "_atlantic")
-IPac_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), condition = IPac_mask, suffix = "_pacific")
+# @time global_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), suffix = "_global")
+# @time Atlantic_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), condition = Atlantic_mask, suffix = "_atlantic")
+# @time IPac_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), condition = IPac_mask, suffix = "_pacific")
 
-global_depth_avg_outputs = average_tuple(outputs; volmask, dims = (1,2), suffix = "_global")
-Atlantic_depth_avg_outputs = average_tuple(outputs; volmask, dims = (1,2), condition = Atlantic_mask, suffix = "_atlantic")
-IPac_depth_avg_outputs = average_tuple(outputs; volmask, dims = (1,2), condition = IPac_mask, suffix = "_pacific")
+# @time global_depth_avg_outputs = average_tuple(outputs; volmask, dims = (1,2), suffix = "_global")
+# @time Atlantic_depth_avg_outputs = average_tuple(outputs; volmask, dims = (1,2), condition = Atlantic_mask, suffix = "_atlantic")
+# @time IPac_depth_avg_outputs = average_tuple(outputs; volmask, dims = (1,2), condition = IPac_mask, suffix = "_pacific")
 
-global_zonal_avg_outputs = average_tuple(outputs; volmask, dims = (1), suffix = "_global")
-Atlantic_zonal_avg_outputs = average_tuple(outputs; volmask, dims = (1), condition = Atlantic_mask, suffix = "_atlantic")
-IPac_zonal_avg_outputs = average_tuple(outputs; volmask, dims = (1), condition = IPac_mask, suffix = "_pacific")
+# @time global_zonal_avg_outputs = average_tuple(outputs; volmask, dims = (1), suffix = "_global")
+# @time Atlantic_zonal_avg_outputs = average_tuple(outputs; volmask, dims = (1), condition = Atlantic_mask, suffix = "_atlantic")
+# @time IPac_zonal_avg_outputs = average_tuple(outputs; volmask, dims = (1), condition = IPac_mask, suffix = "_pacific")
 
-avg_outputs = merge(global_avg_outputs, Atlantic_avg_outputs, IPac_avg_outputs)
-depth_avg_outputs = merge(global_depth_avg_outputs, Atlantic_depth_avg_outputs, IPac_depth_avg_outputs)
-zonal_avg_outputs = merge(global_zonal_avg_outputs, Atlantic_zonal_avg_outputs, IPac_zonal_avg_outputs)
+# @time avg_outputs = merge(global_avg_outputs, Atlantic_avg_outputs, IPac_avg_outputs)
+# @time depth_avg_outputs = merge(global_depth_avg_outputs, Atlantic_depth_avg_outputs, IPac_depth_avg_outputs)
+# @time zonal_avg_outputs = merge(global_zonal_avg_outputs, Atlantic_zonal_avg_outputs, IPac_zonal_avg_outputs)
 
 #### INTEGRATING
 
 @info "Defining integrated outputs"
 
-global_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), suffix = "_global")
-Atlantic_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), condition = Atlantic_mask, suffix = "_atlantic")
-IPac_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), condition = IPac_mask, suffix = "_pacific")
+# @time global_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), suffix = "_global")
+# @time Atlantic_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), condition = Atlantic_mask, suffix = "_atlantic")
+# @time IPac_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), condition = IPac_mask, suffix = "_pacific")
 
-global_depth_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2), suffix = "_global")
-Atlantic_depth_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2), condition = Atlantic_mask, suffix = "_atlantic")
-IPac_depth_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2), condition = IPac_mask, suffix = "_pacific")
+# @time global_depth_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2), suffix = "_global")
+# @time Atlantic_depth_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2), condition = Atlantic_mask, suffix = "_atlantic")
+# @time IPac_depth_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2), condition = IPac_mask, suffix = "_pacific")
 
-global_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), suffix = "_global")
-Atlantic_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = Atlantic_mask, suffix = "_atlantic")
-IPac_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = IPac_mask, suffix = "_pacific")
+@info "In theory, we only need the integrated zonal tracers + int(dV) to compute everything!"
 
-int_outputs = merge(global_int_outputs, Atlantic_int_outputs, IPac_int_outputs)
-depth_int_outputs = merge(global_depth_int_outputs, Atlantic_depth_int_outputs, IPac_depth_int_outputs)
-zonal_int_outputs = merge(global_zonal_int_outputs, Atlantic_zonal_int_outputs, IPac_zonal_int_outputs)
+@time global_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), suffix = "_global")
+@time Atlantic_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = Atlantic_mask, suffix = "_atlantic")
+@time IPac_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = IPac_mask, suffix = "_pacific")
 
-# TODO: Make these constants saved as well for OHC; OSC
-ρₒ = simulation.model.interfaces.ocean_properties.reference_density
-cₚ = simulation.model.interfaces.ocean_properties.heat_capacity
-S₀ = 35 #g/kg
+# @time int_outputs = merge(global_int_outputs, Atlantic_int_outputs, IPac_int_outputs)
+# @time depth_int_outputs = merge(global_depth_int_outputs, Atlantic_depth_int_outputs, IPac_depth_int_outputs)
+@time zonal_int_outputs = merge(global_zonal_int_outputs, Atlantic_zonal_int_outputs, IPac_zonal_int_outputs)
 
-constants = NamedTuple{(:reference_density, :heat_capacity, :reference_salinity)}((ρₒ, cₚ, S₀))
+constants = simulation.model.interfaces.ocean_properties
 
 @info "Defining output writers"
 
-simulation.output_writers[:surface] = JLD2Output(ocean.model, outputs;
+simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  schedule = TimeInterval(5days),
                                                  filename = "global_surface_fields",
                                                  indices = (:, :, grid.Nz),
-                                                 with_halos = true,
+                                                 with_halos = false,
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-simulation.output_writers[:global_avg] = JLD2Output(ocean.model, avg_tracer_outputs;
-                                                    schedule = TimeInterval(1days),
-                                                    filename = "averaged_data",
-                                                    overwrite_existing = true)
+# simulation.output_writers[:global_avg] = JLD2Writer(ocean.model, avg_tracer_outputs;
+#                                                     schedule = TimeInterval(1days),
+#                                                     filename = "averaged_data",
+#                                                     overwrite_existing = true)
 
-simulation.output_writers[:global_depth_avg] = JLD2Output(ocean.model, depth_avg_outputs;
+# simulation.output_writers[:global_depth_avg] = JLD2Writer(ocean.model, depth_avg_outputs;
+#                                                           schedule = TimeInterval(1days),
+#                                                           filename = "depth_averaged_data",
+#                                                           overwrite_existing = true)
+
+# simulation.output_writers[:global_zonal_avg] = JLD2Writer(ocean.model, zonal_avg_outputs;
+#                                                           schedule = TimeInterval(1days),
+#                                                           filename = "zonal_averaged_data",
+#                                                           overwrite_existing = true)
+
+# simulation.output_writers[:global_depth_int] = JLD2Writer(ocean.model, depth_int_tracer_outputs;
+#                                                           schedule = TimeInterval(1days),
+#                                                           filename = "depth_integrated_data",
+#                                                           overwrite_existing = true)
+
+simulation.output_writers[:global_zonal_int] = JLD2Writer(ocean.model, zonal_int_tracer_outputs;
                                                           schedule = TimeInterval(1days),
-                                                          filename = "depth_averaged_data",
+                                                          filename = "zonally_integrated_data",
                                                           overwrite_existing = true)
 
-simulation.output_writers[:global_zonal_avg] = JLD2Output(ocean.model, zonal_avg_outputs;
-                                                          schedule = TimeInterval(1days),
-                                                          filename = "zonal_averaged_data",
-                                                          overwrite_existing = true)
-
-simulation.output_writers[:global_depth_int] = JLD2Output(ocean.model, depth_int_tracer_outputs;
-                                                          schedule = TimeInterval(1days),
-                                                          filename = "depth_integrated_data",
-                                                          overwrite_existing = true)
-
-simulation.output_writers[:global_zonal_int] = JLD2Output(ocean.model, zonal_int_tracer_outputs;
-                                                          schedule = TimeInterval(1days),
-                                                          filename = "zonal_integrated_data",
-                                                          overwrite_existing = true)
-
-# simulation.output_writers[:constants] = JLD2Output(ocean.model, constants;
-#                                                    schedule = TimeInterval(1days),
-#                                                    filename = "constants",
-#                                                    overwrite_existing = true)
+simulation.output_writers[:constants] = JLD2Writer(ocean.model, constants;
+                                                   schedule = TimeInterval(365days),
+                                                   filename = "constants",
+                                                   overwrite_existing = true)
 
 @info "Running simulation"
 
