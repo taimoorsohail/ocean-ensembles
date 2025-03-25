@@ -15,6 +15,7 @@ arch = CPU()
 # ### Download necessary files to run the code
 
 # ### ECCO files
+@info "Downloading/checking ECCO data"
 
 dates = vcat(collect(DateTime(1993, 1, 1): Month(1): DateTime(1993, 4, 1)), collect(DateTime(1993, 5, 1) : Month(1) : DateTime(1994, 1, 1)))
 
@@ -25,33 +26,46 @@ download_dataset(temperature)
 download_dataset(salinity)
 
 # ### Grid and Bathymetry
+@info "Defining grid"
 
 Nx = Integer(360/3)
 Ny = Integer(180/3)
 Nz = Integer(100/2)
 
+@info "Defining vertical z faces"
+
 r_faces = exponential_z_faces(; Nz, depth=5000, h=34)
 z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 
-underlying_grid = TripolarGrid(arch;
+@info "Defining tripolar grid"
+
+@time underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = z_faces,
-                               halo = (5, 5, 4),
+                               halo = (7, 7, 3),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
 
-bottom_height = regrid_bathymetry(underlying_grid;
+@info "Defining bottom bathymetry"
+
+@time bottom_height = regrid_bathymetry(underlying_grid;
                                   minimum_depth = 10,
                                   interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
 # view(bottom_height, 102:103, 124, 1) .= -400
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+
+@info "Defining grid"
+
+@time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
 # ### Restoring
 #
 # We include temperature and salinity surface restoring to ECCO data.
+
+@info "Defining restoring rate"
+
 restoring_rate  = 1 / 10days
 z_below_surface = r_faces[end-1]
 
@@ -65,6 +79,8 @@ forcing = (T=FT, S=FS)
 # We include a Gent-McWilliam isopycnal diffusivity as a parameterization for the mesoscale
 # eddy fluxes. For vertical mixing at the upper-ocean boundary layer we include the CATKE
 # parameterization. We also include some explicit horizontal diffusivity.
+
+@info "Defining closures"
 
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
                                        DiffusiveFormulation
@@ -80,10 +96,14 @@ closure = (eddy_closure, vertical_mixing)
 # We use a split-explicit timestepping with 30 substeps for the barotropic
 # mode.
 
+@info "Defining free surface"
+
 free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
 momentum_advection = WENOVectorInvariant(vorticity_order=3)
 tracer_advection   = Centered()
+
+@info "Defining simulation"
 
 ocean = ocean_simulation(grid;
                          momentum_advection,
@@ -96,12 +116,16 @@ ocean = ocean_simulation(grid;
 
 # We initialize the ocean from the ECCO state estimate.
 
+@info "Initialising with ECCO"
+
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly()),
                   S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly()))
 
 # ### Atmospheric forcing
 
 # We force the simulation with an JRA55-do atmospheric reanalysis.
+@info "Defining Atmospheric state"
+
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 
@@ -114,12 +138,16 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 # avoid numerical instabilities from the initial "shock" of the adjustment of the
 # flow fields.
 
+@info "Defining coupled model"
+
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 
 # ### A progress messenger
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
+
+@info "Defining messenger"
 
 wall_time = Ref(time_ns())
 
@@ -151,6 +179,7 @@ end
 add_callback!(simulation, progress, IterationInterval(10))
 
 ## Use ClimaOcean checkpointer branch
+@info "Defining averaging functions"
 
 function average_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Ny, Nx)), suffix::AbstractString)
     avg_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Average(outputs[key]; dims, condition) for key in keys(outputs)))
@@ -169,11 +198,15 @@ end
 c = CenterField(grid)
 volmask =  set!(c, 1)
 
-Atlantic_mask = basin_mask(grid, "atlantic", c)
-IPac_mask = basin_mask(grid, "indo-pacific", c)
+@info "Defining masks"
+
+Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
+IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
 
 #### SURFACE
-# ASK: how to integrate a boolean mask with a surface field?
+
+@info "Defining surface outputs"
+
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
@@ -181,6 +214,9 @@ outputs = merge(tracers, velocities)
 
 #### AVERAGING
 # Save NamedTuples of averaged tracers
+
+@info "Defining averaged outputs"
+
 global_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), suffix = "_global")
 Atlantic_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), condition = Atlantic_mask, suffix = "_atlantic")
 IPac_avg_outputs = average_tuple(outputs; volmask, dims = (1,2,3), condition = IPac_mask, suffix = "_pacific")
@@ -198,6 +234,9 @@ depth_avg_outputs = merge(global_depth_avg_outputs, Atlantic_depth_avg_outputs, 
 zonal_avg_outputs = merge(global_zonal_avg_outputs, Atlantic_zonal_avg_outputs, IPac_zonal_avg_outputs)
 
 #### INTEGRATING
+
+@info "Defining integrated outputs"
+
 global_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), suffix = "_global")
 Atlantic_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), condition = Atlantic_mask, suffix = "_atlantic")
 IPac_int_outputs = integrate_tuple(outputs; volmask, dims = (1,2,3), condition = IPac_mask, suffix = "_pacific")
@@ -220,6 +259,8 @@ cₚ = simulation.model.interfaces.ocean_properties.heat_capacity
 S₀ = 35 #g/kg
 
 constants = NamedTuple{(:reference_density, :heat_capacity, :reference_salinity)}((ρₒ, cₚ, S₀))
+
+@info "Defining output writers"
 
 simulation.output_writers[:surface] = JLD2Output(ocean.model, outputs;
                                                  schedule = TimeInterval(5days),
@@ -258,5 +299,7 @@ simulation.output_writers[:global_zonal_int] = JLD2Output(ocean.model, zonal_int
 #                                                    schedule = TimeInterval(1days),
 #                                                    filename = "constants",
 #                                                    overwrite_existing = true)
+
+@info "Running simulation"
 
 run!(simulation)
