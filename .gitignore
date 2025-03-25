@@ -31,6 +31,10 @@ Manifest.toml
 *.tab
 *.history
 
+## Output logs from Gadi runs
+*.o*
+*.e*
+
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/

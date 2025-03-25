@@ -5,21 +5,23 @@ module BasinMask
     using StaticArrays
     using PolygonOps
     using Oceananigans.Fields: instantiate, location
-
+    using CUDA
     export basin_mask, get_coords_from_grid
 
     ### At the moment, the mask doesn't deal properly with halos and is offset...
 
-    function get_coords_from_grid(grid::Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}, var)
+    function get_coords_from_grid(grid::Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}, var, arch)
         lons = λnodes(grid, instantiate.(location(var))..., with_halos=false)
         lats = φnodes(grid, instantiate.(location(var))..., with_halos=false)
-
-        points = vec(SVector.(lons, lats))
-
+        if arch == GPU()
+            points = CUDA.@allowscalar vec(SVector.(lons, lats))
+        else
+            points = vec(SVector.(lons, lats))
+        end
         return lats, lons, points
     end
 
-    function get_coords_from_grid(grid::LatitudeLongitudeGrid, var)
+    function get_coords_from_grid(grid::LatitudeLongitudeGrid, var, arch)
         lons = λnodes(grid, instantiate.(location(var))..., with_halos=false)
         lats = φnodes(grid, instantiate.(location(var))..., with_halos=false)
 
@@ -28,14 +30,18 @@ module BasinMask
 
         lons, lats = X, Y
 
-        points = vec(SVector.(X, Y))
+        if arch == GPU()
+            points = CUDA.@allowscalar vec(SVector.(lons, lats))
+        else
+            points = vec(SVector.(lons, lats))
+        end
 
         return lats, lons, points
     end
 
     const TripolarOrLatLonGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}, LatitudeLongitudeGrid}
 
-    function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Oceananigans.Field)
+    function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Oceananigans.Field, arch)
 
         GlobalLonsPts=[0,360,360,0,0]
         GlobalLatsPts=[-90,-90,90,90,-90]
@@ -62,7 +68,7 @@ module BasinMask
         Atlwestpolygon = SVector.(AtlwestLonsPts, AtlwestLatsPts)    # boundary of the polygon
         Atlarcticpolygon = SVector.(AtlarcticLonsPts, AtlarcticLatsPts)    # boundary of the polygon
 
-        lats, lons, points = get_coords_from_grid(grid, var)
+        lats, lons, points = get_coords_from_grid(grid, var, arch)
 
         if basin in ["indian", "Indian"]
             polygon = Indpolygon

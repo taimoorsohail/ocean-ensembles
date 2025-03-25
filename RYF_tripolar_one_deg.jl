@@ -203,8 +203,8 @@ volmask =  set!(c, 1)
 
 @info "Defining masks"
 
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
+Atlantic_mask = repeat(basin_mask(grid, "atlantic", c, arch), 1, 1, Nz)
+IPac_mask = repeat(basin_mask(grid, "indo-pacific", c, arch), 1, 1, Nz)
 
 #### SURFACE
 
