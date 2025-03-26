@@ -35,7 +35,7 @@ module BasinMask
         else
             points = CUDA.@allowscalar vec(SVector.(lons, lats))
         end
-
+        
         return lats, lons, points
     end
 
