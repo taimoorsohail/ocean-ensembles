@@ -13,10 +13,10 @@ module BasinMask
     function get_coords_from_grid(grid::Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}, var, arch)
         lons = λnodes(grid, instantiate.(location(var))..., with_halos=false)
         lats = φnodes(grid, instantiate.(location(var))..., with_halos=false)
-        if arch == GPU()
-            points = CUDA.@allowscalar vec(SVector.(lons, lats))
-        else
+        if arch == CPU()
             points = vec(SVector.(lons, lats))
+        else
+            points = CUDA.@allowscalar vec(SVector.(lons, lats))
         end
         return lats, lons, points
     end
@@ -30,10 +30,10 @@ module BasinMask
 
         lons, lats = X, Y
 
-        if arch == GPU()
-            points = CUDA.@allowscalar vec(SVector.(lons, lats))
-        else
+        if arch == CPU()
             points = vec(SVector.(lons, lats))
+        else
+            points = CUDA.@allowscalar vec(SVector.(lons, lats))
         end
 
         return lats, lons, points
