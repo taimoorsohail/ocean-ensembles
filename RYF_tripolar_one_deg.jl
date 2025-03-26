@@ -244,10 +244,10 @@ simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_output
                                                           filename = "zonally_integrated_data",
                                                           overwrite_existing = true)
 
-simulation.output_writers[:constants] = JLD2Writer(ocean.model, constants;
-                                                   schedule = TimeInterval(365days),
-                                                   filename = "constants",
-                                                   overwrite_existing = true)
+# simulation.output_writers[:constants] = JLD2Writer(ocean.model, constants;
+#                                                    schedule = TimeInterval(365days),
+#                                                    filename = "constants",
+#                                                    overwrite_existing = true)
 
 @info "Running simulation"
 
