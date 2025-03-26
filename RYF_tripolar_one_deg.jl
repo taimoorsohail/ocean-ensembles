@@ -191,7 +191,7 @@ add_callback!(simulation, progress, IterationInterval(10))
 ## Use ClimaOcean checkpointer branch
 @info "Defining integration functions"
 
-function integrate_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Ny, Nx, Nz)), suffix::AbstractString) # Add suffix kwarg
+function integrate_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Nx, Ny, Nz)), suffix::AbstractString) # Add suffix kwarg
     int_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Integral(outputs[key]; dims, condition) for key in keys(outputs)))
     dV_int = NamedTuple{(Symbol(:dV, suffix),)}((Integral(volmask; dims, condition),))
     int_outputs = merge(int_model_outputs, dV_int)
