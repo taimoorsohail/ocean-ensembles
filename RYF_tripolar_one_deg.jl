@@ -255,6 +255,6 @@ simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_output
 run!(simulation)
 
 simulation.Δt = 20minutes
-simulation.stop_time = 380days
+simulation.stop_time = 11000days
 
 run!(simulation)
