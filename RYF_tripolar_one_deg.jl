@@ -220,13 +220,11 @@ outputs = merge(tracers, velocities)
 
 @info "Defining integrated outputs"
 
-@info "In theory, we only need the integrated zonal tracers + int(dV) to compute everything!"
+global_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = glob_mask, suffix = "_global")
+Atlantic_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = Atlantic_mask, suffix = "_atlantic")
+IPac_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = IPac_mask, suffix = "_pacific")
 
-@time global_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = glob_mask, suffix = "_global")
-@time Atlantic_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = Atlantic_mask, suffix = "_atlantic")
-@time IPac_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = IPac_mask, suffix = "_pacific")
-
-@time zonal_int_outputs = merge(global_zonal_int_outputs, Atlantic_zonal_int_outputs, IPac_zonal_int_outputs)
+zonal_int_outputs = merge(global_zonal_int_outputs, Atlantic_zonal_int_outputs, IPac_zonal_int_outputs)
 
 constants = simulation.model.interfaces.ocean_properties
 
@@ -240,10 +238,10 @@ simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-# simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
-#                                                           schedule = TimeInterval(5days),
-#                                                           filename = "zonally_integrated_data",
-#                                                           overwrite_existing = true)
+simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
+                                                          schedule = TimeInterval(5days),
+                                                          filename = "zonally_integrated_data",
+                                                          overwrite_existing = true)
 
 # simulation.output_writers[:constants] = JLD2Writer(ocean.model, constants;
 #                                                    schedule = TimeInterval(365days),
