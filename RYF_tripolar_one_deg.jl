@@ -191,7 +191,7 @@ add_callback!(simulation, progress, IterationInterval(10))
 ## Use ClimaOcean checkpointer branch
 @info "Defining integration functions"
 
-function integrate_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, ones(Nx, Ny, Nz)), suffix::AbstractString) # Add suffix kwarg
+function integrate_tuple(outputs; volmask, dims, condition, suffix::AbstractString) # Add suffix kwarg
     int_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Integral(outputs[key]; dims, condition) for key in keys(outputs)))
     dV_int = NamedTuple{(Symbol(:dV, suffix),)}((Integral(volmask; dims, condition),))
     int_outputs = merge(int_model_outputs, dV_int)
@@ -205,6 +205,7 @@ volmask =  set!(c, 1)
 
 Atlantic_mask = repeat(basin_mask(grid, "atlantic", c, arch), 1, 1, Nz)
 IPac_mask = repeat(basin_mask(grid, "indo-pacific", c, arch), 1, 1, Nz)
+glob_mask = Atlantic_mask .|| IPac_mask
 
 #### SURFACE
 
@@ -221,7 +222,7 @@ outputs = merge(tracers, velocities)
 
 @info "In theory, we only need the integrated zonal tracers + int(dV) to compute everything!"
 
-@time global_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), suffix = "_global")
+@time global_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = glob_mask, suffix = "_global")
 @time Atlantic_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = Atlantic_mask, suffix = "_atlantic")
 @time IPac_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = IPac_mask, suffix = "_pacific")
 
@@ -254,6 +255,6 @@ simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_output
 run!(simulation)
 
 simulation.Δt = 20minutes
-simulation.stop_time = 380days
+simulation.stop_time = 11000days
 
 run!(simulation)
