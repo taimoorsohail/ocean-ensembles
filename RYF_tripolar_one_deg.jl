@@ -232,7 +232,7 @@ constants = simulation.model.interfaces.ocean_properties
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  schedule = TimeInterval(5days),
-                                                 filename = "global_surface_fields",
+                                                 filename = "global_surface_fields_new",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -240,7 +240,7 @@ simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
 
 simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
                                                           schedule = TimeInterval(5days),
-                                                          filename = "zonally_integrated_data",
+                                                          filename = "zonally_integrated_data_new",
                                                           overwrite_existing = true)
 
 # simulation.output_writers[:constants] = JLD2Writer(ocean.model, constants;
