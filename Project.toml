@@ -1,3 +1,8 @@
+name = "OceanEnsembles"
+uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
+authors = ["Taimoor Sohail and Navid C. Constantinou <navidcy@users.noreply.github.com>"]
+version = "0.1.0"
+
 [deps]
 CFTime = "179af706-886a-5703-950a-314cd64e0468"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -11,3 +16,9 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 Oceananigans = "0.96"
 julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
