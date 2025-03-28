@@ -6,9 +6,7 @@ using Dates
 using Printf
 using ClimaOcean.ECCO
 using ClimaOcean.ECCO: download_dataset
-# using Oceananigans.AbstractOperations
-includet("BasinMask.jl")
-using .BasinMask
+using OceanEnsembles
 
 ## Argument is provided by the submission script!
 
@@ -16,7 +14,7 @@ if ARGS[2] == "GPU"
     arch = GPU()
 elseif ARGS[2] == "CPU"
     arch = CPU()
-else 
+else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end
 
