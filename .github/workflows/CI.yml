@@ -23,7 +23,7 @@ jobs:
         include:
           - os: macOS-latest
             arch: aarch64
-            version: 1.10
+            version: '1.10'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
