@@ -1,17 +1,20 @@
 module BasinMask
 
-using Oceananigans
 using ClimaOcean
-using StaticArrays
-using PolygonOps
-using Oceananigans.Fields: instantiate, location
 using CUDA
+using Oceananigans
+using Oceananigans.Fields: instantiate, location
+using PolygonOps
+using StaticArrays
 
 export basin_mask, get_coords_from_grid
 
-### At the moment, the mask doesn't deal properly with halos and is offset...
+##TODO: At the moment, the mask doesn't deal properly with halos and is offset...
 
-function get_coords_from_grid(grid::Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}, var, arch)
+const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
+const TripolarOrLatLonGrid = Union{SomeTripolarGrid, LatitudeLongitudeGrid}
+
+function get_coords_from_grid(grid::SomeTripolarGrid, var, arch)
     lons = λnodes(grid, instantiate.(location(var))..., with_halos=false)
     lats = φnodes(grid, instantiate.(location(var))..., with_halos=false)
     if arch == CPU()
@@ -39,8 +42,6 @@ function get_coords_from_grid(grid::LatitudeLongitudeGrid, var, arch)
 
     return lats, lons, points
 end
-
-const TripolarOrLatLonGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}, LatitudeLongitudeGrid}
 
 function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Oceananigans.Field, arch)
 
