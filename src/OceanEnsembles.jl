@@ -1,6 +1,6 @@
 module OceanEnsembles
 
-export basin_mask, get_coords_from_grid
+export basin_mask
 
 include("BasinMask.jl")
 
