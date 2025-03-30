@@ -6,6 +6,7 @@ using Oceananigans
 using Oceananigans.Fields: instantiate, location
 using PolygonOps
 using StaticArrays
+using Oceananigans.Architectures: architecture
 
 export basin_mask, get_coords_from_grid
 
@@ -14,7 +15,8 @@ export basin_mask, get_coords_from_grid
 const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 const TripolarOrLatLonGrid = Union{SomeTripolarGrid, LatitudeLongitudeGrid}
 
-function get_coords_from_grid(grid::SomeTripolarGrid, var, arch)
+function get_coords_from_grid(grid::SomeTripolarGrid, var)
+    arch = architecture(grid)
     lons = λnodes(grid, instantiate.(location(var))..., with_halos=false)
     lats = φnodes(grid, instantiate.(location(var))..., with_halos=false)
     if arch == CPU()
@@ -25,7 +27,8 @@ function get_coords_from_grid(grid::SomeTripolarGrid, var, arch)
     return lats, lons, points
 end
 
-function get_coords_from_grid(grid::LatitudeLongitudeGrid, var, arch)
+function get_coords_from_grid(grid::LatitudeLongitudeGrid, var)
+    arch = architecture(grid)
     lons = λnodes(grid, instantiate.(location(var))..., with_halos=false)
     lats = φnodes(grid, instantiate.(location(var))..., with_halos=false)
 
