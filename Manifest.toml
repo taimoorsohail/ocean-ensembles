@@ -566,15 +566,9 @@ uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
 version = "0.1.10"
 
 [[deps.ExpressionExplorer]]
-<<<<<<< HEAD
-git-tree-sha1 = "bf2e6a47b70dfb5d103f300ef83d950239f9fa50"
-uuid = "21656369-7473-754a-2065-74616d696c43"
-version = "1.1.2"
-=======
 git-tree-sha1 = "71d0768dd78ad62d3582091bf338d98af8bbda67"
 uuid = "21656369-7473-754a-2065-74616d696c43"
 version = "1.1.1"
->>>>>>> main
 
 [[deps.Extents]]
 git-tree-sha1 = "063512a13dbe9c40d999c439268539aa552d1ae6"
@@ -716,15 +710,9 @@ version = "0.2.0"
 
 [[deps.GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "PrecompileTools", "Preferences", "Scratch", "Serialization", "TOML", "TimerOutputs", "UUIDs"]
-<<<<<<< HEAD
-git-tree-sha1 = "36bfd98df6090544d093b7b1c37871be75cac68a"
-uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "1.3.1"
-=======
 git-tree-sha1 = "c8ffc85902be50f8fb5a1e1a360bec43efd83493"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
 version = "1.3.0"
->>>>>>> main
 
 [[deps.GPUToolbox]]
 git-tree-sha1 = "15d8b0f5a6dca9bf8c02eeaf6687660dafa638d0"
@@ -1401,15 +1389,9 @@ version = "0.5.5"
 
 [[deps.Oceananigans]]
 deps = ["Adapt", "CUDA", "Crayons", "CubedSphere", "Dates", "Distances", "DocStringExtensions", "FFTW", "GPUArrays", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "OffsetArrays", "OrderedCollections", "Pkg", "Printf", "Random", "ReactantCore", "Rotations", "SeawaterPolynomials", "SparseArrays", "StaticArrays", "Statistics", "StructArrays", "TimesDates"]
-<<<<<<< HEAD
-git-tree-sha1 = "bc8fa956c6ee338cd65f29adf984faac1260a80f"
-uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.96.6"
-=======
 git-tree-sha1 = "b1bfca0bf7821d7c1830968a8e685925219977fd"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 version = "0.96.5"
->>>>>>> main
 
     [deps.Oceananigans.extensions]
     OceananigansEnzymeExt = "Enzyme"
@@ -1788,15 +1770,9 @@ uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
 [[deps.SeawaterPolynomials]]
-<<<<<<< HEAD
-git-tree-sha1 = "d4de7b3d09d8b7ce58eaf4c03717968fbae0cab0"
-uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
-version = "0.3.9"
-=======
 git-tree-sha1 = "78f965a2f0cd5250a20c9aba9979346dd2b35734"
 uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
 version = "0.3.5"
->>>>>>> main
 
 [[deps.SentinelArrays]]
 deps = ["Dates", "Random"]
