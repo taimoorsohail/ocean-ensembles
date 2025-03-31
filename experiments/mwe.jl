@@ -4,7 +4,7 @@ using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
-using OceanEnsembles: basin_mask
+using OceanEnsembles
 
 Nx = Integer(360/4)
 Ny = Integer(180/4)
