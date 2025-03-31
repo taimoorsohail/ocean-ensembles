@@ -1,3 +1,8 @@
+name = "OceanEnsembles"
+uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
+authors = ["Taimoor Sohail and Navid C. Constantinou <navidcy@users.noreply.github.com>"]
+version = "0.1.0"
+
 [deps]
 CFTime = "179af706-886a-5703-950a-314cd64e0468"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -10,5 +15,17 @@ PolygonOps = "647866c9-e3ac-4575-94e7-e3d426903924"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+CFTime = "0.1.4"
+CUDA = "5.7"
+ClimaOcean = "0.5.8"
+Makie = "0.22.2"
 Oceananigans = "0.96"
+PolygonOps = "0.1.2"
+StaticArrays = "1.9.3"
 julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
