@@ -28,9 +28,6 @@ underlying_grid = TripolarGrid(arch;
                                   interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 
-# For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
-view(bottom_height, 102:103, 124, 1) .= -400
-
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
@@ -47,8 +44,17 @@ IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
 glob_mask = Atlantic_mask .|| IPac_mask
 
 tot_int = compute!(Field(Integral(c, dims = (1,2,3), condition = glob_mask)))
-@info "The total integral of 1s is", tot_int
+@info "The total volume is" tot_int[1,1,1]
 
-# sing_int = Field(Integral(c, dims = (1), condition = glob_mask))
-# dArea = grid. 
-# tot_int_from_sing = sum(sing_int*dArea)
+dvol_3D = yspacings(grid).*zspacings(grid).*xspacings(grid)
+basic_int = sum(c*dvol_3D*glob_mask)
+@info "The total volume is" basic_int
+
+basic_dbl_int = sum(sum(c*dvol_3D*glob_mask, dims=1), dims = (2,3))
+@info "The total volume is" basic_dbl_int[1, 1, 1]
+
+println(basic_int == basic_dbl_int[1, 1, 1])
+println(tot_int[1,1,1] == basic_dbl_int[1, 1, 1])
+println(tot_int[1,1,1] == basic_int)
+
+@info "Based on this test the best option is probably to multiply by a dV so that any reductions can be further reduced or divided by dV to get the average"
