@@ -10,8 +10,6 @@ using Oceananigans.Architectures: architecture
 
 export basin_mask, get_coords_from_grid
 
-##TODO: At the moment, the mask doesn't deal properly with halos and is offset...
-
 const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 const TripolarOrLatLonGrid = Union{SomeTripolarGrid, LatitudeLongitudeGrid}
 

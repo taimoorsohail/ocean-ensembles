@@ -1,13 +1,10 @@
-using BenchmarkTools
 using ClimaOcean
 using Oceananigans
 using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
-using Oceananigans: write_output!
-includet("BasinMask.jl")
-using .BasinMask
+using OceanEnsembles: basin_mask
 
 Nx = Integer(360/4)
 Ny = Integer(180/4)
@@ -17,20 +14,31 @@ arch = CPU()
 
 z_faces = (-4000, 0)
 
-grid = TripolarGrid(arch;
-                    size = (Nx, Ny, Nz),
-                    z = z_faces,
-                    halo = (5, 5, 4),
-                    first_pole_longitude = 70,
-                    north_poles_latitude = 55)
+underlying_grid = TripolarGrid(arch;
+                               size = (Nx, Ny, Nz),
+                               z = z_faces,
+                               halo = (5, 5, 4),
+                               first_pole_longitude = 70,
+                               north_poles_latitude = 55)
+
+@info "Defining bottom bathymetry"
+
+@time bottom_height = regrid_bathymetry(underlying_grid;
+                                  minimum_depth = 10,
+                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+				                  major_basins = 2)
+
+# For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
+view(bottom_height, 102:103, 124, 1) .= -400
+
+@info "Defining grid"
+
+@time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
 @info "Defining free surface"
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
-<<<<<<< HEAD
-simulation = Simulation(model, Δt=0.001, stop_iteration=2000)
-=======
 momentum_advection = WENOVectorInvariant(vorticity_order=3)
 tracer_advection   = Centered()
 
@@ -41,14 +49,13 @@ tracer_advection   = Centered()
                             tracer_advection,
                             free_surface)
 
-                            radiation  = Radiation(arch)
+radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
                             
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 # pop!(simulation.callbacks, :nan_checker)
 
->>>>>>> main
 
 function integrate_tuple(outputs; volmask, dims, condition, suffix::AbstractString) # Add suffix kwarg
     int_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Integral(outputs[key]; dims, condition) for key in keys(outputs)))
@@ -62,8 +69,8 @@ volmask =  set!(c, 1)
 
 @info "Defining masks"
 
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", c, arch), 1, 1, Nz)
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", c, arch), 1, 1, Nz)
+Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
+IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
 glob_mask = Atlantic_mask .|| IPac_mask
 
 # @info "Defining surface outputs"
