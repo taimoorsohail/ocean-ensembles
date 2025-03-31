@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.9"
+julia_version = "1.10.8"
 manifest_format = "2.0"
 project_hash = "7e98f0c011a42173ac100bcb249e433263fb313e"
 
@@ -1388,8 +1388,8 @@ version = "0.5.5"
 
 [[deps.OceanEnsembles]]
 deps = ["CFTime", "CUDA", "ClimaOcean", "Dates", "Makie", "Oceananigans", "PolygonOps", "StaticArrays"]
-git-tree-sha1 = "44e2ac9116476624fd5901ada5c1a0859e7cb068"
-repo-rev = "ncc/restructure"
+git-tree-sha1 = "14a8a045e4999b4fc230fbdfc05194556b3ac221"
+repo-rev = "0369c3e61c9cd274c142383a2dea6436d1bbf87d"
 repo-url = ".."
 uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 version = "0.1.0"
@@ -1451,7 +1451,7 @@ version = "3.2.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+4"
+version = "0.8.1+2"
 
 [[deps.OpenMPI_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML", "Zlib_jll"]
