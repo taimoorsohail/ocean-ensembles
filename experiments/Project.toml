@@ -1,0 +1,11 @@
+name = "OceanEnsembles-RYF-1deg"
+
+[deps]
+CFTime = "179af706-886a-5703-950a-314cd64e0468"
+ClimaOcean = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
+OceanEnsembles = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[sources.OceanEnsembles]
+path = "../"

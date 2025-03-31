@@ -1,6 +1,11 @@
+using BenchmarkTools
+using ClimaOcean
 using Oceananigans
 using Oceananigans.Units
-using BenchmarkTools
+using CFTime
+using Dates
+using Printf
+using Oceananigans: write_output!
 includet("BasinMask.jl")
 using .BasinMask
 
@@ -9,6 +14,7 @@ Ny = Integer(180/4)
 Nz = Integer(100/4)
 
 arch = CPU()
+
 z_faces = (-4000, 0)
 
 grid = TripolarGrid(arch;
@@ -18,12 +24,31 @@ grid = TripolarGrid(arch;
                     first_pole_longitude = 70,
                     north_poles_latitude = 55)
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=10)
-model = HydrostaticFreeSurfaceModel(; grid, free_surface)
+@info "Defining free surface"
 
-# set!(model, u=0.001*rand(), v=0.001*rand())
+free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
+<<<<<<< HEAD
 simulation = Simulation(model, Δt=0.001, stop_iteration=2000)
+=======
+momentum_advection = WENOVectorInvariant(vorticity_order=3)
+tracer_advection   = Centered()
+
+@info "Defining ocean simulation"
+
+@time ocean = ocean_simulation(grid;
+                            momentum_advection,
+                            tracer_advection,
+                            free_surface)
+
+                            radiation  = Radiation(arch)
+atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
+                            
+coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
+simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
+# pop!(simulation.callbacks, :nan_checker)
+
+>>>>>>> main
 
 function integrate_tuple(outputs; volmask, dims, condition, suffix::AbstractString) # Add suffix kwarg
     int_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Integral(outputs[key]; dims, condition) for key in keys(outputs)))
@@ -43,8 +68,8 @@ glob_mask = Atlantic_mask .|| IPac_mask
 
 # @info "Defining surface outputs"
 
-tracers = model.tracers
-velocities = model.velocities
+tracers = ocean.model.tracers
+velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
@@ -54,7 +79,7 @@ outputs = merge(tracers, velocities)
 
 @time zonal_int_outputs = merge(global_zonal_int_outputs, Atlantic_zonal_int_outputs, IPac_zonal_int_outputs)
 
-simulation.output_writers[:surface] = JLD2Writer(model, outputs;
+simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  schedule = IterationInterval(10),
                                                  filename = "global_surface_fields",
                                                  indices = (:, :, grid.Nz),
@@ -62,14 +87,10 @@ simulation.output_writers[:surface] = JLD2Writer(model, outputs;
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-simulation.output_writers[:zonal_int] = JLD2Writer(model, (u = zonal_int_outputs[1], v = zonal_int_outputs[2]);
+simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
                                                           schedule = IterationInterval(10),
                                                           filename = "zonally_integrated_data",
                                                           overwrite_existing = true)
-
-
-using Printf
-using Oceananigans: write_output!
 
 wall_time = Ref(time_ns())
 
@@ -113,7 +134,7 @@ end
 add_callback!(simulation, progress, IterationInterval(5))
 add_callback!(simulation, memory_allocations, IterationInterval(50))
 
-# run!(simulation)
+run!(simulation)
 # @btime time_step!($simulation)
 
 # @btime time_step!(simulation.model, 0.1)
