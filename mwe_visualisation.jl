@@ -41,7 +41,12 @@ axc = Axis(fig[1, 1])
 
 λ, φ, _ = nodes(c)
 
-cf = surface!(axc, λ, φ, ones(size(λ)), color=cn, colorrange=(-1, 1), colormap=:viridis, nan_color=:lightgray)
+# make λ monotonic (250 = 180 + 70 is longitude between poles)
+λ2 = mod.(λ .- 250, 360) .+ 250
+
+# As a quick workaround, don't plot the last column of λ2,
+# as it is too distorted... Hopefully one day GeoMakie does this automatically
+cf = surface!(axc, λ2[:, 1:end-1], φ[:, 1:end-1], cn[:, 1:end-1]; colorrange=(-1, 1), colormap=:viridis, shading = NoShading, nan_color=:lightgray)
 
 hidedecorations!(axc)
 hidespines!(axc)
