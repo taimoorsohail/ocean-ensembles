@@ -39,6 +39,8 @@ fig = Figure(size=(700, 700))
 
 axc = Axis(fig[1, 1])
 
+λ, φ, _ = nodes(c)
+
 cf = surface!(axc, λ, φ, ones(size(λ)), color=cn, colorrange=(-1, 1), colormap=:viridis, nan_color=:lightgray)
 
 hidedecorations!(axc)
