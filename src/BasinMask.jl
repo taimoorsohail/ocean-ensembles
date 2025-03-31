@@ -46,7 +46,9 @@ function get_coords_from_grid(grid::LatitudeLongitudeGrid, var)
     return lats, lons, points
 end
 
-function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Oceananigans.Field, arch)
+function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Oceananigans.Field)
+
+    arch = architecture
 
     GlobalLonsPts=[0,360,360,0,0]
     GlobalLatsPts=[-90,-90,90,90,-90]
@@ -73,7 +75,7 @@ function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Ocea
     Atlwestpolygon = SVector.(AtlwestLonsPts, AtlwestLatsPts)    # boundary of the polygon
     Atlarcticpolygon = SVector.(AtlarcticLonsPts, AtlarcticLatsPts)    # boundary of the polygon
 
-    lats, lons, points = get_coords_from_grid(grid, var, arch)
+    lats, lons, points = get_coords_from_grid(grid, var)
 
     if basin in ["indian", "Indian"]
         polygon = Indpolygon
