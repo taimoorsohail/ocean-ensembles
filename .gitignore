@@ -49,3 +49,5 @@ docs/site/
 # Figures
 *.png
 figures/*.png
+figures/*.mp4
+
