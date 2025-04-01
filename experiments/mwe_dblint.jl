@@ -46,7 +46,10 @@ glob_mask = Atlantic_mask .|| IPac_mask
 tot_int = compute!(Field(Integral(c, dims = (1,2,3), condition = glob_mask)))
 @info "The total volume is" tot_int[1,1,1]
 
-dvol_3D = yspacings(grid).*zspacings(grid).*xspacings(grid)
+# using Oceananigans.Operators: Vccc
+# dvol_3D = [Vccc(i, j, k, grid) for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx]
+
+dvol_3D = yspacings(grid)*zspacings(grid)*xspacings(grid)
 basic_int = sum(c*dvol_3D*glob_mask)
 @info "The total volume is" basic_int
 
