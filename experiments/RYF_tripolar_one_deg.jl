@@ -9,8 +9,9 @@ using ClimaOcean.ECCO: download_dataset
 using OceanEnsembles
 
 ## Argument is provided by the submission script!
-
-if ARGS[2] == "GPU"
+if isempty(ARGS)
+    arch = CPU()
+elseif ARGS[2] == "GPU"
     arch = GPU()
 elseif ARGS[2] == "CPU"
     arch = CPU()
@@ -97,7 +98,7 @@ eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
                                                  skew_flux_formulation=DiffusiveFormulation())
 vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
 
-closure = (eddy_closure, vertical_mixing)
+closure = (vertical_mixing)#(eddy_closure, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -201,8 +202,8 @@ volmask =  set!(c, 1)
 
 @info "Defining masks"
 
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", c, arch), 1, 1, Nz)
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", c, arch), 1, 1, Nz)
+Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
+IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
 glob_mask = Atlantic_mask .|| IPac_mask
 
 #### SURFACE
@@ -230,7 +231,7 @@ constants = simulation.model.interfaces.ocean_properties
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  schedule = TimeInterval(5days),
-                                                 filename = "global_surface_fields",
+                                                 filename = "global_surface_fields_new",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -238,7 +239,7 @@ simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
 
 simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
                                                           schedule = TimeInterval(5days),
-                                                          filename = "zonally_integrated_data",
+                                                          filename = "zonally_integrated_data_new",
                                                           overwrite_existing = true)
 
 # simulation.output_writers[:constants] = JLD2Writer(ocean.model, constants;
