@@ -7,6 +7,7 @@ GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 OceanEnsembles = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 
 [sources.OceanEnsembles]
 path = "../"
