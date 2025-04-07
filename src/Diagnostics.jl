@@ -28,7 +28,7 @@ module Diagnostics
     function volume_transport(outputs; operators, dims, condition, suffix::AbstractString)
         names = []
         ∫outputs = []
-        if size(keys(outputs)) == size(operators)
+        if length(outputs) == length(operators)
             for (i, key) in enumerate(keys(outputs))
                 f = outputs[key]
                 ∫f = sum(f * operators[i]; dims, condition)
