@@ -4,7 +4,8 @@ using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
-using OceanEnsembles: basin_mask, integrate_tuple
+using OceanEnsembles: basin_mask, integrate_tracer, integrate_transport
+using Oceananigans.Operators: Ax, Ay, Az, Δz
 
 Nx = Integer(360/4)
 Ny = Integer(180/4)
@@ -62,13 +63,13 @@ simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 #     return int_outputs
 # end
 
-c = CenterField(grid)
-volmask =  set!(c, 1)
+volmask = CenterField(grid)
+set!(volmask, 1)
 
-@info "Defining masks"
+@info "Defining condition masks"
 
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
+Atlantic_mask = repeat(basin_mask(grid, "atlantic", volmask), 1, 1, Nz)
+IPac_mask = repeat(basin_mask(grid, "indo-pacific", volmask), 1, 1, Nz)
 glob_mask = Atlantic_mask .|| IPac_mask
 
 # @info "Defining surface outputs"
@@ -76,26 +77,51 @@ glob_mask = Atlantic_mask .|| IPac_mask
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
-outputs = merge(tracers, velocities)
+# Zonal Integral
+tracer_volmask_zonal = Ax
+@time global_zonal_int_outputs = integrate_tracer(tracers; metric = tracer_volmask_zonal, dims = (1), condition = glob_mask, suffix = "_global_zonal")
+@time Atlantic_zonal_int_outputs = integrate_tracer(tracers; metric = tracer_volmask_zonal, dims = (1), condition = Atlantic_mask, suffix = "_atl_zonal")
+@time IPac_zonal_int_outputs = integrate_tracer(tracers; metric = tracer_volmask_zonal, dims = (1), condition = IPac_mask, suffix = "_ipac_zonal")
 
-@time global_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = glob_mask, suffix = "_global")
-@time Atlantic_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = Atlantic_mask, suffix = "_atlantic")
-@time IPac_zonal_int_outputs = integrate_tuple(outputs; volmask, dims = (1), condition = IPac_mask, suffix = "_pacific")
+# Depth Integral
+tracer_volmask_depth = Δz
+@time global_depth_int_outputs = integrate_tracer(tracers; tracer_volmask_depth, dims = (1,2), condition = glob_mask, suffix = "_global_depth")
+@time Atlantic_depth_int_outputs = integrate_tracer(tracers; tracer_volmask_depth, dims = (1,2), condition = Atlantic_mask, suffix = "_atl_depth")
+@time IPac_depth_int_outputs = integrate_tracer(tracers; tracer_volmask_depth, dims = (1,2), condition = IPac_mask, suffix = "_ipac_depth")
 
-@time zonal_int_outputs = merge(global_zonal_int_outputs, Atlantic_zonal_int_outputs, IPac_zonal_int_outputs)
+# Global Integral
+tracer_volmask_tot = volmask
+@time tracer_global_int_outputs = integrate_tracer(tracers; tracer_volmask_tot, dims = (1,2,3), condition = glob_mask, suffix = "_global_tot")
+@time tracer_Atlantic_int_outputs = integrate_tracer(tracers; tracer_volmask_tot, dims = (1,2,3), condition = Atlantic_mask, suffix = "_atl_tot")
+@time tracer_IPac_int_outputs = integrate_tracer(tracers; tracer_volmask_tot, dims = (1,2,3), condition = IPac_mask, suffix = "_ipac_tot")
 
-simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
-                                                 schedule = IterationInterval(10),
-                                                 filename = "global_surface_fields",
-                                                 indices = (:, :, grid.Nz),
-                                                 with_halos = false,
-                                                 overwrite_existing = true,
-                                                 array_type = Array{Float32})
+@time tracer_outputs = merge(global_zonal_int_outputs, Atlantic_zonal_int_outputs, IPac_zonal_int_outputs,
+                            global_depth_int_outputs, Atlantic_depth_int_outputs, IPac_depth_int_output,
+                            global_global_int_outputs, Atlantic_global_int_outputs, IPac_global_int_outputs)
 
-simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
-                                                          schedule = IterationInterval(10),
-                                                          filename = "zonally_integrated_data",
-                                                          overwrite_existing = true)
+transport_volmask_operators = [Ax, Ay, Az]
+
+@time velocity_global_int_outputs = integrate_transport(first(velocities); metrics = transport_volmask_operators, dims = (1), condition = glob_mask, suffix = "_global_zonal")
+
+# simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
+#                                                  schedule = IterationInterval(10),
+#                                                  filename = "global_surface_fields",
+#                                                  indices = (:, :, grid.Nz),
+#                                                  with_halos = false,
+#                                                  overwrite_existing = true,
+#                                                  array_type = Array{Float32})
+
+fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
+
+simulation.output_writers[:fluxes] = JLD2Writer(coupled_model, fluxes;
+                                                schedule = IterationInterval(10),
+                                                filename = "fluxes",
+                                                overwrite_existing = true)
+
+# simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
+#                                                           schedule = IterationInterval(10),
+#                                                           filename = "zonally_integrated_data",
+#                                                           overwrite_existing = true)
 
 wall_time = Ref(time_ns())
 
