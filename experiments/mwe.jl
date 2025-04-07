@@ -140,8 +140,8 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_output
 wall_time = Ref(time_ns())
 
 function progress(sim)
-    u, v, w = sim.model.velocities
-    T = sim.model.tracers.T
+    u, v, w = sim.model.ocean.model.velocities
+    T = sim.model.ocean.model.tracers.T
     Tmax = maximum(interior(T))
     Tmin = minimum(interior(T))
     umax = (maximum(abs, interior(u)),
