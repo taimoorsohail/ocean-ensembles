@@ -4,7 +4,7 @@ using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
-using OceanEnsembles: basin_mask
+using OceanEnsembles: basin_mask, integrate_tuple
 
 Nx = Integer(360/4)
 Ny = Integer(180/4)
@@ -54,15 +54,13 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
                             
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
-# pop!(simulation.callbacks, :nan_checker)
 
-
-function integrate_tuple(outputs; volmask, dims, condition, suffix::AbstractString) # Add suffix kwarg
-    int_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Integral(outputs[key]; dims, condition) for key in keys(outputs)))
-    dV_int = NamedTuple{(Symbol(:dV, suffix),)}((Integral(volmask; dims, condition),))
-    int_outputs = merge(int_model_outputs, dV_int)
-    return int_outputs
-end
+# function integrate_tuple(outputs; volmask, dims, condition, suffix::AbstractString) # Add suffix kwarg
+#     int_model_outputs = NamedTuple((Symbol(string(key) * suffix) => Integral(outputs[key]; dims, condition) for key in keys(outputs)))
+#     dV_int = NamedTuple{(Symbol(:dV, suffix),)}((Integral(volmask; dims, condition),))
+#     int_outputs = merge(int_model_outputs, dV_int)
+#     return int_outputs
+# end
 
 c = CenterField(grid)
 volmask =  set!(c, 1)
