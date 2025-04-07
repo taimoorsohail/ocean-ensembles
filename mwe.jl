@@ -16,7 +16,7 @@ Nz = Integer(100/4)
 arch = CPU()
 
 z_faces = (-4000, 0)
-# grid = LatitudeLongitudeGrid(size=(60, 50, Nz), longitude=(0, 360), latitude=(-75, 75), z=(-2000, 0))
+
 grid = TripolarGrid(arch;
                     size = (Nx, Ny, Nz),
                     z = z_faces,
