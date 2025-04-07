@@ -37,8 +37,8 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360)
-Ny = Integer(180)
+Nx = Integer(360*4)
+Ny = Integer(180*4)
 Nz = Integer(100)
 
 @info "Defining vertical z faces"
@@ -94,8 +94,8 @@ forcing = (T=FT, S=FS)
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
                                        DiffusiveFormulation
 
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
-                                                 skew_flux_formulation=DiffusiveFormulation())
+# eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
+#                                                  skew_flux_formulation=DiffusiveFormulation())
 vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
 
 closure = (vertical_mixing)#(eddy_closure, vertical_mixing)
@@ -150,7 +150,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=30, stop_time=10days)
 
 # ### A progress messenger
 #
@@ -231,7 +231,7 @@ constants = simulation.model.interfaces.ocean_properties
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  schedule = TimeInterval(5days),
-                                                 filename = "global_surface_fields_new",
+                                                 filename = "global_surface_fields_quarter",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -239,7 +239,7 @@ simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
 
 simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
                                                           schedule = TimeInterval(5days),
-                                                          filename = "zonally_integrated_data_new",
+                                                          filename = "zonally_integrated_data_quarter",
                                                           overwrite_existing = true)
 
 # simulation.output_writers[:constants] = JLD2Writer(ocean.model, constants;
@@ -251,7 +251,7 @@ simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_output
 
 run!(simulation)
 
-simulation.Δt = 20minutes
+simulation.Δt = 5minutes
 simulation.stop_time = 11000days
 
 run!(simulation)
