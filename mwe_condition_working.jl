@@ -40,7 +40,7 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface)
 
 simulation = Simulation(model, Δt=0.001, stop_iteration=2000)
 
-function integrate_tuple(outputs; volmask, dims, condition, suffix::AbstractString) # Add suffix kwarg
+function integrate_tuple(outputs; volmask, dims, condition, suffix::AbstractString)
     for key in keys(outputs)
         @info key
         int_model_outputs = Integral(outputs[key]; dims, condition)
