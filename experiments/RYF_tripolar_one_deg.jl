@@ -11,8 +11,9 @@ using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
 
 ## Argument is provided by the submission script!
-
-if ARGS[2] == "GPU"
+if isempty(ARGS)
+    arch = CPU()
+elseif ARGS[2] == "GPU"
     arch = GPU()
 elseif ARGS[2] == "CPU"
     arch = CPU()
@@ -40,8 +41,8 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360)
-Ny = Integer(180)
+Nx = Integer(360*4)
+Ny = Integer(180*4)
 Nz = Integer(100)
 
 @info "Defining vertical z faces"
@@ -97,11 +98,11 @@ forcing = (T=FT, S=FS)
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
                                        DiffusiveFormulation
 
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
-                                                 skew_flux_formulation=DiffusiveFormulation())
+# eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
+#                                                  skew_flux_formulation=DiffusiveFormulation())
 vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
 
-closure = (eddy_closure, vertical_mixing)
+closure = (vertical_mixing)#(eddy_closure, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -153,7 +154,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=30, stop_time=10days)
 
 # ### A progress messenger
 #
@@ -276,7 +277,7 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 
 run!(simulation)
 
-simulation.Δt = 20minutes
+simulation.Δt = 5minutes
 simulation.stop_time = 11000days
 
 run!(simulation)
