@@ -196,20 +196,9 @@ set!(volmask, 1)
 
 @info "Defining condition masks"
 
-<<<<<<< HEAD
-c = CenterField(grid)
-volmask =  set!(c, 1)
-
-@info "Defining masks"
-
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
-glob_mask = Atlantic_mask .|| IPac_mask
-=======
 Atlantic_mask = repeat(basin_mask(grid, "atlantic", volmask), 1, 1, Nz);
 IPac_mask = repeat(basin_mask(grid, "indo-pacific", volmask), 1, 1, Nz);
 glob_mask = Atlantic_mask .|| IPac_mask;
->>>>>>> main
 
 #### SURFACE
 
@@ -260,23 +249,13 @@ constants = simulation.model.interfaces.ocean_properties
 output_intervals = 5days
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
-<<<<<<< HEAD
-                                                 schedule = TimeInterval(5days),
-                                                 filename = "global_surface_fields_quarter",
-=======
                                                  schedule = IterationInterval(output_intervals),
                                                  filename = "global_surface_fields_$(ARGS[3])",
->>>>>>> main
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-<<<<<<< HEAD
-simulation.output_writers[:zonal_int] = JLD2Writer(ocean.model, zonal_int_outputs;
-                                                          schedule = TimeInterval(5days),
-                                                          filename = "zonally_integrated_data_quarter",
-=======
 fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
@@ -287,7 +266,6 @@ simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           schedule = IterationInterval(output_intervals),
                                                           filename = "ocean_tracer_content_$(ARGS[3])",
->>>>>>> main
                                                           overwrite_existing = true)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
