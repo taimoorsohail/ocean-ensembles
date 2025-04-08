@@ -253,7 +253,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
-                                                dir = output_path,
+                                                 dir = output_path,
                                                  schedule = IterationInterval(output_intervals),
                                                  filename = "global_surface_fields_$(ARGS[3])",
                                                  indices = (:, :, grid.Nz),
