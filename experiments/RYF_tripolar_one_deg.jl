@@ -11,7 +11,6 @@ using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
 
 ## Argument is provided by the submission script!
-@info ARGS[3], ARGS[4]
 
 if isempty(ARGS)
     arch = CPU()
@@ -255,7 +254,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = IterationInterval(output_intervals),
-                                                 filename = "global_surface_fields_$(ARGS[3])",
+                                                 filename = "global_surface_fields_$(ARGS[4])",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -266,19 +265,19 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
                                                 schedule = IterationInterval(output_intervals),
-                                                filename = "fluxes_$(ARGS[3])",
+                                                filename = "fluxes_$(ARGS[4])",
                                                 overwrite_existing = true)
 
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = IterationInterval(output_intervals),
-                                                          filename = "ocean_tracer_content_$(ARGS[3])",
+                                                          filename = "ocean_tracer_content_$(ARGS[4])",
                                                           overwrite_existing = true)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
                                                           schedule = IterationInterval(output_intervals),
-                                                          filename = "mass_transport_$(ARGS[3])",
+                                                          filename = "mass_transport_$(ARGS[4])",
                                                           overwrite_existing = true)
 
 @info "Running simulation"
