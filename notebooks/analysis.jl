@@ -6,7 +6,7 @@ using JLD2
 experiment_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/experiments/")
 
 variables_basins = ["_global_", "_atl_", "_ipac_"]
-variables_tracers = ["T", "S", "u", "v", "w", "dV"]
+variables_tracers = ["T", "S", "u", "v", "w", "dV", "dV_u", "dV_v", "dV_w"]
 variables_diags = ["zonal", "depth", "tot"]
 variables_fluxes = ["latent_heat", "sensible_heat", "water_vapor", "x_momentum", "y_momentum"]
 # Create all combinations of tracer, basin, and diag
@@ -55,11 +55,11 @@ title = string("Global 1 degree ocean simulation after ",
 
 
 axs = Axis(fig[1, 1], xlabel="Longitude (deg)", ylabel="Latitude (deg)")
-hm = heatmap!(axs, view(interior(fluxes["latent_heat"][time_slice]), :, :, 1), colorrange = (-1000,1000), colormap = :bwr, nan_color=:lightgray)
+hm = heatmap!(axs, view(interior(fluxes["latent_heat"][time_slice]), :, :, 1), colorrange = (-500,500), colormap = :bwr, nan_color=:lightgray)
 Colorbar(fig[1, 2], hm, label = "Latent Heat (W/m2)")
 
 axs = Axis(fig[1, 3], xlabel="Longitude (deg)", ylabel="Latitude (deg)")
-hm = heatmap!(axs, view(interior(fluxes["sensible_heat"][time_slice]), :, :, 1), colorrange = (-1000,1000), colormap = :bwr, nan_color=:lightgray)
+hm = heatmap!(axs, view(interior(fluxes["sensible_heat"][time_slice]), :, :, 1), colorrange = (-500,500), colormap = :bwr, nan_color=:lightgray)
 Colorbar(fig[1, 4], hm, label = "Sensible Heat (W/m2)")
 Label(fig[0, :], title)
 
@@ -134,8 +134,8 @@ for (row, basin) in enumerate(basins)
         key_dv = "dV_$(basin)_tot"
         key = "$(tracer)_$(basin)_tot"  # Compose the key
         ax = Axis(fig[row, col], title=String(key))
-        data = interior(OTC[key]/OTC[key_dv])
-        lines!(ax, view(data, 1, 1, 1), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
+        data = interior(OTC[key])./interior(OTC[key_dv])
+        lines!(ax, view(data, 1, 1, 1, :), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
     end
 end
 

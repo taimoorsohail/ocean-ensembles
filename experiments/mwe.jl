@@ -4,8 +4,9 @@ using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
-using OceanEnsembles: basin_mask, ocean_tracer_content, volume_transport
+using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
 using Oceananigans.Operators: Ax, Ay, Az, Δz
+using Oceananigans.Fields: ReducedField
 using ClimaOcean.ECCO
 using ClimaOcean.ECCO: download_dataset
 
@@ -102,40 +103,38 @@ outputs = merge(tracers, velocities)
 tracer_volmask = [Ax, Δz, volmask]
 masks = [glob_mask, Atlantic_mask, IPac_mask]
 suffixes = ["_global_", "_atl_", "_ipac_"]
-zonal_names = Symbol[]
-zonal_outputs = Reduction[]
+tracer_names = Symbol[]
+tracer_outputs = Reduction[]
 for j in 1:3
-    @time ocean_tracer_content!(zonal_names, zonal_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal");
-    @time ocean_tracer_content!(zonal_names, zonal_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j], suffix = suffixes[j]*"depth");
-    @time ocean_tracer_content!(zonal_names, zonal_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j], suffix = suffixes[j]*"tot");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j], suffix = suffixes[j]*"depth");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j], suffix = suffixes[j]*"tot");
 end
 
 @info "Merging tracer tuples"
 
-@time outputs = NamedTuple{Tuple(zonal_names)}(Tuple(zonal_outputs))
+@time tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
 
 #### VELOCITIES ####
 @info "Velocities"
 
 transport_volmask_operators = [Ax, Ay, Az]
-array_of_namedtuples = NamedTuple[]
+transport_names = Symbol[]
+transport_outputs = ReducedField[]
 for j in 1:3
-    @time zonal_int_outputs = volume_transport(velocities; operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-    @time depth_int_outputs = volume_transport(velocities; operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-    @time tot_int_outputs = volume_transport(velocities; operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
-    push!(array_of_namedtuples, zonal_int_outputs)
-    push!(array_of_namedtuples, depth_int_outputs)
-    push!(array_of_namedtuples, tot_int_outputs)
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
 end
 
 @info "Merging velocity tuples"
 
-@time transport_outputs = merge(array_of_namedtuples...)
+@time transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-iter_intervals = 2
+output_intervals = 2
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
-                                                 schedule = IterationInterval(iter_intervals),
+                                                 schedule = IterationInterval(output_intervals),
                                                  filename = "global_surface_fields",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
@@ -145,17 +144,17 @@ simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
 fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
-                                                schedule = IterationInterval(iter_intervals),
+                                                schedule = IterationInterval(output_intervals),
                                                 filename = "fluxes",
                                                 overwrite_existing = true)
 
-simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_outputs;
-                                                          schedule = IterationInterval(iter_intervals),
+simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+                                                          schedule = IterationInterval(output_intervals),
                                                           filename = "ocean_tracer_content",
                                                           overwrite_existing = true)
 
-simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_outputs;
-                                                          schedule = IterationInterval(iter_intervals),
+simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+                                                          schedule = IterationInterval(output_intervals),
                                                           filename = "mass_transport",
                                                           overwrite_existing = true)
 
@@ -184,7 +183,7 @@ function progress(sim)
      return nothing
 end
 
-add_callback!(simulation, progress, IterationInterval(1))
+add_callback!(simulation, progress, IterationInterval(1))                       
 
 run!(simulation)
 # @btime time_step!($simulation)

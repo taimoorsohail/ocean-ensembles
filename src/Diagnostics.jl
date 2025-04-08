@@ -1,9 +1,9 @@
 module Diagnostics
 
     using Oceananigans
-    using Oceananigans.Fields: location
+    using Oceananigans.Fields: location, ReducedField
 
-    export ocean_tracer_content!, volume_transport
+    export ocean_tracer_content!, volume_transport!
 
     function ocean_tracer_content!(names, ∫outputs; outputs, operator, dims, condition, suffix::AbstractString)
         for key in keys(outputs)
@@ -23,9 +23,7 @@ module Diagnostics
         return names, ∫outputs
     end
 
-    function volume_transport(outputs; operators, dims, condition, suffix::AbstractString)
-        names = Symbol[]
-        ∫outputs = Reduction[]
+    function volume_transport!(names, ∫outputs; outputs, operators, dims, condition, suffix::AbstractString)
         if length(outputs) == length(operators)
             for (i, key) in enumerate(keys(outputs))
                 f = outputs[key]
@@ -44,6 +42,6 @@ module Diagnostics
         else
             throw(ArgumentError("The number of operators must be equal to the number of tracers"))
         end
-        return NamedTuple{Tuple(names)}(∫outputs)
+        return names, ∫outputs
     end
 end
