@@ -102,19 +102,17 @@ outputs = merge(tracers, velocities)
 tracer_volmask = [Ax, Δz, volmask]
 masks = [glob_mask, Atlantic_mask, IPac_mask]
 suffixes = ["_global_", "_atl_", "_ipac_"]
-array_of_namedtuples = NamedTuple[]
+zonal_names = Symbol[]
+zonal_outputs = Reduction[]
 for j in 1:3
-    zonal_int_outputs = ocean_tracer_content(tracers; operator = tracer_volmask[1], dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-    depth_int_outputs = ocean_tracer_content(tracers; operator = tracer_volmask[2], dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-    tot_int_outputs = ocean_tracer_content(tracers; operator = tracer_volmask[3], dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
-    push!(array_of_namedtuples, zonal_int_outputs)
-    push!(array_of_namedtuples, depth_int_outputs)
-    push!(array_of_namedtuples, tot_int_outputs)
+    @time ocean_tracer_content!(zonal_names, zonal_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal");
+    @time ocean_tracer_content!(zonal_names, zonal_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j], suffix = suffixes[j]*"depth");
+    @time ocean_tracer_content!(zonal_names, zonal_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j], suffix = suffixes[j]*"tot");
 end
 
 @info "Merging tracer tuples"
 
-@time tracer_outputs = merge(array_of_namedtuples...)
+@time outputs = NamedTuple{Tuple(zonal_names)}(Tuple(zonal_outputs))
 
 #### VELOCITIES ####
 @info "Velocities"
