@@ -1,10 +1,13 @@
-using CairoMakie, GLMakie
+using CairoMakie
 using Oceananigans  # From local
 using Statistics
 using JLD2
 
-output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
-figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
+# output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
+# figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
+
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/outputs/")
+figdir = expanduser("/g/data/v46/txs156/ocean-ensembles-2/figures/")
 
 variables_basins = ["_global_", "_atl_", "_ipac_"]
 variables_diags = ["zonal", "depth", "tot"]
@@ -44,13 +47,13 @@ function create_dict(vars, path)
 end
 
 @info "I am loading the otc" 
-OTC = create_dict(tracercontent_vars, output_path * "ocean_tracer_content.jld2")
+OTC = create_dict(tracercontent_vars, output_path * "ocean_tracer_content_RYF1deg.jld2")
 
 @info "I am loading the mass transport" 
-masstrans = create_dict(transport_vars, output_path * "mass_transport.jld2")
+masstrans = create_dict(transport_vars, output_path * "mass_transport_RYF1deg.jld2")
 
 @info "I am loading the fluxes" 
-fluxes = create_dict(variables_fluxes, output_path * "fluxes.jld2")
+fluxes = create_dict(variables_fluxes, output_path * "fluxes_RYF1deg.jld2")
 
 
 fig = Figure(size = (1600, 800))
@@ -73,7 +76,7 @@ hm = heatmap!(axs, view(interior(fluxes["sensible_heat"][time_slice]), :, :, 1),
 Colorbar(fig[1, 4], hm, label = "Sensible Heat (W/m2)")
 Label(fig[0, :], title)
 
-save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/surface_fluxes.png", fig, px_per_unit=3)
+save("/g/data/v46/txs156/ocean-ensembles-2/figures/surface_fluxes.png", fig, px_per_unit=3)
 
 # Define the order you want for tracers and basins
 tracers = ["T", "S", "dV"]
@@ -126,7 +129,7 @@ function OTC_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integ
 
     fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
 
-    save(dir*"$(space)_$(diagnostic)_tracer_content.png", fig, px_per_unit=3)
+    save(figdir*"$(space)_$(diagnostic)_tracer_content.png", fig, px_per_unit=3)
 end 
 
 OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = figdir, time = "last")
