@@ -77,9 +77,10 @@ save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/
 
 # Define the order you want for tracers and basins
 tracers = ["T", "S", "dV"]
+velocities = ["u", "v", "w"]
 basins = ["global", "atl", "ipac"]
-minv = [-1,1e16,1e6]
-maxv = [31,5e18,1e18]
+minv = [-1,34,1e6]
+maxv = [31,38,1e18]
 
 function OTC_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = "./", time = "last")
     fig = Figure(size = (1600, 800))
@@ -100,11 +101,19 @@ function OTC_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integ
             else
                 time_slice = Integer(time)
             end
-
+            
             if diagnostic == "integrate"
                 data = interior(var[key][time_slice])
             elseif diagnostic == "average"
                 data = interior(var[key][time_slice])./(var[key_dv][time_slice])
+            end
+
+            if space == "tot"
+                if diagnostic == "integrate"
+                    data = interior(var[key])
+                elseif diagnostic == "average"
+                    data = interior(var[key])./(var[key_dv])
+                end
             end
 
             if space == "zonal"
@@ -112,7 +121,7 @@ function OTC_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integ
                 Colorbar(fig[row, 2col], label="Units", width=15)
             elseif space == "depth"
                 lines!(ax, view(data, 1, 1, :))
-            elseif space == "total"
+            elseif space == "tot"
                 lines!(ax, view(data, 1, 1, 1, :))
             else
                 throw(ArgumentError("space must be one of zonal, depth or total"))
@@ -131,10 +140,73 @@ end
 
 OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = figdir, time = "last")
 OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "depth", dir = figdir, time = "last")
-OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "total", dir = figdir, time = "last")
+OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "tot", dir = figdir, time = "last")
 OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "average", space = "zonal", dir = figdir, time = "last")
 OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "average", space = "depth", dir = figdir, time = "last")
-OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "average", space = "total", dir = figdir, time = "last")
+OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "average", space = "tot", dir = figdir, time = "last")
+
+function masstrans_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = "./", time = "last")
+    fig = Figure(size = (1600, 800))
+
+    # Loop through and place plots accordingly
+    for (row, basin) in enumerate(basins)
+        for (col, tracer) in enumerate(tracers)
+            key_dv = "dV_$(tracer)_$(basin)_$(space)"
+            key = "$(tracer)_$(basin)_$(space)"  # Compose the key
+            if space == "zonal"
+                ax = Axis(fig[row, 2col-1], title=String(key))
+            else
+                ax = Axis(fig[row, col], title=String(key))
+            end
+
+            if time == "last"
+                time_slice = lastindex(var[key].times)
+            else
+                time_slice = Integer(time)
+            end
+            
+            if diagnostic == "integrate"
+                data = interior(var[key][time_slice])
+            elseif diagnostic == "average"
+                data = interior(var[key][time_slice])./(var[key_dv][time_slice])
+            end
+
+            if space == "tot"
+                if diagnostic == "integrate"
+                    data = interior(var[key])
+                elseif diagnostic == "average"
+                    data = interior(var[key])./(var[key_dv])
+                end
+            end
+
+            if space == "zonal"
+                heatmap!(ax, view(data, 1, :, :), colormap=:viridis, colorrange = (minv[col], maxv[col]))
+                Colorbar(fig[row, 2col], label="Units", width=15)
+            elseif space == "depth"
+                lines!(ax, view(data, 1, 1, :))
+            elseif space == "tot"
+                lines!(ax, view(data, 1, 1, 1, :))
+            else
+                throw(ArgumentError("space must be one of zonal, depth or total"))
+            end
+
+        end
+    end
+
+    title = string("Global 1 degree ocean simulation after ",
+                            prettytime(times[time_slice] - times[1]))
+
+    fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
+
+    save(dir*"$(space)_$(diagnostic)_voltrans.png", fig, px_per_unit=3)
+end
+
+masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = figdir, time = "last")
+masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "integrate", space = "depth", dir = figdir, time = "last")
+masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "integrate", space = "tot", dir = figdir, time = "last")
+masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "average", space = "zonal", dir = figdir, time = "last")
+masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "average", space = "depth", dir = figdir, time = "last")
+masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "average", space = "tot", dir = figdir, time = "last")
 
 # fig = Figure(size = (1600, 800))
 
