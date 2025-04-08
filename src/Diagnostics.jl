@@ -6,8 +6,8 @@ module Diagnostics
     export ocean_tracer_content, volume_transport
 
     function ocean_tracer_content(outputs; operator, dims, condition, suffix::AbstractString)
-        names = []
-        ∫outputs = []
+        names = Symbol[]
+        ∫outputs = Reduction[]
         for key in keys(outputs)
             f = outputs[key]
             ∫f = Integral(f * operator; dims, condition)
@@ -26,7 +26,7 @@ module Diagnostics
     end
 
     function volume_transport(outputs; operators, dims, condition, suffix::AbstractString)
-        names = []
+        names = Symbol[]
         ∫outputs = []
         if length(outputs) == length(operators)
             for (i, key) in enumerate(keys(outputs))
