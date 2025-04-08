@@ -1447,10 +1447,8 @@ uuid = "510215fc-4207-5dde-b226-833fc4488ee2"
 version = "0.5.5"
 
 [[deps.OceanEnsembles]]
-deps = ["CFTime", "CUDA", "ClimaOcean", "Dates", "Makie", "Oceananigans", "PolygonOps", "StaticArrays"]
-git-tree-sha1 = "14a8a045e4999b4fc230fbdfc05194556b3ac221"
-repo-rev = "0369c3e61c9cd274c142383a2dea6436d1bbf87d"
-repo-url = ".."
+deps = ["CFTime", "CUDA", "ClimaOcean", "Dates", "GLMakie", "Makie", "Oceananigans", "PolygonOps", "StaticArrays"]
+path = "/Users/tsohail/.julia/dev/OceanEnsembles"
 uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 version = "0.1.0"
 

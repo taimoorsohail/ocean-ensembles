@@ -3,18 +3,28 @@ using Oceananigans  # From local
 using Statistics
 using JLD2
 
-experiment_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/experiments/")
+output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
+figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
 
 variables_basins = ["_global_", "_atl_", "_ipac_"]
-variables_tracers = ["T", "S", "u", "v", "w", "dV", "dV_u", "dV_v", "dV_w"]
 variables_diags = ["zonal", "depth", "tot"]
+variables_tracers = ["T", "S", "dV"]
+variables_velocities =  ["u", "v", "w"]
+variables_vel_volumes = ["dV_u", "dV_v", "dV_w"]
 variables_fluxes = ["latent_heat", "sensible_heat", "water_vapor", "x_momentum", "y_momentum"]
-# Create all combinations of tracer, basin, and diag
-variable_names = [tracer * basin * diag for tracer in variables_tracers,
-                                          basin in variables_basins,
-                                          diag in variables_diags]
 
-println(variable_names)
+tracercontent_vars = vec([tracer * basin * diag for tracer in variables_tracers,
+                         basin in variables_basins,
+                         diag in variables_diags])
+
+transport_vars = vcat(
+    vec([velocity * basin * diag for velocity in variables_velocities,
+                                 basin in variables_basins,
+                                 diag in variables_diags]),
+    vec([volume * basin * diag for volume in variables_vel_volumes,
+                               basin in variables_basins,
+                               diag in variables_diags])
+)
 
 function create_dict(vars, path)
     dicts = Dict()
@@ -34,13 +44,13 @@ function create_dict(vars, path)
 end
 
 @info "I am loading the otc" 
-OTC = create_dict(variable_names, experiment_path * "ocean_tracer_content.jld2")
+OTC = create_dict(tracercontent_vars, output_path * "ocean_tracer_content.jld2")
 
 @info "I am loading the mass transport" 
-masstrans = create_dict(variable_names, experiment_path * "mass_transport.jld2")
+masstrans = create_dict(transport_vars, output_path * "mass_transport.jld2")
 
 @info "I am loading the fluxes" 
-fluxes = create_dict(variables_fluxes, experiment_path * "fluxes.jld2")
+fluxes = create_dict(variables_fluxes, output_path * "fluxes.jld2")
 
 
 fig = Figure(size = (1600, 800))
@@ -65,113 +75,142 @@ Label(fig[0, :], title)
 
 save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/surface_fluxes.png", fig, px_per_unit=3)
 
-fig = Figure(size = (1600, 800))
-
 # Define the order you want for tracers and basins
 tracers = ["T", "S", "dV"]
 basins = ["global", "atl", "ipac"]
 minv = [-1,1e16,1e6]
 maxv = [31,5e18,1e18]
 
-# Loop through and place plots accordingly
-for (row, basin) in enumerate(basins)
-    for (col, tracer) in enumerate(tracers)
-        key_dv = "dV_$(basin)_zonal"
-        key = "$(tracer)_$(basin)_zonal"  # Compose the key
-        ax = Axis(fig[row, 2col-1], title=String(key))
-        time_slice = lastindex(OTC[key].times)
-        data = interior(OTC[key][time_slice]/OTC[key_dv][time_slice])
-        heatmap!(ax, view(data, 1, :, :), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
-        Colorbar(fig[row, 2col], label="Units", width=15)
+function OTC_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = "./", time = "last")
+    fig = Figure(size = (1600, 800))
+
+    # Loop through and place plots accordingly
+    for (row, basin) in enumerate(basins)
+        for (col, tracer) in enumerate(tracers)
+            key_dv = "dV_$(basin)_$(space)"
+            key = "$(tracer)_$(basin)_$(space)"  # Compose the key
+            if space == "zonal"
+                ax = Axis(fig[row, 2col-1], title=String(key))
+            else
+                ax = Axis(fig[row, col], title=String(key))
+            end
+
+            if time == "last"
+                time_slice = lastindex(var[key].times)
+            else
+                time_slice = Integer(time)
+            end
+
+            if diagnostic == "integrate"
+                data = interior(var[key][time_slice])
+            elseif diagnostic == "average"
+                data = interior(var[key][time_slice])./(var[key_dv][time_slice])
+            end
+
+            if space == "zonal"
+                heatmap!(ax, view(data, 1, :, :), colormap=:viridis, colorrange = (minv[col], maxv[col]))
+                Colorbar(fig[row, 2col], label="Units", width=15)
+            elseif space == "depth"
+                lines!(ax, view(data, 1, 1, :))
+            elseif space == "total"
+                lines!(ax, view(data, 1, 1, 1, :))
+            else
+                throw(ArgumentError("space must be one of zonal, depth or total"))
+            end
+
+        end
     end
-end
 
-title = string("Global 1 degree ocean simulation after ",
-                         prettytime(times[time_slice] - times[1]))
+    title = string("Global 1 degree ocean simulation after ",
+                            prettytime(times[time_slice] - times[1]))
 
-fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
+    fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
 
-save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/zonal_tracer_content.png", fig, px_per_unit=3)
+    save(dir*"$(space)_tracer_content.png", fig, px_per_unit=3)
+end 
 
-fig = Figure(size = (1600, 800))
+OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = figdir, time = "last")
 
-# Define the order you want for tracers and basins
-tracers = ["T", "S", "dV"]
-basins = ["global", "atl", "ipac"]
-minv = [-1,1e16,1e6]
-maxv = [31,5e18,1e18]
 
-# Loop through and place plots accordingly
-for (row, basin) in enumerate(basins)
-    for (col, tracer) in enumerate(tracers)
-        key_dv = "dV_$(basin)_depth"
-        key = "$(tracer)_$(basin)_depth"  # Compose the key
-        ax = Axis(fig[row, col], title=String(key))
-        time_slice = lastindex(OTC[key].times)
-        data = interior(OTC[key][time_slice]/OTC[key_dv][time_slice])
-        lines!(ax, view(data, 1, 1, :), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
-    end
-end
+# fig = Figure(size = (1600, 800))
 
-title = string("Global 1 degree ocean simulation after ",
-                         prettytime(times[time_slice] - times[1]))
+# # Define the order you want for tracers and basins
+# tracers = ["T", "S", "dV"]
+# basins = ["global", "atl", "ipac"]
+# minv = [-1,1e16,1e6]
+# maxv = [31,5e18,1e18]
 
-fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)                                 
+# # Loop through and place plots accordingly
+# for (row, basin) in enumerate(basins)
+#     for (col, tracer) in enumerate(tracers)
+#         key_dv = "dV_$(basin)_depth"
+#         key = "$(tracer)_$(basin)_depth"  # Compose the key
+#         ax = Axis(fig[row, col], title=String(key))
+#         time_slice = lastindex(OTC[key].times)
+#         data = interior(OTC[key][time_slice]/OTC[key_dv][time_slice])
+#         lines!(ax, view(data, 1, 1, :), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
+#     end
+# end
 
-save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/depth_tracer_content.png", fig, px_per_unit=3)
+# title = string("Global 1 degree ocean simulation after ",
+#                          prettytime(times[time_slice] - times[1]))
 
-fig = Figure(size = (1600, 800))
+# fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)                                 
 
-# Define the order you want for tracers and basins
-tracers = ["T", "S", "dV"]
-basins = ["global", "atl", "ipac"]
-minv = [-1,1e16,1e6]
-maxv = [31,5e18,1e18]
+# save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/depth_tracer_content.png", fig, px_per_unit=3)
 
-# Loop through and place plots accordingly
-for (row, basin) in enumerate(basins)
-    for (col, tracer) in enumerate(tracers)
-        key_dv = "dV_$(basin)_tot"
-        key = "$(tracer)_$(basin)_tot"  # Compose the key
-        ax = Axis(fig[row, col], title=String(key))
-        data = interior(OTC[key])./interior(OTC[key_dv])
-        lines!(ax, view(data, 1, 1, 1, :), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
-    end
-end
+# fig = Figure(size = (1600, 800))
 
-title = string("Global 1 degree ocean simulation after ",
-                         prettytime(times[time_slice] - times[1]))
+# # Define the order you want for tracers and basins
+# tracers = ["T", "S", "dV"]
+# basins = ["global", "atl", "ipac"]
+# minv = [-1,1e16,1e6]
+# maxv = [31,5e18,1e18]
 
-fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
+# # Loop through and place plots accordingly
+# for (row, basin) in enumerate(basins)
+#     for (col, tracer) in enumerate(tracers)
+#         key_dv = "dV_$(basin)_tot"
+#         key = "$(tracer)_$(basin)_tot"  # Compose the key
+#         ax = Axis(fig[row, col], title=String(key))
+#         data = interior(OTC[key])./interior(OTC[key_dv])
+#         lines!(ax, view(data, 1, 1, 1, :), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
+#     end
+# end
 
-save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/global_tracer_content.png", fig, px_per_unit=3)
+# title = string("Global 1 degree ocean simulation after ",
+#                          prettytime(times[time_slice] - times[1]))
 
-fig = Figure(size = (1600, 800))
+# fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
 
-# Define the order you want for tracers and basins
-tracers = ["u", "v", "w", "dV"]
-basins = ["global", "atl", "ipac"]
-minv = [-1,1e16,1e6]
-maxv = [31,5e18,1e18]
+# save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/global_tracer_content.png", fig, px_per_unit=3)
 
-# Loop through and place plots accordingly
-for (row, basin) in enumerate(basins)
-    for (col, tracer) in enumerate(tracers)
-        key_dv = "dV_$(basin)_zonal"
-        key = "$(tracer)_$(basin)_zonal"  # Compose the key
-        ax = Axis(fig[row, 2col-1], title=String(key))
-        time_slice = lastindex(masstrans[key].times)
-        data = interior(masstrans[key][time_slice]/masstrans[key_dv][time_slice])
-        heatmap!(ax, view(data, 1, :, :), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
-        Colorbar(fig[row, 2col], label="Units", width=15)
-    end
-end
+# fig = Figure(size = (1600, 800))
 
-title = string("Global 1 degree ocean simulation after ",
-                         prettytime(times[time_slice] - times[1]))
+# # Define the order you want for tracers and basins
+# tracers = ["u", "v", "w", "dV"]
+# basins = ["global", "atl", "ipac"]
+# minv = [-1,1e16,1e6]
+# maxv = [31,5e18,1e18]
 
-fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
+# # Loop through and place plots accordingly
+# for (row, basin) in enumerate(basins)
+#     for (col, tracer) in enumerate(tracers)
+#         key_dv = "dV_$(basin)_zonal"
+#         key = "$(tracer)_$(basin)_zonal"  # Compose the key
+#         ax = Axis(fig[row, 2col-1], title=String(key))
+#         time_slice = lastindex(masstrans[key].times)
+#         data = interior(masstrans[key][time_slice]/masstrans[key_dv][time_slice])
+#         heatmap!(ax, view(data, 1, :, :), colormap=:viridis)#, colorrange = (minv[col], maxv[col]))
+#         Colorbar(fig[row, 2col], label="Units", width=15)
+#     end
+# end
 
-save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/zonal_masstrans.png", fig, px_per_unit=3)
+# title = string("Global 1 degree ocean simulation after ",
+#                          prettytime(times[time_slice] - times[1]))
+
+# fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
+
+# save("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/zonal_masstrans.png", fig, px_per_unit=3)
 
 
