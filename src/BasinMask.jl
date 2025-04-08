@@ -41,7 +41,6 @@ function get_coords_from_grid(grid::LatitudeLongitudeGrid, var)
 end
 
 function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Oceananigans.Field)
-
     arch = architecture
 
     GlobalLonsPts=[0,360,360,0,0]
@@ -109,7 +108,10 @@ function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Ocea
     is_valid = maximum(mask) == 1
     is_valid || throw(ErrorException("Maximum value of mask is not 1"))
     bool_mask = convert(Array{Bool}, mask)
-    return bool_mask
+
+    _, _, Nz = size(var)
+
+    return repeat(bool_mask, 1, 1, Nz)
 end
 
 end # module
