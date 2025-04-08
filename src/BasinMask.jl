@@ -17,11 +17,7 @@ function get_coords_from_grid(grid::SomeTripolarGrid, var)
     arch = architecture(grid)
     lons = λnodes(grid, instantiate.(location(var))..., with_halos=false)
     lats = φnodes(grid, instantiate.(location(var))..., with_halos=false)
-    if arch == CPU()
-        points = vec(SVector.(lons, lats))
-    else
-        points = CUDA.@allowscalar vec(SVector.(lons, lats))
-    end
+    points = CUDA.@allowscalar vec(SVector.(lons, lats))
     return lats, lons, points
 end
 
