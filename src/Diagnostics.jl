@@ -3,11 +3,9 @@ module Diagnostics
     using Oceananigans
     using Oceananigans.Fields: location
 
-    export ocean_tracer_content, volume_transport
+    export ocean_tracer_content!, volume_transport
 
-    function ocean_tracer_content(outputs; operator, dims, condition, suffix::AbstractString)
-        names = []
-        ∫outputs = []
+    function ocean_tracer_content!(names, ∫outputs; outputs, operator, dims, condition, suffix::AbstractString)
         for key in keys(outputs)
             f = outputs[key]
             ∫f = Integral(f * operator; dims, condition)
@@ -22,12 +20,12 @@ module Diagnostics
         push!(∫outputs, ∫dV)
         push!(names, Symbol(:dV, suffix))
 
-        return NamedTuple{Tuple(names)}(∫outputs)
+        return names, ∫outputs
     end
 
     function volume_transport(outputs; operators, dims, condition, suffix::AbstractString)
-        names = []
-        ∫outputs = []
+        names = Symbol[]
+        ∫outputs = Reduction[]
         if length(outputs) == length(operators)
             for (i, key) in enumerate(keys(outputs))
                 f = outputs[key]
