@@ -113,7 +113,7 @@ end
 
 @info "Merging tracer tuples"
 
-@time tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
+tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
 
 #### VELOCITIES ####
 @info "Velocities"
@@ -129,11 +129,15 @@ end
 
 @info "Merging velocity tuples"
 
-@time transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
+transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
 output_intervals = 2
 
+output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
+
+
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
+                                                 dir = output_path,
                                                  schedule = IterationInterval(output_intervals),
                                                  filename = "global_surface_fields",
                                                  indices = (:, :, grid.Nz),
@@ -144,16 +148,19 @@ simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
 fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
+                                                dir = output_path,
                                                 schedule = IterationInterval(output_intervals),
                                                 filename = "fluxes",
                                                 overwrite_existing = true)
 
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+                                                          dir = output_path,
                                                           schedule = IterationInterval(output_intervals),
                                                           filename = "ocean_tracer_content",
                                                           overwrite_existing = true)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+                                                          dir = output_path,
                                                           schedule = IterationInterval(output_intervals),
                                                           filename = "mass_transport",
                                                           overwrite_existing = true)
@@ -186,17 +193,4 @@ end
 add_callback!(simulation, progress, IterationInterval(1))                       
 
 run!(simulation)
-# @btime time_step!($simulation)
 
-# @btime time_step!(simulation.model, 0.1)
-
-# using Oceananigans: write_output!
-
-# writer = simulation.output_writers[:surface]
-# @btime write_output!(writer, simulation.model) 
-
-# writer = simulation.output_writers[:zonal_int]
-# @btime write_output!(writer, simulation.model) 
-
-
-# # run!(simulation)
