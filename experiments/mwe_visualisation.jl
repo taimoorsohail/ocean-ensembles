@@ -52,4 +52,3 @@ hidedecorations!(axc)
 hidespines!(axc)
 
 display(fig)
-# save("mwe_sphere_tripolar.png", fig)
