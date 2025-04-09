@@ -52,8 +52,8 @@ tracer_advection   = Centered()
 
 # @info "Defining masks"
 
-# Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
-# IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
+# Atlantic_mask = basin_mask(grid, "atlantic", c)
+# IPac_mask = basin_mask(grid, "indo-pacific", c)
 # glob_mask = Atlantic_mask .|| IPac_mask
 
 # tot_int = compute!(Field(Integral(c, dims = (1,2,3), condition = glob_mask)))

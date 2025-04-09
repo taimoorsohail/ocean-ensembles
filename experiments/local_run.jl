@@ -77,7 +77,7 @@ set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Mont
 
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
-                            
+
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 
@@ -86,8 +86,8 @@ set!(volmask, 1)
 
 @info "Defining condition masks"
 
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", volmask), 1, 1, Nz);
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", volmask), 1, 1, Nz);
+Atlantic_mask = basin_mask(grid, "atlantic", volmask);
+IPac_mask = basin_mask(grid, "indo-pacific", volmask);
 glob_mask = Atlantic_mask .|| IPac_mask;
 
 tracers = ocean.model.tracers
@@ -190,7 +190,22 @@ function progress(sim)
      return nothing
 end
 
-add_callback!(simulation, progress, IterationInterval(1))                       
+add_callback!(simulation, progress, IterationInterval(1))
 
 run!(simulation)
 
+<<<<<<< HEAD:experiments/local_run.jl
+=======
+# @btime time_step!(simulation.model, 0.1)
+
+# using Oceananigans: write_output!
+
+# writer = simulation.output_writers[:surface]
+# @btime write_output!(writer, simulation.model)
+
+# writer = simulation.output_writers[:zonal_int]
+# @btime write_output!(writer, simulation.model)
+
+
+# # run!(simulation)
+>>>>>>> main:experiments/mwe.jl

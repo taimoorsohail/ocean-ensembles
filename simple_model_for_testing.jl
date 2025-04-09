@@ -92,13 +92,13 @@ function integrate_tuple(outputs; volmask, dims, condition=convert(Array{Bool}, 
     return int_outputs
 end
 
-c = CenterField(grid)
-volmask =  set!(c, 1)
+volmask = CenterField(grid)
+set!(volmask, 1)
 
 @info "Defining masks"
 
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", c), 1, 1, Nz)
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", c), 1, 1, Nz)
+Atlantic_mask = basin_mask(grid, "atlantic", volmask)
+IPac_mask = basin_mask(grid, "indo-pacific", volmask)
 
 #### SURFACE
 
