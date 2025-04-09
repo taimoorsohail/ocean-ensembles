@@ -1448,13 +1448,8 @@ version = "0.5.5"
 
 [[deps.OceanEnsembles]]
 deps = ["CFTime", "CUDA", "ClimaOcean", "Dates", "GLMakie", "Makie", "Oceananigans", "PolygonOps", "StaticArrays"]
-<<<<<<< HEAD
-git-tree-sha1 = "0765600b4b6c5b2b7a979064f74cde73ec2d0866"
-repo-rev = "9ff7c444bac145cd4aca8663333e3a9acbef6912"
-=======
 git-tree-sha1 = "fd83d71ef58ddc37eecdadeba7db3a5faea32420"
 repo-rev = "29010f78fb3a799269d160b9195984e964de8564"
->>>>>>> main
 repo-url = ".."
 uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 version = "0.1.0"
