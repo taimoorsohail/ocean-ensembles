@@ -250,10 +250,9 @@ constants = simulation.model.interfaces.ocean_properties
 output_intervals = 5days
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
-
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
-                                                 schedule = IterationInterval(output_intervals),
+                                                 schedule = TimeInterval(output_intervals),
                                                  filename = "global_surface_fields_$(ARGS[4])",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
@@ -264,13 +263,13 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
-                                                schedule = IterationInterval(output_intervals),
+                                                schedule = TimeInterval(output_intervals),
                                                 filename = "fluxes_$(ARGS[4])",
                                                 overwrite_existing = true)
 
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
-                                                          schedule = IterationInterval(output_intervals),
+                                                          schedule = TimeInterval(output_intervals),
                                                           filename = "ocean_tracer_content_$(ARGS[4])",
                                                           overwrite_existing = true)
 
