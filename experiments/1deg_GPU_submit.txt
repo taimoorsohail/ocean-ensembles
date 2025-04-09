@@ -12,5 +12,9 @@
 #PBS -j n 
 #PBS -N GPU_Clima1deg
 
-julia --project RYF_tripolar_one_deg.jl --arch GPU
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima1deg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima1deg.e
+
+julia --project RYF_tripolar_one_deg.jl --arch GPU --suffix RYF1deg
 

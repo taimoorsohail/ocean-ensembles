@@ -11,6 +11,7 @@ using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
 
 ## Argument is provided by the submission script!
+
 if isempty(ARGS)
     arch = CPU()
 elseif ARGS[2] == "GPU"
@@ -30,7 +31,7 @@ end
 
 dates = vcat(collect(DateTime(1993, 1, 1): Month(1): DateTime(1993, 4, 1)), collect(DateTime(1993, 5, 1) : Month(1) : DateTime(1994, 1, 1)))
 
-data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/data/")
+data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 
 temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_path)
 salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
@@ -41,8 +42,8 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360*4)
-Ny = Integer(180*4)
+Nx = Integer(360)
+Ny = Integer(180)
 Nz = Integer(100)
 
 @info "Defining vertical z faces"
@@ -98,11 +99,11 @@ forcing = (T=FT, S=FS)
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
                                        DiffusiveFormulation
 
-# eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
-#                                                  skew_flux_formulation=DiffusiveFormulation())
+eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
+                                                 skew_flux_formulation=DiffusiveFormulation())
 vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
 
-closure = (vertical_mixing)#(eddy_closure, vertical_mixing)
+closure = (eddy_closure, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -154,7 +155,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=30, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 
 # ### A progress messenger
 #
@@ -247,10 +248,13 @@ constants = simulation.model.interfaces.ocean_properties
 @info "Defining output writers"
 
 output_intervals = 5days
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
+                                                 dir = output_path,
                                                  schedule = IterationInterval(output_intervals),
-                                                 filename = "global_surface_fields_$(ARGS[3])",
+                                                 filename = "global_surface_fields_$(ARGS[4])",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -259,25 +263,28 @@ simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
 fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
+                                                dir = output_path,
                                                 schedule = IterationInterval(output_intervals),
-                                                filename = "fluxes_$(ARGS[3])",
+                                                filename = "fluxes_$(ARGS[4])",
                                                 overwrite_existing = true)
 
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+                                                          dir = output_path,
                                                           schedule = IterationInterval(output_intervals),
-                                                          filename = "ocean_tracer_content_$(ARGS[3])",
+                                                          filename = "ocean_tracer_content_$(ARGS[4])",
                                                           overwrite_existing = true)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+                                                          dir = output_path,
                                                           schedule = IterationInterval(output_intervals),
-                                                          filename = "mass_transport_$(ARGS[3])",
+                                                          filename = "mass_transport_$(ARGS[4])",
                                                           overwrite_existing = true)
 
 @info "Running simulation"
 
 run!(simulation)
 
-simulation.Δt = 5minutes
+simulation.Δt = 20minutes
 simulation.stop_time = 11000days
 
 run!(simulation)
