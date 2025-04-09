@@ -10,11 +10,11 @@
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_Clima1deg
+#PBS -N GPU_Clima25deg
 
 ## Where the outputs go
-#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima1deg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima1deg.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima25deg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima25deg.e
 
-julia --project RYF_tripolar_one_deg.jl --arch GPU --suffix RYF1deg
+julia --project RYF_tripolar_qtr_deg.jl --arch GPU --suffix RYF25deg
 

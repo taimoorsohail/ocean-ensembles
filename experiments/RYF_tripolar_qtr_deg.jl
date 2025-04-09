@@ -19,7 +19,7 @@ elseif ARGS[2] == "GPU"
 elseif ARGS[2] == "CPU"
     arch = CPU()
 else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
+    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF25deg"))
 end
 
 @info "Using architecture: ", arch
@@ -42,8 +42,8 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360)
-Ny = Integer(180)
+Nx = Integer(360*4)
+Ny = Integer(180*4)
 Nz = Integer(100)
 
 @info "Defining vertical z faces"
@@ -114,8 +114,9 @@ closure = (eddy_closure, vertical_mixing)
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
-momentum_advection = WENOVectorInvariant(vorticity_order=3)
-tracer_advection   = Centered()
+# As per https://github.com/taimoorsohail/ocean-ensembles/issues/38 -- for quarter degree
+momentum_advection = WENOVectorInvariant(order=5) 
+tracer_advection = WENO(order=5)
 
 @info "Defining ocean simulation"
 
@@ -155,7 +156,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=30, stop_time=20days)
 
 # ### A progress messenger
 #
@@ -283,7 +284,7 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 
 run!(simulation)
 
-simulation.Δt = 20minutes
+simulation.Δt = 5minutes
 simulation.stop_time = 11000days
 
 run!(simulation)

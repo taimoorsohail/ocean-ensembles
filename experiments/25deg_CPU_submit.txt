@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -P v46
+#PBS -q expressbw
+#PBS -l walltime=1:00:00
+#PBS -l mem=128GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=12 
+#PBS -l jobfs=10GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N CPU_Clima25deg
+
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/CPU_Clima25deg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/CPU_Clima25deg.e
+
+julia --project RYF_tripolar_qtr_deg.jl --arch CPU --suffix RYF25deg
