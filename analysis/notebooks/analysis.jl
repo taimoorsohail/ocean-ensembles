@@ -138,7 +138,7 @@ function OTC_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integ
 
     fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice] - times[1]))", fontsize=24)
 
-    save(figdir*"$(space)_$(diagnostic)_tracer_content.png", fig, px_per_unit=3)
+    save(dir*"$(space)_$(diagnostic)_tracer_content.png", fig, px_per_unit=3)
 end 
 
 OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = figdir, time = "last")
