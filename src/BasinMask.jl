@@ -10,8 +10,6 @@ using Oceananigans.Architectures: architecture
 
 export basin_mask, get_coords_from_grid
 
-##TODO: At the moment, the mask doesn't deal properly with halos and is offset...
-
 const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 const TripolarOrLatLonGrid = Union{SomeTripolarGrid, LatitudeLongitudeGrid}
 
@@ -19,11 +17,7 @@ function get_coords_from_grid(grid::SomeTripolarGrid, var)
     arch = architecture(grid)
     lons = λnodes(grid, instantiate.(location(var))..., with_halos=false)
     lats = φnodes(grid, instantiate.(location(var))..., with_halos=false)
-    if arch == CPU()
-        points = vec(SVector.(lons, lats))
-    else
-        points = CUDA.@allowscalar vec(SVector.(lons, lats))
-    end
+    points = CUDA.@allowscalar vec(SVector.(lons, lats))
     return lats, lons, points
 end
 
@@ -47,7 +41,6 @@ function get_coords_from_grid(grid::LatitudeLongitudeGrid, var)
 end
 
 function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Oceananigans.Field)
-
     arch = architecture
 
     GlobalLonsPts=[0,360,360,0,0]
@@ -115,7 +108,10 @@ function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Ocea
     is_valid = maximum(mask) == 1
     is_valid || throw(ErrorException("Maximum value of mask is not 1"))
     bool_mask = convert(Array{Bool}, mask)
-    return bool_mask
+
+    _, _, Nz = size(var)
+
+    return repeat(bool_mask, 1, 1, Nz)
 end
 
 end # module

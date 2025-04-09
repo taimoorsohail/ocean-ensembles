@@ -19,8 +19,14 @@ using Test
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
     c = CenterField(grid)
-    Atlantic_mask_center = basin_mask(grid, "atlantic", c)
+    Atlantic_mask_ccc = basin_mask(grid, "atlantic", c)
 
-    @test Atlantic_mask_center isa Matrix{Bool}
-    @test size(c)[1:2] == size(Atlantic_mask_center)
+    @test Atlantic_mask_ccc isa Array{Bool}
+    @test size(c) == size(Atlantic_mask_ccc)
+
+    w = ZFaceField(grid)
+    Atlantic_mask_ccf = basin_mask(grid, "atlantic", w)
+
+    @test Atlantic_mask_ccf isa Array{Bool}
+    @test size(w) == size(Atlantic_mask_ccf)
 end
