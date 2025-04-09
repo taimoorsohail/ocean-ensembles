@@ -194,18 +194,3 @@ add_callback!(simulation, progress, IterationInterval(1))
 
 run!(simulation)
 
-<<<<<<< HEAD:experiments/local_run.jl
-=======
-# @btime time_step!(simulation.model, 0.1)
-
-# using Oceananigans: write_output!
-
-# writer = simulation.output_writers[:surface]
-# @btime write_output!(writer, simulation.model)
-
-# writer = simulation.output_writers[:zonal_int]
-# @btime write_output!(writer, simulation.model)
-
-
-# # run!(simulation)
->>>>>>> main:experiments/mwe.jl
