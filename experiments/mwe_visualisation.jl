@@ -39,6 +39,7 @@ fig = Figure(size=(700, 700))
 
 axc = Axis(fig[1, 1])
 
+<<<<<<< HEAD
 λ, φ, _ = nodes(c)
 
 # make λ monotonic (250 = 180 + 70 is longitude between poles)
@@ -47,9 +48,16 @@ axc = Axis(fig[1, 1])
 # As a quick workaround, don't plot the last column of λ2, because
 # it is too distorted... Hopefully one day GeoMakie does this automatically
 cf = surface!(axc, λ2[:, 1:end-1], φ[:, 1:end-1], cn[:, 1:end-1]; colorrange=(-1, 1), colormap=:viridis, shading = NoShading, nan_color=:lightgray)
+=======
+cf = surface!(axc, λ, φ, ones(size(λ)), color=cn, colorrange=(-1, 1), colormap=:viridis, nan_color=:lightgray)
+>>>>>>> main
 
 hidedecorations!(axc)
 hidespines!(axc)
 
 display(fig)
+<<<<<<< HEAD
 # save("mwe_sphere_tripolar.png", fig)
+=======
+# save("mwe_sphere_tripolar.png", fig)
+>>>>>>> main
