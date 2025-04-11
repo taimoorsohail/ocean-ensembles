@@ -187,7 +187,6 @@ function progress(sim)
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
     msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Tmax, Tmin)
     msg4 = @sprintf("wall time: %s \n", prettytime(step_time))
-    msg4 = @sprintf("moist heat capacity: %s \n", )
 
     @info msg1 * msg2 * msg3 * msg4
 
