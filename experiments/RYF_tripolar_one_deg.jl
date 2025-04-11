@@ -103,7 +103,9 @@ eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
                                                  skew_flux_formulation=DiffusiveFormulation())
 vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
 
-closure = (eddy_closure, vertical_mixing)
+horizontal_viscosity = HorizontalScalarDiffusivity(ν=2000)
+
+closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -112,10 +114,13 @@ closure = (eddy_closure, vertical_mixing)
 
 @info "Defining free surface"
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+free_surface = SplitExplicitFreeSurface(grid; substeps=50)
 
-momentum_advection = WENOVectorInvariant(vorticity_order=3)
-tracer_advection   = Centered()
+# momentum_advection = WENOVectorInvariant(vorticity_order=3)
+# tracer_advection   = Centered()
+momentum_advection = VectorInvariant()
+tracer_advection   = WENO(order=5)
+
 
 @info "Defining ocean simulation"
 
