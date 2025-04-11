@@ -280,7 +280,7 @@ simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, trace
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
-                                                          schedule = IterationInterval(output_intervals),
+                                                          schedule = TimeInterval(output_intervals),
                                                           filename = "mass_transport_$(ARGS[4])",
                                                           overwrite_existing = true)
 
