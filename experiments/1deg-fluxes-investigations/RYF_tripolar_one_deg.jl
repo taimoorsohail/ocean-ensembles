@@ -11,16 +11,16 @@ using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
 
 ## Argument is provided by the submission script!
-arch = CPU()
-# if isempty(ARGS)
-#     arch = CPU()
-# elseif ARGS[2] == "GPU"
-#     arch = GPU()
-# elseif ARGS[2] == "CPU"
-#     arch = CPU()
-# else
-#     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
-# end
+# arch = CPU()
+if isempty(ARGS)
+    arch = CPU()
+elseif ARGS[2] == "GPU"
+    arch = GPU()
+elseif ARGS[2] == "CPU"
+    arch = CPU()
+else
+    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
+end
 
 @info "Using architecture: ", arch
 
