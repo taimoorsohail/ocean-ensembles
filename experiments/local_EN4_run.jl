@@ -7,19 +7,20 @@ using Printf
 using OceanEnsembles
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
-using ClimaOcean.ECCO
-using ClimaOcean.ECCO: download_dataset
+using ClimaOcean.EN4
+using ClimaOcean.EN4: download_dataset
 
 
-# ### WOA files
-@info "Downloading/checking ECCO data"
+# ### EN4 files
+@info "Downloading/checking EN4 data"
+## We download Gouretski and Reseghetti (2010) XBT corrections and Gouretski and Cheng (2020) MBT corrections
 
-dates = vcat(collect(DateTime(1993, 1, 1): Month(1): DateTime(1993, 4, 1)), collect(DateTime(1993, 5, 1) : Month(1) : DateTime(1994, 1, 1)))
+dates = collect(DateTime(1900, 1, 1): Month(1): DateTime(1901, 12, 1))
 
 data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
-temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_path)
-salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
+temperature = Metadata(:temperature; dates, dataset=EN4Monthly(), dir=data_path)
+salinity    = Metadata(:salinity;    dates, dataset=EN4Monthly(), dir=data_path)
 
 download_dataset(temperature)
 download_dataset(salinity)
@@ -31,8 +32,6 @@ Nz = Integer(100/4)
 arch = CPU()
 
 z_faces = (-4000, 0)
-
-
 
 # underlying_grid = TripolarGrid(arch;
 #                                size = (Nx, Ny, Nz),
@@ -53,7 +52,7 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 @time bottom_height = regrid_bathymetry(underlying_grid;
                                   minimum_depth = 10,
                                   interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
-				                  major_basins = 2)
+				  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
 # view(bottom_height, 102:103, 124, 1) .= -400
@@ -61,6 +60,17 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+
+@info "Defining restoring rate"
+
+restoring_rate  = 2 / 365days
+z_below_surface = z_faces[end-1]
+
+mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
+
+FT = EN4Restoring(temperature, grid; mask, rate=restoring_rate)
+FS = EN4Restoring(salinity,    grid; mask, rate=restoring_rate)
+forcing = (T=FT, S=FS)
 
 @info "Defining free surface"
 
@@ -76,10 +86,12 @@ tracer_advection   = Centered()
                             tracer_advection,
                             free_surface)
 
-@info "Initialising with ECCO"
+@info "Initialising with EN4"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly()),
-                    S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly()))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=EN4Monthly()),
+                    S=Metadata(:salinity;    dates=first(dates), dataset=EN4Monthly()))
+
+
 
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
