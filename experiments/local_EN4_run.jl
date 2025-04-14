@@ -15,7 +15,7 @@ using ClimaOcean.EN4: download_dataset
 @info "Downloading/checking EN4 data"
 ## We download Gouretski and Reseghetti (2010) XBT corrections and Gouretski and Cheng (2020) MBT corrections
 
-dates = collect(DateTime(1900, 1, 1): Month(1): DateTime(1901, 12, 1))
+dates = collect(DateTime(2022, 1, 1): Month(1): DateTime(2023, 12, 1))
 
 data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
@@ -23,29 +23,28 @@ temperature = Metadata(:temperature; dates, dataset=EN4Monthly(), dir=data_path)
 salinity    = Metadata(:salinity;    dates, dataset=EN4Monthly(), dir=data_path)
 
 download_dataset(temperature)
-download_dataset(salinity)
 
-Nx = Integer(360/5)
-Ny = Integer(180/5)
-Nz = Integer(100/4)
+Nx = Integer(360)
+Ny = Integer(180)
+Nz = Integer(100/2)
 
 arch = CPU()
 
 z_faces = (-4000, 0)
 
-# underlying_grid = TripolarGrid(arch;
-#                                size = (Nx, Ny, Nz),
-#                                z = z_faces,
-#                                halo = (5, 5, 4),
-#                                first_pole_longitude = 70,
-#                                north_poles_latitude = 55)
+underlying_grid = TripolarGrid(arch;
+                               size = (Nx, Ny, Nz),
+                               z = z_faces,
+                               halo = (5, 5, 4),
+                               first_pole_longitude = 70,
+                               north_poles_latitude = 55)
 
-underlying_grid = LatitudeLongitudeGrid(arch;
-                                        size = (Nx, Ny, Nz),
-                                        z = z_faces,
-                                        halo = (5, 5, 4),
-                                        longitude = (0, 360),
-                                        latitude = (-75, 75))
+# underlying_grid = LatitudeLongitudeGrid(arch;
+#                                         size = (Nx, Ny, Nz),
+#                                         z = z_faces,
+#                                         halo = (5, 5, 4),
+#                                         longitude = (0, 360),
+#                                         latitude = (-75, 75))
 
 @info "Defining bottom bathymetry"
 
@@ -88,10 +87,16 @@ tracer_advection   = Centered()
 
 @info "Initialising with EN4"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=EN4Monthly()),
-                    S=Metadata(:salinity;    dates=first(dates), dataset=EN4Monthly()))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=EN4Monthly(), dir=data_path),
+                    S=Metadata(:salinity;    dates=first(dates), dataset=EN4Monthly(), dir=data_path))
 
-
+## Plot the intitalised SST and SSS
+using GLMakie
+fig = Figure()              # create a new figure
+ax = Axis(fig[1, 1])        # add an axis to the figure
+Tslice = dropdims(interior(view(ocean.model.tracers.T, :, :, Nz)), dims=3)
+heatmap!(ax, Tslice.-273.15; colorrange = (-3, 30))
+fig
 
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
