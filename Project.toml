@@ -17,7 +17,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 CFTime = "0.1.4"
 CUDA = "5.7"
-ClimaOcean = "0.5.8"
+ClimaOcean = "0.6.0"
 Makie = "0.22.2"
 Oceananigans = "0.96"
 PolygonOps = "0.1.2"
