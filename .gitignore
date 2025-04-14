@@ -51,4 +51,7 @@ Manifest.toml
 figures/*.png
 figures/*.mp4
 
+# SSH keys
 gha_ssh_key
+gha_ssh_key.pub
+
