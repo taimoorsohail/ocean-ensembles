@@ -10,6 +10,10 @@ using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
 
+# File paths
+data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+
 ## Argument is provided by the submission script!
 
 if isempty(ARGS)
@@ -30,8 +34,6 @@ end
 @info "Downloading/checking ECCO data"
 
 dates = vcat(collect(DateTime(1993, 1, 1): Month(1): DateTime(1993, 4, 1)), collect(DateTime(1993, 5, 1) : Month(1) : DateTime(1994, 1, 1)))
-
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 
 temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_path)
 salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
@@ -116,10 +118,10 @@ closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=50)
 
-# momentum_advection = WENOVectorInvariant(vorticity_order=3)
-# tracer_advection   = Centered()
-momentum_advection = VectorInvariant()
-tracer_advection   = WENO(order=5)
+momentum_advection = WENOVectorInvariant(vorticity_order=3)
+tracer_advection   = Centered()
+# momentum_advection = VectorInvariant()
+# tracer_advection   = WENO(order=5)
 
 
 @info "Defining ocean simulation"
@@ -137,8 +139,8 @@ tracer_advection   = WENO(order=5)
 
 @info "Initialising with ECCO"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly()),
-                  S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly()))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly(), dir=data_path),
+                  S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly(), dir=data_path))
 
 # ### Atmospheric forcing
 
@@ -216,7 +218,7 @@ velocities = ocean.model.velocities
 outputs = merge(tracers, velocities)
 
 #### TRACERS ####
-
+#=
 tracer_volmask = [Ax, Δz, volmask]
 masks = [glob_mask, Atlantic_mask, IPac_mask]
 suffixes = ["_global_", "_atl_", "_ipac_"]
@@ -249,11 +251,10 @@ end
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
 constants = simulation.model.interfaces.ocean_properties
-
+=#
 @info "Defining output writers"
 
 output_intervals = 5days
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
@@ -271,7 +272,7 @@ simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 schedule = TimeInterval(output_intervals),
                                                 filename = "fluxes_$(ARGS[4])",
                                                 overwrite_existing = true)
-
+#=
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = TimeInterval(output_intervals),
@@ -283,7 +284,7 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           schedule = TimeInterval(output_intervals),
                                                           filename = "mass_transport_$(ARGS[4])",
                                                           overwrite_existing = true)
-
+=#
 @info "Running simulation"
 
 run!(simulation)
