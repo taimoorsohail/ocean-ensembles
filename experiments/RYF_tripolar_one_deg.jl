@@ -139,8 +139,8 @@ tracer_advection   = Centered()
 
 @info "Initialising with ECCO"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly()),
-                  S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly()))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly(), dir=data_path),
+                  S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly(), dir=data_path))
 
 # ### Atmospheric forcing
 
