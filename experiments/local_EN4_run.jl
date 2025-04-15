@@ -10,12 +10,11 @@ using Oceananigans.Fields: ReducedField
 using ClimaOcean.EN4
 using ClimaOcean.EN4: download_dataset
 
-
 # ### EN4 files
 @info "Downloading/checking EN4 data"
 ## We download Gouretski and Reseghetti (2010) XBT corrections and Gouretski and Cheng (2020) MBT corrections
 
-dates = collect(DateTime(2022, 1, 1): Month(1): DateTime(2023, 12, 1))
+dates = collect(DateTime(2023, 11, 1): Month(1): DateTime(2023, 12, 1))
 
 data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
@@ -32,25 +31,25 @@ arch = CPU()
 
 z_faces = (-4000, 0)
 
-underlying_grid = TripolarGrid(arch;
-                               size = (Nx, Ny, Nz),
-                               z = z_faces,
-                               halo = (5, 5, 4),
-                               first_pole_longitude = 70,
-                               north_poles_latitude = 55)
+# underlying_grid = TripolarGrid(arch;
+#                                size = (Nx, Ny, Nz),
+#                                z = z_faces,
+#                                halo = (5, 5, 4),
+#                                first_pole_longitude = 70,
+#                                north_poles_latitude = 55)
 
-# underlying_grid = LatitudeLongitudeGrid(arch;
-#                                         size = (Nx, Ny, Nz),
-#                                         z = z_faces,
-#                                         halo = (5, 5, 4),
-#                                         longitude = (0, 360),
-#                                         latitude = (-75, 75))
+underlying_grid = LatitudeLongitudeGrid(arch;
+                                        size = (Nx, Ny, Nz),
+                                        z = z_faces,
+                                        halo = (7, 7, 3),
+                                        longitude = (0, 350),
+                                        latitude = (-75, 75))
 
 @info "Defining bottom bathymetry"
 
 @time bottom_height = regrid_bathymetry(underlying_grid;
                                   minimum_depth = 10,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 0, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
@@ -62,28 +61,27 @@ underlying_grid = TripolarGrid(arch;
 
 @info "Defining restoring rate"
 
-restoring_rate  = 2 / 365days
-z_below_surface = z_faces[end-1]
+## Currently not working due to LinearlyTaperedPolarMask migration
 
-mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
+# restoring_rate  = 2 / 365.25days
+# z_below_surface = z_faces[end-1]
+# @info z_below_surface, 0
+# mask = LinearlyTaperedPolarMask(southern=(-83, 0), northern=(0, 90), z=(z_below_surface, 0))
 
-FT = EN4Restoring(temperature, grid; mask, rate=restoring_rate)
-FS = EN4Restoring(salinity,    grid; mask, rate=restoring_rate)
-forcing = (T=FT, S=FS)
+# FT = EN4Restoring(temperature, grid; mask, rate=restoring_rate)
+# FS = EN4Restoring(salinity,    grid; mask, rate=restoring_rate)
+# forcing = (T=FT, S=FS)
 
 @info "Defining free surface"
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+# free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
-momentum_advection = WENOVectorInvariant(vorticity_order=3)
-tracer_advection   = Centered()
+# momentum_advection = WENOVectorInvariant(vorticity_order=3)
+# tracer_advection   = Centered()
 
 @info "Defining ocean simulation"
 
-@time ocean = ocean_simulation(grid;
-                            momentum_advection,
-                            tracer_advection,
-                            free_surface)
+@time ocean = ocean_simulation(grid)
 
 @info "Initialising with EN4"
 
@@ -92,10 +90,18 @@ set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=EN4Monthl
 
 ## Plot the intitalised SST and SSS
 using GLMakie
-fig = Figure()              # create a new figure
-ax = Axis(fig[1, 1])        # add an axis to the figure
+fig = Figure(size = (1500,2000)) # create a new figure
+ax1 = Axis(fig[1, 1])            # add an axis to the figure
+ax2 = Axis(fig[2, 1])        # add an axis to the figure
+axc1 = (fig[1, 2])            # add an axis to the figure
+axc2 = (fig[2, 2])        # add an axis to the figure
+
 Tslice = dropdims(interior(view(ocean.model.tracers.T, :, :, Nz)), dims=3)
-heatmap!(ax, Tslice.-273.15; colorrange = (-3, 30))
+Sslice = dropdims(interior(view(ocean.model.tracers.S, :, :, Nz)), dims=3)
+hm1 = heatmap!(ax1, Tslice; colorrange = (-3, 30), colormap = Reverse(:deep))
+hm2 = heatmap!(ax2, Sslice; colorrange = (34,38), colormap = :bwr)
+Colorbar(axc1, hm1, label = "°C")
+Colorbar(axc2, hm2, label = "g/kg")
 fig
 
 radiation  = Radiation(arch)
