@@ -7,19 +7,19 @@ using Printf
 using OceanEnsembles
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
-using ClimaOcean.EN4
-using ClimaOcean.EN4: download_dataset
+using ClimaOcean.ECCO
+using ClimaOcean.ECCO: download_dataset
 
 # ### EN4 files
 @info "Downloading/checking EN4 data"
 ## We download Gouretski and Reseghetti (2010) XBT corrections and Gouretski and Cheng (2020) MBT corrections
 
-dates = collect(DateTime(2022, 1, 1): Month(1): DateTime(2023, 12, 1))
+dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
 
 data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
-temperature = Metadata(:temperature; dates, dataset=EN4Monthly(), dir=data_path)
-salinity    = Metadata(:salinity;    dates, dataset=EN4Monthly(), dir=data_path)
+temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_path)
+salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
 
 download_dataset(temperature)
 
@@ -85,8 +85,8 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 
 @info "Initialising with EN4"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=EN4Monthly(), dir=data_path),
-                    S=Metadata(:salinity;    dates=first(dates), dataset=EN4Monthly(), dir=data_path))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly(), dir=data_path),
+                    S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly(), dir=data_path))
 
 ## Plot the intitalised SST and SSS
 using GLMakie
