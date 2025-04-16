@@ -18,6 +18,9 @@ dates = collect(DateTime(2022, 1, 1): Month(1): DateTime(2023, 12, 1))
 
 data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
+# rm(joinpath(data_path, "EN.4.2.2.f.analysis.g10.202201_temperature_inpainted.jld2"), force=true)
+# rm(joinpath(data_path, "EN.4.2.2.f.analysis.g10.202201_salinity_inpainted.jld2"), force=true)
+
 temperature = Metadata(:temperature; dates, dataset=EN4Monthly(), dir=data_path)
 salinity    = Metadata(:salinity;    dates, dataset=EN4Monthly(), dir=data_path)
 
@@ -31,25 +34,27 @@ arch = CPU()
 
 z_faces = (-4000, 0)
 
-# underlying_grid = TripolarGrid(arch;
-#                                size = (Nx, Ny, Nz),
-#                                z = z_faces,
-#                                halo = (5, 5, 4),
-#                                first_pole_longitude = 70,
-#                                north_poles_latitude = 55)
+### The below crashes immediately in a latlongrid, but not in a tripolar grid
 
-underlying_grid = LatitudeLongitudeGrid(arch;
-                                        size = (Nx, Ny, Nz),
-                                        z = z_faces,
-                                        halo = (7, 7, 3),
-                                        longitude = (0, 360),
-                                        latitude = (-90,90))
+underlying_grid = TripolarGrid(arch;
+                               size = (Nx, Ny, Nz),
+                               z = z_faces,
+                               halo = (5, 5, 4),
+                               first_pole_longitude = 70,
+                               north_poles_latitude = 55)
+
+# underlying_grid = LatitudeLongitudeGrid(arch;
+#                                         size = (Nx, Ny, Nz),
+#                                         z = z_faces,
+#                                         halo = (5, 5, 4),
+#                                         longitude = (0, 360),
+#                                         latitude = (-90,90))
 
 @info "Defining bottom bathymetry"
 
 @time bottom_height = regrid_bathymetry(underlying_grid;
                                   minimum_depth = 10,
-                                  interpolation_passes = 0, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
@@ -61,12 +66,12 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 
 @info "Defining restoring rate"
 
-## Currently not working due to LinearlyTaperedPolarMask migration
+## Currently not working due to restoring refactoring
 
 # restoring_rate  = 2 / 365.25days
 # z_below_surface = z_faces[end-1]
 # @info z_below_surface, 0
-# mask = LinearlyTaperedPolarMask(southern=(-83, 0), northern=(0, 90), z=(z_below_surface, 0))
+# mask = LinearlyTaperedPolarMask(southern=(-90, 0), northern=(0, 90), z=(z_below_surface, 0))
 
 # FT = EN4Restoring(temperature, grid; mask, rate=restoring_rate)
 # FS = EN4Restoring(salinity,    grid; mask, rate=restoring_rate)
@@ -74,14 +79,16 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 
 @info "Defining free surface"
 
-# free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
-# momentum_advection = WENOVectorInvariant(vorticity_order=3)
-# tracer_advection   = Centered()
+momentum_advection = WENOVectorInvariant(vorticity_order=3)
+tracer_advection   = Centered()
 
 @info "Defining ocean simulation"
 
-@time ocean = ocean_simulation(grid)
+@time ocean = ocean_simulation(grid; free_surface,
+                                momentum_advection,
+                                tracer_advection)
 
 @info "Initialising with EN4"
 

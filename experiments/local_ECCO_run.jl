@@ -49,7 +49,7 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 
 @time bottom_height = regrid_bathymetry(underlying_grid;
                                   minimum_depth = 10,
-                                  interpolation_passes = 0, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
@@ -103,7 +103,7 @@ hm2 = heatmap!(ax2, Sslice; colorrange = (34,38), colormap = :bwr)
 Colorbar(axc1, hm1, label = "°C")
 Colorbar(axc2, hm2, label = "g/kg")
 fig
-
+#=
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 
@@ -226,3 +226,4 @@ simulation.Δt = 20minutes
 simulation.stop_time = 11000days
 
 run!(simulation)
+=#
