@@ -13,7 +13,7 @@ PolygonOps = "647866c9-e3ac-4575-94e7-e3d426903924"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-CFTime = "0.1.4"
+CFTime = "0.1.4, 0.2"
 CUDA = "5.7"
 Oceananigans = "0.96"
 PolygonOps = "0.1.2"
