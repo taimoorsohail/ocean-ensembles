@@ -14,7 +14,7 @@ using ClimaOcean.EN4: download_dataset
 @info "Downloading/checking EN4 data"
 ## We download Gouretski and Reseghetti (2010) XBT corrections and Gouretski and Cheng (2020) MBT corrections
 
-dates = collect(DateTime(2022, 1, 1): Month(1): DateTime(2023, 12, 1))
+dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
 
 data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
@@ -36,19 +36,19 @@ z_faces = (-4000, 0)
 
 ### The below crashes immediately in a latlongrid, but not in a tripolar grid
 
-underlying_grid = TripolarGrid(arch;
-                               size = (Nx, Ny, Nz),
-                               z = z_faces,
-                               halo = (5, 5, 4),
-                               first_pole_longitude = 70,
-                               north_poles_latitude = 55)
+# underlying_grid = TripolarGrid(arch;
+#                                size = (Nx, Ny, Nz),
+#                                z = z_faces,
+#                                halo = (5, 5, 4),
+#                                first_pole_longitude = 70,
+#                                north_poles_latitude = 55)
 
-# underlying_grid = LatitudeLongitudeGrid(arch;
-#                                         size = (Nx, Ny, Nz),
-#                                         z = z_faces,
-#                                         halo = (5, 5, 4),
-#                                         longitude = (0, 360),
-#                                         latitude = (-90,90))
+underlying_grid = LatitudeLongitudeGrid(arch;
+                                        size = (Nx, Ny, Nz),
+                                        z = z_faces,
+                                        halo = (5, 5, 4),
+                                        longitude = (0, 360),
+                                        latitude = (-90,90))
 
 @info "Defining bottom bathymetry"
 
@@ -86,10 +86,10 @@ tracer_advection   = Centered()
 
 @info "Defining ocean simulation"
 
-@time ocean = ocean_simulation(grid; free_surface,
+@time ocean = ocean_simulation(grid)#=; free_surface,
                                 momentum_advection,
                                 tracer_advection)
-
+=#
 @info "Initialising with EN4"
 
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=EN4Monthly(), dir=data_path),

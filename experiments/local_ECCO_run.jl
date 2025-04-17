@@ -74,15 +74,17 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 
 @info "Defining free surface"
 
-# free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
-# momentum_advection = WENOVectorInvariant(vorticity_order=3)
-# tracer_advection   = Centered()
+momentum_advection = WENOVectorInvariant(vorticity_order=3)
+tracer_advection   = Centered()
 
 @info "Defining ocean simulation"
 
-@time ocean = ocean_simulation(grid)
-
+@time ocean = ocean_simulation(grid)#=; free_surface,
+                                momentum_advection,
+                                tracer_advection)
+=#
 @info "Initialising with EN4"
 
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly(), dir=data_path),
@@ -103,7 +105,7 @@ hm2 = heatmap!(ax2, Sslice; colorrange = (34,38), colormap = :bwr)
 Colorbar(axc1, hm1, label = "°C")
 Colorbar(axc2, hm2, label = "g/kg")
 fig
-#=
+
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 
@@ -226,4 +228,3 @@ simulation.Δt = 20minutes
 simulation.stop_time = 11000days
 
 run!(simulation)
-=#
