@@ -7,8 +7,8 @@ using Printf
 using OceanEnsembles
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
-using ClimaOcean.EN4
-using ClimaOcean.EN4: download_dataset
+using ClimaOcean.ECCO
+using ClimaOcean.ECCO: download_dataset
 
 # ### EN4 files
 @info "Downloading/checking EN4 data"
@@ -18,11 +18,8 @@ dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
 
 data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
-# rm(joinpath(data_path, "EN.4.2.2.f.analysis.g10.202201_temperature_inpainted.jld2"), force=true)
-# rm(joinpath(data_path, "EN.4.2.2.f.analysis.g10.202201_salinity_inpainted.jld2"), force=true)
-
-temperature = Metadata(:temperature; dates, dataset=EN4Monthly(), dir=data_path)
-salinity    = Metadata(:salinity;    dates, dataset=EN4Monthly(), dir=data_path)
+temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_path)
+salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
 
 download_dataset(temperature)
 
@@ -34,8 +31,6 @@ arch = CPU()
 
 z_faces = (-4000, 0)
 
-### The below crashes immediately in a latlongrid, but not in a tripolar grid
-
 # underlying_grid = TripolarGrid(arch;
 #                                size = (Nx, Ny, Nz),
 #                                z = z_faces,
@@ -46,7 +41,7 @@ z_faces = (-4000, 0)
 underlying_grid = LatitudeLongitudeGrid(arch;
                                         size = (Nx, Ny, Nz),
                                         z = z_faces,
-                                        halo = (5, 5, 4),
+                                        halo = (7, 7, 3),
                                         longitude = (0, 360),
                                         latitude = (-90,90))
 
@@ -66,12 +61,12 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 
 @info "Defining restoring rate"
 
-## Currently not working due to restoring refactoring
+## Currently not working due to LinearlyTaperedPolarMask migration
 
 # restoring_rate  = 2 / 365.25days
 # z_below_surface = z_faces[end-1]
 # @info z_below_surface, 0
-# mask = LinearlyTaperedPolarMask(southern=(-90, 0), northern=(0, 90), z=(z_below_surface, 0))
+# mask = LinearlyTaperedPolarMask(southern=(-83, 0), northern=(0, 90), z=(z_below_surface, 0))
 
 # FT = EN4Restoring(temperature, grid; mask, rate=restoring_rate)
 # FS = EN4Restoring(salinity,    grid; mask, rate=restoring_rate)
@@ -92,8 +87,8 @@ tracer_advection   = Centered()
 =#
 @info "Initialising with EN4"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=EN4Monthly(), dir=data_path),
-                    S=Metadata(:salinity;    dates=first(dates), dataset=EN4Monthly(), dir=data_path))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly(), dir=data_path),
+                    S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly(), dir=data_path))
 
 ## Plot the intitalised SST and SSS
 using GLMakie
