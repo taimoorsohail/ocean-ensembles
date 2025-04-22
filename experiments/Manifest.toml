@@ -2,7 +2,7 @@
 
 julia_version = "1.10.8"
 manifest_format = "2.0"
-project_hash = "e195d06e6cb63675936e69297d6955f52b6056a8"
+project_hash = "f43f3723228a9eb10bfbd6d0b23864ebd9662f48"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -197,7 +197,7 @@ version = "0.16.1+0"
 deps = ["Adapt", "CFTime", "CUDA", "ClimaSeaIce", "CubicSplines", "DataDeps", "Dates", "Downloads", "ImageMorphology", "JLD2", "KernelAbstractions", "MPI", "NCDatasets", "Oceananigans", "OffsetArrays", "PrecompileTools", "Printf", "Scratch", "SeawaterPolynomials", "StaticArrays", "Statistics", "SurfaceFluxes", "Thermodynamics", "ZipFile"]
 path = "../../ClimaOcean.jl"
 uuid = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
-version = "0.6.0"
+version = "0.6.1"
 
     [deps.ClimaOcean.extensions]
     ClimaOceanReactantExt = "Reactant"

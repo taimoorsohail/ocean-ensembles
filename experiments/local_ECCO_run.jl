@@ -31,19 +31,19 @@ arch = CPU()
 
 z_faces = (-4000, 0)
 
-# underlying_grid = TripolarGrid(arch;
-#                                size = (Nx, Ny, Nz),
-#                                z = z_faces,
-#                                halo = (5, 5, 4),
-#                                first_pole_longitude = 70,
-#                                north_poles_latitude = 55)
+underlying_grid = TripolarGrid(arch;
+                               size = (Nx, Ny, Nz),
+                               z = z_faces,
+                               halo = (7, 7, 3),
+                               first_pole_longitude = 70,
+                               north_poles_latitude = 55)
 
-underlying_grid = LatitudeLongitudeGrid(arch;
-                                        size = (Nx, Ny, Nz),
-                                        z = z_faces,
-                                        halo = (7, 7, 3),
-                                        longitude = (0, 360),
-                                        latitude = (-90,90))
+# underlying_grid = LatitudeLongitudeGrid(arch;
+#                                         size = (Nx, Ny, Nz),
+#                                         z = z_faces,
+#                                         halo = (7, 7, 3),
+#                                         longitude = (0, 360),
+#                                         latitude = (-89.9,89.9))
 
 @info "Defining bottom bathymetry"
 
