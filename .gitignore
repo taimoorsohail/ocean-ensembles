@@ -26,6 +26,7 @@ Manifest.toml
 ## Output files
 *.jld2
 *.nc
+*.zip
 
 ## Text files
 *.tab
@@ -50,4 +51,8 @@ Manifest.toml
 *.png
 figures/*.png
 figures/*.mp4
+
+# SSH keys
+gha_ssh_key
+gha_ssh_key.pub
 
