@@ -23,7 +23,7 @@ elseif ARGS[2] == "GPU"
 elseif ARGS[2] == "CPU"
     arch = CPU()
 else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
+    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF1deg"))
 end
 
 @info "Using architecture: ", arch
