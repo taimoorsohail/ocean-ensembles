@@ -7,6 +7,7 @@ NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 OceanEnsembles = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 
 [sources.OceanEnsembles]
 path = "../"
