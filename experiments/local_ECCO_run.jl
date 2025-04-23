@@ -11,7 +11,7 @@ using ClimaOcean.ECCO
 using ClimaOcean.ECCO: download_dataset
 
 # ### EN4 files
-@info "Downloading/checking EN4 data"
+@info "Downloading/checking ECCO data"
 ## We download Gouretski and Reseghetti (2010) XBT corrections and Gouretski and Cheng (2020) MBT corrections
 
 dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
@@ -22,6 +22,7 @@ temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_pat
 salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
 
 download_dataset(temperature)
+download_dataset(salinity)
 
 Nx = Integer(360)
 Ny = Integer(180)
@@ -63,14 +64,14 @@ underlying_grid = TripolarGrid(arch;
 
 ## Currently not working due to LinearlyTaperedPolarMask migration
 
-# restoring_rate  = 2 / 365.25days
-# z_below_surface = z_faces[end-1]
-# @info z_below_surface, 0
+restoring_rate  = 2 / 365.25days
+z_below_surface = z_faces[end-1]
+@info z_below_surface, 0
 # mask = LinearlyTaperedPolarMask(southern=(-83, 0), northern=(0, 90), z=(z_below_surface, 0))
 
-# FT = EN4Restoring(temperature, grid; mask, rate=restoring_rate)
-# FS = EN4Restoring(salinity,    grid; mask, rate=restoring_rate)
-# forcing = (T=FT, S=FS)
+FT = Restoring(temperature, grid; rate=restoring_rate)
+FS = Restoring(salinity,    grid; rate=restoring_rate)
+forcing = (T=FT, S=FS)
 
 @info "Defining free surface"
 

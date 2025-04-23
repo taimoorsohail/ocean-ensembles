@@ -9,6 +9,7 @@ using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
 using ClimaOcean.EN4
 using ClimaOcean.EN4: download_dataset
+# using ClimaOcean.DataWrangling: Restoring
 
 # ### EN4 files
 @info "Downloading/checking EN4 data"
@@ -25,6 +26,7 @@ temperature = Metadata(:temperature; dates, dataset=EN4Monthly(), dir=data_path)
 salinity    = Metadata(:salinity;    dates, dataset=EN4Monthly(), dir=data_path)
 
 download_dataset(temperature)
+download_dataset(salinity)
 
 Nx = Integer(360)
 Ny = Integer(180)
@@ -68,14 +70,14 @@ underlying_grid = TripolarGrid(arch;
 
 ## Currently not working due to restoring refactoring
 
-# restoring_rate  = 2 / 365.25days
-# z_below_surface = z_faces[end-1]
-# @info z_below_surface, 0
-# mask = LinearlyTaperedPolarMask(southern=(-90, 0), northern=(0, 90), z=(z_below_surface, 0))
+restoring_rate  = 2 / 365.25days
+z_below_surface = z_faces[end-1]
 
-# FT = EN4Restoring(temperature, grid; mask, rate=restoring_rate)
-# FS = EN4Restoring(salinity,    grid; mask, rate=restoring_rate)
-# forcing = (T=FT, S=FS)
+#mask = LinearlyTaperedPolarMask(southern=(-90, 0), northern=(0, 90), z=(z_below_surface, 0))
+
+FT = Restoring(temperature, grid; rate=restoring_rate)
+FS = Restoring(salinity,    grid; rate=restoring_rate)
+forcing = (T=FT, S=FS)
 
 @info "Defining free surface"
 
