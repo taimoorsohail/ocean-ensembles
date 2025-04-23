@@ -22,7 +22,7 @@ dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
 
 data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
-dataset = EN4Monthly()
+dataset = EN4Monthly() # Other options include ECCO2Monthly(), ECCO4Monthly() or ECCO2Daily()
 
 temperature = Metadata(:temperature; dates, dataset = dataset, dir=data_path)
 salinity    = Metadata(:salinity;    dates, dataset = dataset, dir=data_path)
@@ -43,7 +43,7 @@ z_faces = (-4000, 0)
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = z_faces,
-                               halo = (7, 7, 3),
+                               halo = (5, 5, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
 
@@ -171,13 +171,14 @@ outputs = merge(tracers, velocities)
 
 # transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-output_intervals = 5days
+output_intervals = TimeInterval(5days)
+callback_interval = IterationInterval(1)
 
 output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
-
+#=
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
-                                                 schedule = TimeInterval(output_intervals),
+                                                 schedule = callback_interval,
                                                  filename = "global_surface_fields",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
@@ -188,10 +189,10 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
-                                                schedule = TimeInterval(output_intervals),
+                                                schedule = callback_interval,
                                                 filename = "fluxes",
                                                 overwrite_existing = true)
-#=
+
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = TimeInterval(output_intervals),
@@ -206,17 +207,55 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 =#
 wall_time = Ref(time_ns())
 
+
+function find_nans(sim)
+        nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
+        nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
+        nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
+        nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
+
+        nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
+        velocity_symbols = (:u, :v)
+        tracer_symbols = (:T, :S)
+
+        for var_symbol in velocity_symbols
+            nan_array = nan_arrays[var_symbol]
+            if any(nan_array)
+                sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.velocities[var_symbol]);
+                                                                            dir = output_path,
+                                                                            schedule = callback_interval,
+                                                                            filename = "NaN_check_" * string(var_symbol),
+                                                                            overwrite_existing = true)
+            throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
+            end
+        end
+    
+        for var_symbol in tracer_symbols
+            nan_array = nan_arrays[var_symbol]
+            if any(nan_array)
+                sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.tracers[var_symbol]);
+                                                                            dir = output_path,
+                                                                            schedule = callback_interval,
+                                                                            filename = "NaN_check_" * string(var_symbol),
+                                                                            overwrite_existing = true)
+            throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
+            end
+        end
+    end
+
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
     T, S, e = sim.model.ocean.model.tracers
-    Trange = (maximum(interior(T)), minimum(interior(T)))
-    Srange = (maximum(interior(S)), minimum(interior(S)))
-    erange = (maximum(interior(e)), minimum(interior(e)))
+    Trange = (maximum((T)), minimum((T)))
+    Srange = (maximum((S)), minimum((S)))
+    erange = (maximum((e)), minimum((e)))
 
-    umax = (maximum(abs, interior(u)),
-            maximum(abs, interior(v)),
-            maximum(abs, interior(w)))
+    umax = (maximum(abs, (u)),
+            maximum(abs, (v)),
+            maximum(abs, (w)))
 
+    find_nans(sim)
+    
     step_time = 1e-9 * (time_ns() - wall_time[])
 
     msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
@@ -233,11 +272,11 @@ function progress(sim)
      return nothing
 end
 
-add_callback!(simulation, progress, IterationInterval(1))
+add_callback!(simulation, progress, callback_interval)
 
 run!(simulation)
 
-simulation.Δt = 20minutes
-simulation.stop_time = 11000days
+# simulation.Δt = 20minutes
+# simulation.stop_time = 11000days
 
-run!(simulation)
+# run!(simulation)
