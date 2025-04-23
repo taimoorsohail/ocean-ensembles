@@ -7,46 +7,52 @@ using Printf
 using OceanEnsembles
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
+using ClimaOcean.EN4
+using ClimaOcean.EN4: download_dataset
 using ClimaOcean.ECCO
 using ClimaOcean.ECCO: download_dataset
 
+# using ClimaOcean.DataWrangling: Restoring
 
-# ### ECCO files
-@info "Downloading/checking ECCO data"
+# ### EN4 files
+@info "Downloading/checking data"
+## We download Gouretski and Reseghetti (2010) XBT corrections and Gouretski and Cheng (2020) MBT corrections
 
-dates = vcat(collect(DateTime(1993, 1, 1): Month(1): DateTime(1993, 4, 1)), collect(DateTime(1993, 5, 1) : Month(1) : DateTime(1994, 1, 1)))
+dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
 
-data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/data/")
+data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
 
-temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_path)
-salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
+dataset = EN4Monthly()
+
+temperature = Metadata(:temperature; dates, dataset = dataset, dir=data_path)
+salinity    = Metadata(:salinity;    dates, dataset = dataset, dir=data_path)
 
 download_dataset(temperature)
 download_dataset(salinity)
 
-Nx = Integer(360/5)
-Ny = Integer(180/5)
-Nz = Integer(100/4)
+Nx = Integer(360)
+Ny = Integer(180)
+Nz = Integer(100/2)
 
 arch = CPU()
 
 z_faces = (-4000, 0)
 
+### The below crashes immediately in a latlongrid, but not in a tripolar grid
 
+underlying_grid = TripolarGrid(arch;
+                               size = (Nx, Ny, Nz),
+                               z = z_faces,
+                               halo = (7, 7, 3),
+                               first_pole_longitude = 70,
+                               north_poles_latitude = 55)
 
-# underlying_grid = TripolarGrid(arch;
-#                                size = (Nx, Ny, Nz),
-#                                z = z_faces,
-#                                halo = (5, 5, 4),
-#                                first_pole_longitude = 70,
-#                                north_poles_latitude = 55)
-
-underlying_grid = LatitudeLongitudeGrid(arch;
-                                        size = (Nx, Ny, Nz),
-                                        z = z_faces,
-                                        halo = (5, 5, 4),
-                                        longitude = (0, 360),
-                                        latitude = (-75, 75))
+# underlying_grid = LatitudeLongitudeGrid(arch;
+#                                         size = (Nx, Ny, Nz),
+#                                         z = z_faces,
+#                                         halo = (7, 7, 3),
+#                                         longitude = (0, 360),
+#                                         latitude = (-89.9,89.9))
 
 @info "Defining bottom bathymetry"
 
@@ -62,24 +68,52 @@ underlying_grid = LatitudeLongitudeGrid(arch;
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
+@info "Defining restoring rate"
+
+## Currently not working due to restoring refactoring
+
+restoring_rate  = 2 / 365.25days
+z_below_surface = z_faces[end-1]
+
+#mask = LinearlyTaperedPolarMask(southern=(-90, 0), northern=(0, 90), z=(z_below_surface, 0))
+
+FT = Restoring(temperature, grid; rate=restoring_rate)
+FS = Restoring(salinity,    grid; rate=restoring_rate)
+forcing = (T=FT, S=FS)
+
 @info "Defining free surface"
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+free_surface = SplitExplicitFreeSurface(grid; substeps=50)
 
-momentum_advection = WENOVectorInvariant(vorticity_order=3)
+momentum_advection = WENOVectorInvariant(vorticity_order=5)
 tracer_advection   = Centered()
 
 @info "Defining ocean simulation"
 
-@time ocean = ocean_simulation(grid;
-                            momentum_advection,
-                            tracer_advection,
-                            free_surface)
+@time ocean = ocean_simulation(grid; free_surface,
+                                momentum_advection,
+                                tracer_advection)
 
-@info "Initialising with ECCO"
+@info "Initialising with EN4"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly()),
-                    S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly()))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
+                    S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
+
+## Plot the intitalised SST and SSS
+using GLMakie
+fig = Figure(size = (1500,2000)) # create a new figure
+ax1 = Axis(fig[1, 1])            # add an axis to the figure
+ax2 = Axis(fig[2, 1])        # add an axis to the figure
+axc1 = (fig[1, 2])            # add an axis to the figure
+axc2 = (fig[2, 2])        # add an axis to the figure
+
+Tslice = dropdims(interior(view(ocean.model.tracers.T, :, :, Nz)), dims=3)
+Sslice = dropdims(interior(view(ocean.model.tracers.S, :, :, Nz)), dims=3)
+hm1 = heatmap!(ax1, Tslice; colorrange = (-3, 30), colormap = Reverse(:deep))
+hm2 = heatmap!(ax2, Sslice; colorrange = (34,38), colormap = :bwr)
+Colorbar(axc1, hm1, label = "°C")
+Colorbar(axc2, hm2, label = "g/kg")
+fig
 
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
@@ -174,9 +208,11 @@ wall_time = Ref(time_ns())
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
-    T = sim.model.ocean.model.tracers.T
-    Tmax = maximum(interior(T))
-    Tmin = minimum(interior(T))
+    T, S, e = sim.model.ocean.model.tracers
+    Trange = (maximum(interior(T)), minimum(interior(T)))
+    Srange = (maximum(interior(S)), minimum(interior(S)))
+    erange = (maximum(interior(e)), minimum(interior(e)))
+
     umax = (maximum(abs, interior(u)),
             maximum(abs, interior(v)),
             maximum(abs, interior(w)))
@@ -185,17 +221,19 @@ function progress(sim)
 
     msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
-    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Tmax, Tmin)
-    msg4 = @sprintf("wall time: %s \n", prettytime(step_time))
+    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
+    msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
+    msg5 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
+    msg6 = @sprintf("wall time: %s \n", prettytime(step_time))
 
-    @info msg1 * msg2 * msg3 * msg4
+    @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6
 
      wall_time[] = time_ns()
 
      return nothing
 end
 
-add_callback!(simulation, progress, IterationInterval(10))
+add_callback!(simulation, progress, IterationInterval(1))
 
 run!(simulation)
 
