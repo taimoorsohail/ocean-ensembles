@@ -199,28 +199,32 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 wall_time = Ref(time_ns())
 
 function progress(sim)
-    u, v, w = sim.model.ocean.model.velocities
-    T = sim.model.ocean.model.tracers.T
-    Tmax = maximum(interior(T))
-    Tmin = minimum(interior(T))
-    umax = (maximum(abs, interior(u)),
-            maximum(abs, interior(v)),
-            maximum(abs, interior(w)))
+        u, v, w = sim.model.ocean.model.velocities
+        T, S, e = sim.model.ocean.model.tracers
+        Trange = (maximum(interior(T)), minimum(interior(T)))
+        Srange = (maximum(interior(S)), minimum(interior(S)))
+        erange = (maximum(interior(e)), minimum(interior(e)))
 
-    step_time = 1e-9 * (time_ns() - wall_time[])
+        umax = (maximum(abs, interior(u)),
+                maximum(abs, interior(v)),
+                maximum(abs, interior(w)))
 
-    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
-    msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
-    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Tmax, Tmin)
-    msg4 = @sprintf("wall time: %s \n", prettytime(step_time))
+        step_time = 1e-9 * (time_ns() - wall_time[])
 
-    @info msg1 * msg2 * msg3 * msg4
+        msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
+        msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
+        msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
+        msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
+        msg5 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
+        msg6 = @sprintf("wall time: %s \n", prettytime(step_time))
 
-     wall_time[] = time_ns()
+        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6
 
-     return nothing
+        wall_time[] = time_ns()
+
+        return nothing
 end
-
+    
 add_callback!(simulation, progress, IterationInterval(10))
 
 run!(simulation)
