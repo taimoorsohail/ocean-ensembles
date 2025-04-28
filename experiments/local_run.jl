@@ -73,7 +73,6 @@ underlying_grid = TripolarGrid(arch;
 ## Currently not working due to restoring refactoring
 
 restoring_rate  = 2 / 365.25days
-z_below_surface = z_faces[end-1]
 
 #mask = LinearlyTaperedPolarMask(southern=(-90, 0), northern=(0, 90), z=(z_below_surface, 0))
 
@@ -93,36 +92,37 @@ tracer_advection   = Centered()
 @time ocean = ocean_simulation(grid; free_surface,
                                 momentum_advection,
                                 tracer_advection)
-
+#=
 @info "Initialising with EN4"
 
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
                     S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
 
-## Plot the intitalised SST and SSS
-using GLMakie
-fig = Figure(size = (1500,2000)) # create a new figure
-ax1 = Axis(fig[1, 1])            # add an axis to the figure
-ax2 = Axis(fig[2, 1])        # add an axis to the figure
-axc1 = (fig[1, 2])            # add an axis to the figure
-axc2 = (fig[2, 2])        # add an axis to the figure
+# ## Plot the intitalised SST and SSS
+# using GLMakie
+# fig = Figure(size = (1500,2000)) # create a new figure
+# ax1 = Axis(fig[1, 1])            # add an axis to the figure
+# ax2 = Axis(fig[2, 1])        # add an axis to the figure
+# axc1 = (fig[1, 2])            # add an axis to the figure
+# axc2 = (fig[2, 2])        # add an axis to the figure
 
-Tslice = dropdims(interior(view(ocean.model.tracers.T, :, :, Nz)), dims=3)
-Sslice = dropdims(interior(view(ocean.model.tracers.S, :, :, Nz)), dims=3)
-hm1 = heatmap!(ax1, Tslice; colorrange = (-3, 30), colormap = Reverse(:deep))
-hm2 = heatmap!(ax2, Sslice; colorrange = (34,38), colormap = :bwr)
-Colorbar(axc1, hm1, label = "°C")
-Colorbar(axc2, hm2, label = "g/kg")
-fig
+# Tslice = dropdims(interior(view(ocean.model.tracers.T, :, :, Nz)), dims=3)
+# Sslice = dropdims(interior(view(ocean.model.tracers.S, :, :, Nz)), dims=3)
+# hm1 = heatmap!(ax1, Tslice; colorrange = (-3, 30), colormap = Reverse(:deep))
+# hm2 = heatmap!(ax2, Sslice; colorrange = (34,38), colormap = :bwr)
+# Colorbar(axc1, hm1, label = "°C")
+# Colorbar(axc2, hm2, label = "g/kg")
+# fig
 
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=2minutes, stop_time=10days)
-
+=#
 volmask = CenterField(grid)
 set!(volmask, 1)
+wmask = ZFaceField(grid)
 
 @info "Defining condition masks"
 
@@ -135,21 +135,33 @@ velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
-#=
 @info "Defining output tuples"
 @info "Tracers"
 
 #### TRACERS ####
 
 tracer_volmask = [Ax, Δz, volmask]
-masks = [glob_mask, Atlantic_mask, IPac_mask]
+masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
+         repeat(IPac_mask, 1, 1, size(volmask)[3])]
+masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
+         repeat(IPac_mask, 1, 1, size(wmask)[3])]
+
+masks = [
+            [masks_centers[1], masks_wfaces[1]],  # Global
+            [masks_centers[2], masks_wfaces[2]],  # Atlantic
+            [masks_centers[3], masks_wfaces[3]]   # IPac
+        ]
+
 suffixes = ["_global_", "_atl_", "_ipac_"]
 tracer_names = Symbol[]
 tracer_outputs = Reduction[]
+
 for j in 1:3
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal");
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j], suffix = suffixes[j]*"depth");
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j], suffix = suffixes[j]*"tot");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
 end
 
 @info "Merging tracer tuples"
@@ -176,7 +188,7 @@ output_intervals = TimeInterval(5days)
 callback_interval = IterationInterval(1)
 
 output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
-#=
+
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = callback_interval,
@@ -205,7 +217,7 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           schedule = TimeInterval(output_intervals),
                                                           filename = "mass_transport",
                                                           overwrite_existing = true)
-=#
+
 wall_time = Ref(time_ns())
 
 
@@ -281,4 +293,3 @@ run!(simulation)
 # simulation.stop_time = 11000days
 
 # run!(simulation)
-=#
