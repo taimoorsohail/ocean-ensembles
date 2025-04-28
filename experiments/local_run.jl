@@ -70,10 +70,7 @@ underlying_grid = TripolarGrid(arch;
 
 @info "Defining restoring rate"
 
-## Currently not working due to restoring refactoring
-
 restoring_rate  = 2 / 365.25days
-z_below_surface = z_faces[end-1]
 
 #mask = LinearlyTaperedPolarMask(southern=(-90, 0), northern=(0, 90), z=(z_below_surface, 0))
 
