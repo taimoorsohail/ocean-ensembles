@@ -8,19 +8,15 @@ module Diagnostics
     function ocean_tracer_content!(names, ∫outputs; outputs, operator, dims, condition, suffix::AbstractString)
         for key in keys(outputs)
             f = outputs[key]
-            _, _, Nz = size(f)
-            condition_3d = repeat(condition, 1, 1, Nz)
-            ∫f = Integral(f * operator; dims, condition = condition_3d)
+            ∫f = Integral(f * operator; dims, condition)
             push!(∫outputs, ∫f)
             push!(names, Symbol(key, suffix))
         end
 
         onefield = CenterField(first(outputs).grid)
         set!(onefield, 1)
-        _, _, Nz = size(onefield)
-        condition_3d = repeat(condition, 1, 1, Nz)
 
-        ∫dV = Integral(onefield * operator; dims, condition = condition_3d)
+        ∫dV = Integral(onefield * operator; dims, condition)
         push!(∫outputs, ∫dV)
         push!(names, Symbol(:dV, suffix))
 
@@ -30,12 +26,15 @@ module Diagnostics
     function volume_transport!(names, ∫outputs; outputs, operators, dims, condition, suffix::AbstractString)
         if length(outputs) == length(operators)
             for (i, key) in enumerate(keys(outputs))
-                f = outputs[key]
+                if key == :w
+                    cond3d = condition[2]
+                else
+                    cond3d = condition[1]
+                end
 
-                _, _, Nz = size(f)
-                condition_3d = repeat(condition, 1, 1, Nz)    
+                f = outputs[key]
                 
-                ∫f = sum(f * operators[i]; dims, condition = condition_3d)
+                ∫f = sum(f * operators[i]; dims, condition = cond3d)
                 push!(∫outputs, ∫f)
                 push!(names, Symbol(key, suffix))
 
@@ -43,10 +42,7 @@ module Diagnostics
                 onefield = Field{LX, LY, LZ}(f.grid)
                 set!(onefield, 1)
                 
-                _, _, Nz = size(onefield)
-                condition_3d = repeat(condition, 1, 1, Nz)    
-
-                ∫dV = sum(onefield * operators[i]; dims, condition = condition_3d)
+                ∫dV = sum(onefield * operators[i]; dims, condition = cond3d)
                 push!(∫outputs, ∫dV)
                 push!(names, Symbol(:dV, "_$(key)", suffix))
             end
