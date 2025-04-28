@@ -182,7 +182,7 @@ end
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-output_intervals = TimeInterval(5days)
+output_intervals =  AveragedTimeInterval(5days)
 callback_interval = IterationInterval(1)
 
 output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
