@@ -4,8 +4,8 @@ using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
-using ClimaOcean.ECCO
-using ClimaOcean.ECCO: download_dataset
+using ClimaOcean.EN4
+using ClimaOcean.EN4: download_dataset
 using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
@@ -23,20 +23,22 @@ elseif ARGS[2] == "GPU"
 elseif ARGS[2] == "CPU"
     arch = CPU()
 else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
+    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF1deg"))
 end
 
-@info "Using architecture: ", arch
+@info "Using architecture: " * string(arch)
 
 # ### Download necessary files to run the code
 
 # ### ECCO files
-@info "Downloading/checking ECCO data"
+@info "Downloading/checking input data"
 
-dates = vcat(collect(DateTime(1993, 1, 1): Month(1): DateTime(1993, 4, 1)), collect(DateTime(1993, 5, 1) : Month(1) : DateTime(1994, 1, 1)))
+dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
 
-temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_path)
-salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
+dataset = EN4Monthly() # Other options include ECCO2Monthly(), ECCO4Monthly() or ECCO2Daily()
+
+temperature = Metadata(:temperature; dates, dataset = dataset, dir=data_path)
+salinity    = Metadata(:salinity;    dates, dataset = dataset, dir=data_path)
 
 download_dataset(temperature)
 download_dataset(salinity)
@@ -82,13 +84,10 @@ view(bottom_height, 102:103, 124, 1) .= -400
 
 @info "Defining restoring rate"
 
-restoring_rate  = 1 / 10days
-z_below_surface = r_faces[end-1]
+restoring_rate  = 2 / 365.25days
 
-mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
-
-FT = ECCORestoring(temperature, grid; mask, rate=restoring_rate)
-FS = ECCORestoring(salinity,    grid; mask, rate=restoring_rate)
+FT = DatasetRestoring(temperature, grid; rate=restoring_rate)
+FS = DatasetRestoring(salinity,    grid; rate=restoring_rate)
 forcing = (T=FT, S=FS)
 
 # ### Closures
@@ -105,9 +104,9 @@ eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
                                                  skew_flux_formulation=DiffusiveFormulation())
 vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
 
-horizontal_viscosity = HorizontalScalarDiffusivity(ν=2000)
+# horizontal_viscosity = HorizontalScalarDiffusivity(ν=2000)
 
-closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
+closure = (eddy_closure, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -118,7 +117,7 @@ closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=50)
 
-momentum_advection = WENOVectorInvariant(vorticity_order=3)
+momentum_advection = WENOVectorInvariant(vorticity_order=5)
 tracer_advection   = Centered()
 # momentum_advection = VectorInvariant()
 # tracer_advection   = WENO(order=5)
@@ -139,8 +138,8 @@ tracer_advection   = Centered()
 
 @info "Initialising with ECCO"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly(), dir=data_path),
-                  S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly(), dir=data_path))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
+                    S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
 
 # ### Atmospheric forcing
 
@@ -172,32 +171,74 @@ simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 
 wall_time = Ref(time_ns())
 
+output_intervals = TimeInterval(5days)
+callback_interval = IterationInterval(1)
+
+function find_nans(sim)
+    nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
+    nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
+    nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
+    nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
+
+    nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
+    velocity_symbols = (:u, :v)
+    tracer_symbols = (:T, :S)
+
+    for var_symbol in velocity_symbols
+        nan_array = nan_arrays[var_symbol]
+        if any(nan_array)
+            sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.velocities[var_symbol]);
+                                                                        dir = output_path,
+                                                                        schedule = callback_interval,
+                                                                        filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
+                                                                        overwrite_existing = true)
+        throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
+        end
+    end
+
+    for var_symbol in tracer_symbols
+        nan_array = nan_arrays[var_symbol]
+        if any(nan_array)
+            sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.tracers[var_symbol]);
+                                                                        dir = output_path,
+                                                                        schedule = callback_interval,
+                                                                        filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
+                                                                        overwrite_existing = true)
+        throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
+        end
+    end
+end
+
 function progress(sim)
-    ocean = sim.model.ocean
-    u, v, w = ocean.model.velocities
-    T = ocean.model.tracers.T
-    Tmax = maximum(interior(T))
-    Tmin = minimum(interior(T))
-    umax = (maximum(abs, interior(u)),
-            maximum(abs, interior(v)),
-            maximum(abs, interior(w)))
+    u, v, w = sim.model.ocean.model.velocities
+    T, S, e = sim.model.ocean.model.tracers
+    Trange = (maximum((T)), minimum((T)))
+    Srange = (maximum((S)), minimum((S)))
+    erange = (maximum((e)), minimum((e)))
+
+    umax = (maximum(abs, (u)),
+            maximum(abs, (v)),
+            maximum(abs, (w)))
+
+    find_nans(sim)
 
     step_time = 1e-9 * (time_ns() - wall_time[])
 
     msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
-    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Tmax, Tmin)
-    msg4 = @sprintf("wall time: %s \n", prettytime(step_time))
+    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
+    msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
+    msg5 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
+    msg6 = @sprintf("wall time: %s \n", prettytime(step_time))
 
-    @info msg1 * msg2 * msg3 * msg4
+    @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6
 
-     wall_time[] = time_ns()
+    wall_time[] = time_ns()
 
-     return nothing
+    return nothing
 end
 
-# And add it as a callback to the simulation.
-add_callback!(simulation, progress, IterationInterval(10))
+add_callback!(simulation, progress, callback_interval)
 
 volmask = CenterField(grid)
 set!(volmask, 1)
@@ -218,7 +259,7 @@ velocities = ocean.model.velocities
 outputs = merge(tracers, velocities)
 
 #### TRACERS ####
-#=
+
 tracer_volmask = [Ax, Δz, volmask]
 masks = [glob_mask, Atlantic_mask, IPac_mask]
 suffixes = ["_global_", "_atl_", "_ipac_"]
@@ -251,14 +292,12 @@ end
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
 constants = simulation.model.interfaces.ocean_properties
-=#
-@info "Defining output writers"
 
-output_intervals = 5days
+@info "Defining output writers"
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
-                                                 schedule = TimeInterval(output_intervals),
+                                                 schedule = output_intervals,
                                                  filename = "global_surface_fields_$(ARGS[4])",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
@@ -269,22 +308,22 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
-                                                schedule = TimeInterval(output_intervals),
+                                                schedule = output_intervals,
                                                 filename = "fluxes_$(ARGS[4])",
                                                 overwrite_existing = true)
-#=
+
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
-                                                          schedule = TimeInterval(output_intervals),
+                                                          schedule = output_intervals,
                                                           filename = "ocean_tracer_content_$(ARGS[4])",
                                                           overwrite_existing = true)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
-                                                          schedule = TimeInterval(output_intervals),
+                                                          schedule = output_intervals,
                                                           filename = "mass_transport_$(ARGS[4])",
                                                           overwrite_existing = true)
-=#
+
 @info "Running simulation"
 
 run!(simulation)
