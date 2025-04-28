@@ -197,7 +197,7 @@ version = "0.16.1+0"
 deps = ["Adapt", "CFTime", "CUDA", "ClimaSeaIce", "CubicSplines", "DataDeps", "Dates", "Downloads", "ImageMorphology", "JLD2", "KernelAbstractions", "MPI", "NCDatasets", "Oceananigans", "OffsetArrays", "PrecompileTools", "Printf", "Scratch", "SeawaterPolynomials", "StaticArrays", "Statistics", "SurfaceFluxes", "Thermodynamics", "ZipFile"]
 path = "../../ClimaOcean.jl"
 uuid = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
-version = "0.6.1"
+version = "0.6.3"
 
     [deps.ClimaOcean.extensions]
     ClimaOceanReactantExt = "Reactant"
@@ -917,8 +917,8 @@ version = "1.2.0"
 
 [[deps.OceanEnsembles]]
 deps = ["CFTime", "CUDA", "ClimaOcean", "Dates", "Oceananigans", "PolygonOps", "StaticArrays"]
-git-tree-sha1 = "1de8b077183b9b682b196274cefd9de9e2ba4722"
-repo-rev = "1f7d5c1"
+git-tree-sha1 = "8c456f21b2a08dedd05bc802ab3a5b9649b0ed3a"
+repo-rev = "f2670774afa26ff7fea84ead16719654f2e618e2"
 repo-url = ".."
 uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 version = "0.1.0"
