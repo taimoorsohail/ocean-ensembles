@@ -33,12 +33,7 @@ elseif ARGS[2] == "CPU"
     arch = CPU()
 else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF1deg"))
-end
-
-if string(arch) == "GPU()"
-    @info "this is" * string(arch)
-end
-    
+end    
 
 @info "Using architecture: " * string(arch)
 
@@ -189,7 +184,7 @@ output_intervals = TimeInterval(5days)
 callback_interval = IterationInterval(1)
 
 function find_nans(sim)
-    if string(arch) == "GPU()"
+    if string(arch) == "GPU{CUDABackend}(CUDABackend(false, true))"
         nans_in_u = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.u))
         nans_in_v = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.v))
         nans_in_T = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.T))
@@ -262,6 +257,7 @@ add_callback!(simulation, progress, callback_interval)
 
 volmask = CenterField(grid)
 set!(volmask, 1)
+wmask = ZFaceField(grid)
 
 @info "Defining condition masks"
 
@@ -281,14 +277,27 @@ outputs = merge(tracers, velocities)
 #### TRACERS ####
 
 tracer_volmask = [Ax, Δz, volmask]
-masks = [glob_mask, Atlantic_mask, IPac_mask]
+masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
+         repeat(IPac_mask, 1, 1, size(volmask)[3])]
+masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
+         repeat(IPac_mask, 1, 1, size(wmask)[3])]
+
+masks = [
+            [masks_centers[1], masks_wfaces[1]],  # Global
+            [masks_centers[2], masks_wfaces[2]],  # Atlantic
+            [masks_centers[3], masks_wfaces[3]]   # IPac
+        ]
+
 suffixes = ["_global_", "_atl_", "_ipac_"]
 tracer_names = Symbol[]
 tracer_outputs = Reduction[]
+
 for j in 1:3
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal");
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j], suffix = suffixes[j]*"depth");
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j], suffix = suffixes[j]*"tot");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
 end
 
 @info "Merging tracer tuples"
@@ -302,9 +311,9 @@ transport_volmask_operators = [Ax, Ay, Az]
 transport_names = Symbol[]
 transport_outputs = ReducedField[]
 for j in 1:3
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
 end
 
 @info "Merging velocity tuples"
