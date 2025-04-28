@@ -180,7 +180,7 @@ simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 
 wall_time = Ref(time_ns())
 
-output_intervals = TimeInterval(5days)
+output_intervals = AveragedTimeInterval(5days)
 callback_interval = IterationInterval(1)
 
 function find_nans(sim)
