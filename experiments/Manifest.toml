@@ -917,8 +917,8 @@ version = "1.2.0"
 
 [[deps.OceanEnsembles]]
 deps = ["CFTime", "CUDA", "ClimaOcean", "Dates", "Oceananigans", "PolygonOps", "StaticArrays"]
-git-tree-sha1 = "8c456f21b2a08dedd05bc802ab3a5b9649b0ed3a"
-repo-rev = "f2670774afa26ff7fea84ead16719654f2e618e2"
+git-tree-sha1 = "049aa00c3e3538be4c091ce02ce6063733384600"
+repo-rev = "e6f38139e9d63dd0cf60b21225081bd4523dc26c"
 repo-url = ".."
 uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 version = "0.1.0"
