@@ -18,7 +18,15 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 ## Argument is provided by the submission script!
 
 if isempty(ARGS)
-    arch = CPU()
+    println("No arguments provided. Please enter architecture (CPU/GPU):")
+    arch_input = readline()
+    if arch_input == "GPU"
+        arch = GPU()
+    elseif arch_input == "CPU"
+        arch = CPU()
+    else
+        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
+    end
 elseif ARGS[2] == "GPU"
     arch = GPU()
 elseif ARGS[2] == "CPU"
@@ -26,6 +34,11 @@ elseif ARGS[2] == "CPU"
 else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF1deg"))
 end
+
+if string(arch) == "GPU()"
+    @info "this is" * string(arch)
+end
+    
 
 @info "Using architecture: " * string(arch)
 
