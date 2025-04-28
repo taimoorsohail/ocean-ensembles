@@ -125,7 +125,7 @@ tracer_advection   = Centered()
 
 @info "Defining ocean simulation"
 
-@time ocean = ocean_simulation(grid)#=;
+@time ocean = ocean_simulation(grid;
                          momentum_advection,
                          tracer_advection,
                          free_surface,
@@ -239,7 +239,7 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-=#
+
 volmask = CenterField(grid)
 set!(volmask, 1)
 
@@ -248,11 +248,6 @@ set!(volmask, 1)
 Atlantic_mask = basin_mask(grid, "atlantic", volmask);
 IPac_mask = basin_mask(grid, "indo-pacific", volmask);
 glob_mask = Atlantic_mask .|| IPac_mask;
-
-@info size(volmask)
-@info size(glob_mask)
-@info size(Atlantic_mask)
-@info size(IPac_mask)
 
 #### SURFACE
 
