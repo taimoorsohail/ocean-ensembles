@@ -60,7 +60,7 @@ z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = z_faces,
-                               halo = (5, 5, 4),
+                               halo = (7, 7, 3),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
 
@@ -80,7 +80,7 @@ view(bottom_height, 102:103, 124, 1) .= -400
 
 # ### Restoring
 #
-# We include temperature and salinity surface restoring to ECCO data.
+# We include temperature and salinity restoring to a predetermined dataset.
 
 @info "Defining restoring rate"
 
@@ -125,7 +125,7 @@ tracer_advection   = Centered()
 
 @info "Defining ocean simulation"
 
-@time ocean = ocean_simulation(grid;
+@time ocean = ocean_simulation(grid)#=;
                          momentum_advection,
                          tracer_advection,
                          free_surface,
@@ -239,15 +239,20 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-
+=#
 volmask = CenterField(grid)
 set!(volmask, 1)
 
 @info "Defining condition masks"
 
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", volmask), 1, 1, Nz);
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", volmask), 1, 1, Nz);
+Atlantic_mask = basin_mask(grid, "atlantic", volmask);
+IPac_mask = basin_mask(grid, "indo-pacific", volmask);
 glob_mask = Atlantic_mask .|| IPac_mask;
+
+@info size(volmask)
+@info size(glob_mask)
+@info size(Atlantic_mask)
+@info size(IPac_mask)
 
 #### SURFACE
 
@@ -291,7 +296,7 @@ end
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-constants = simulation.model.interfaces.ocean_properties
+# constants = simulation.model.interfaces.ocean_properties
 
 @info "Defining output writers"
 
