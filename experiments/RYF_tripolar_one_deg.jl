@@ -9,6 +9,7 @@ using ClimaOcean.EN4: download_dataset
 using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
+using CUDA
 
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
@@ -60,7 +61,7 @@ z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = z_faces,
-                               halo = (7, 7, 3),
+                               halo = (5, 5, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
 
@@ -175,11 +176,17 @@ output_intervals = TimeInterval(5days)
 callback_interval = IterationInterval(1)
 
 function find_nans(sim)
-    nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
-    nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
-    nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
-    nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
-
+    if string(arch) == "GPU()"
+        nans_in_u = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.u))
+        nans_in_v = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.v))
+        nans_in_T = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.T))
+        nans_in_S = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.S))
+    else
+        nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
+        nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
+        nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
+        nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
+    end
     nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
     velocity_symbols = (:u, :v)
     tracer_symbols = (:T, :S)
