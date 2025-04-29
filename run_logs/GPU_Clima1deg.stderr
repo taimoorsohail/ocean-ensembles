@@ -1,0 +1,12 @@
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/oymHm/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/oymHm/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/oymHm/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/oymHm/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/oymHm/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/oymHm/src/initialization.jl:200

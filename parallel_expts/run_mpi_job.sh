@@ -20,7 +20,7 @@ export JULIA_NUM_THREADS=48
 
 # Load critical modules
 module --force purge
-module load ncarenv nvhpc cuda cray-mpich
+module load cuda openmpi #cray-mpich ncarenv nvhpc
 
 # Utter mystical incantations to perform various miracles
 export MPICH_GPU_SUPPORT_ENABLED=1
@@ -48,11 +48,11 @@ chmod +x launch.sh
 # 1. Instantiate (we only need to do this once, but this also may be the first time you are running this code)
 julia --project -e 'using Pkg; Pkg.instantiate()'
 # 2. Add some packages to the environment that we need to use
-julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans")'
+# julia --project -e 'using Pkg; Pkg.add("MPI"); Pkg.add("MPIPreferences"); Pkg.add("CUDA"); Pkg.add("Oceananigans")'
 # 3. Tell MPI that we would like to use the system binary we loaded with module load cray-mpich
-julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary(vendor="cray")'
+julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 # 4. Build MPI and CUDA in advance for yucks
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
 # Finally, let's run this thing
-mpiexec -n 4 -ppn 4 ./launch.sh julia --project test_interpolate.jl
+mpiexec -n 4 --npernode 4 ./launch.sh julia --project test_interpolate.jl
