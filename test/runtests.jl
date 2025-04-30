@@ -22,11 +22,11 @@ using Test
     Atlantic_mask_ccc = basin_mask(grid, "atlantic", c)
 
     @test Atlantic_mask_ccc isa Array{Bool}
-    @test size(c) == size(Atlantic_mask_ccc)
+    @test size(view(c, :, :, 1)) == size(Atlantic_mask_ccc)
 
     w = ZFaceField(grid)
     Atlantic_mask_ccf = basin_mask(grid, "atlantic", w)
 
     @test Atlantic_mask_ccf isa Array{Bool}
-    @test size(w) == size(Atlantic_mask_ccf)
+    @test size(view(w, :, :, 1)) == size(Atlantic_mask_ccf)
 end

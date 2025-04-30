@@ -9,6 +9,7 @@ using ClimaOcean.EN4: download_dataset
 using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
+using CUDA
 
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
@@ -17,14 +18,22 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 ## Argument is provided by the submission script!
 
 if isempty(ARGS)
-    arch = CPU()
+    println("No arguments provided. Please enter architecture (CPU/GPU):")
+    arch_input = readline()
+    if arch_input == "GPU"
+        arch = GPU()
+    elseif arch_input == "CPU"
+        arch = CPU()
+    else
+        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
+    end
 elseif ARGS[2] == "GPU"
     arch = GPU()
 elseif ARGS[2] == "CPU"
     arch = CPU()
 else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF1deg"))
-end
+end    
 
 @info "Using architecture: " * string(arch)
 
@@ -80,7 +89,7 @@ view(bottom_height, 102:103, 124, 1) .= -400
 
 # ### Restoring
 #
-# We include temperature and salinity surface restoring to ECCO data.
+# We include temperature and salinity restoring to a predetermined dataset.
 
 @info "Defining restoring rate"
 
@@ -171,43 +180,49 @@ simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 
 wall_time = Ref(time_ns())
 
-output_intervals = TimeInterval(5days)
+output_intervals = AveragedTimeInterval(5days)
 callback_interval = IterationInterval(1)
 
-function find_nans(sim)
-    nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
-    nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
-    nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
-    nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
+# function find_nans(sim)
+#     if string(arch) == "GPU{CUDABackend}(CUDABackend(false, true))"
+#         nans_in_u = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.u))
+#         nans_in_v = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.v))
+#         nans_in_T = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.T))
+#         nans_in_S = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.S))
+#     else
+#         nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
+#         nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
+#         nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
+#         nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
+#     end
+#     nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
+#     velocity_symbols = (:u, :v)
+#     tracer_symbols = (:T, :S)
 
-    nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
-    velocity_symbols = (:u, :v)
-    tracer_symbols = (:T, :S)
+#     for var_symbol in velocity_symbols
+#         nan_array = nan_arrays[var_symbol]
+#         if any(nan_array)
+#             sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.velocities[var_symbol]);
+#                                                                         dir = output_path,
+#                                                                         schedule = callback_interval,
+#                                                                         filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
+#                                                                         overwrite_existing = true)
+#         throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
+#         end
+#     end
 
-    for var_symbol in velocity_symbols
-        nan_array = nan_arrays[var_symbol]
-        if any(nan_array)
-            sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.velocities[var_symbol]);
-                                                                        dir = output_path,
-                                                                        schedule = callback_interval,
-                                                                        filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
-                                                                        overwrite_existing = true)
-        throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
-        end
-    end
-
-    for var_symbol in tracer_symbols
-        nan_array = nan_arrays[var_symbol]
-        if any(nan_array)
-            sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.tracers[var_symbol]);
-                                                                        dir = output_path,
-                                                                        schedule = callback_interval,
-                                                                        filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
-                                                                        overwrite_existing = true)
-        throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
-        end
-    end
-end
+#     for var_symbol in tracer_symbols
+#         nan_array = nan_arrays[var_symbol]
+#         if any(nan_array)
+#             sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.tracers[var_symbol]);
+#                                                                         dir = output_path,
+#                                                                         schedule = callback_interval,
+#                                                                         filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
+#                                                                         overwrite_existing = true)
+#         throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
+#         end
+#     end
+# end
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
@@ -220,7 +235,7 @@ function progress(sim)
             maximum(abs, (v)),
             maximum(abs, (w)))
 
-    find_nans(sim)
+    # find_nans(sim)
 
     step_time = 1e-9 * (time_ns() - wall_time[])
 
@@ -242,11 +257,12 @@ add_callback!(simulation, progress, callback_interval)
 
 volmask = CenterField(grid)
 set!(volmask, 1)
+wmask = ZFaceField(grid)
 
 @info "Defining condition masks"
 
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", volmask), 1, 1, Nz);
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", volmask), 1, 1, Nz);
+Atlantic_mask = basin_mask(grid, "atlantic", volmask);
+IPac_mask = basin_mask(grid, "indo-pacific", volmask);
 glob_mask = Atlantic_mask .|| IPac_mask;
 
 #### SURFACE
@@ -261,14 +277,27 @@ outputs = merge(tracers, velocities)
 #### TRACERS ####
 
 tracer_volmask = [Ax, Δz, volmask]
-masks = [glob_mask, Atlantic_mask, IPac_mask]
+masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
+         repeat(IPac_mask, 1, 1, size(volmask)[3])]
+masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
+         repeat(IPac_mask, 1, 1, size(wmask)[3])]
+
+masks = [
+            [masks_centers[1], masks_wfaces[1]],  # Global
+            [masks_centers[2], masks_wfaces[2]],  # Atlantic
+            [masks_centers[3], masks_wfaces[3]]   # IPac
+        ]
+
 suffixes = ["_global_", "_atl_", "_ipac_"]
 tracer_names = Symbol[]
 tracer_outputs = Reduction[]
+
 for j in 1:3
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal");
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j], suffix = suffixes[j]*"depth");
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j], suffix = suffixes[j]*"tot");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
 end
 
 @info "Merging tracer tuples"
@@ -282,16 +311,16 @@ transport_volmask_operators = [Ax, Ay, Az]
 transport_names = Symbol[]
 transport_outputs = ReducedField[]
 for j in 1:3
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
 end
 
 @info "Merging velocity tuples"
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-constants = simulation.model.interfaces.ocean_properties
+# constants = simulation.model.interfaces.ocean_properties
 
 @info "Defining output writers"
 
