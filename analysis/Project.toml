@@ -1,0 +1,7 @@
+name = "OceanEnsembles-analysis"
+
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
