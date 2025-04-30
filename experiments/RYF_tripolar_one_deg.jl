@@ -42,7 +42,9 @@ end
 # ### ECCO files
 @info "Downloading/checking input data"
 
-dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
+
+@info "We download the 1990-1991 data for an RYF implementation"
 
 dataset = EN4Monthly() # Other options include ECCO2Monthly(), ECCO4Monthly() or ECCO2Daily()
 
@@ -93,7 +95,7 @@ view(bottom_height, 102:103, 124, 1) .= -400
 
 @info "Defining restoring rate"
 
-restoring_rate  = 2 / 365.25days
+restoring_rate  = 1 / 5days
 
 FT = DatasetRestoring(temperature, grid; rate=restoring_rate)
 FS = DatasetRestoring(salinity,    grid; rate=restoring_rate)
@@ -181,7 +183,7 @@ simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 wall_time = Ref(time_ns())
 
 output_intervals = AveragedTimeInterval(5days)
-callback_interval = IterationInterval(1)
+callback_interval = IterationInterval(20)
 
 # function find_nans(sim)
 #     if string(arch) == "GPU{CUDABackend}(CUDABackend(false, true))"
