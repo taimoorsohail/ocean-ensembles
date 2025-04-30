@@ -90,7 +90,7 @@ tracer_advection   = Centered()
 @time ocean = ocean_simulation(grid; free_surface,
                                 momentum_advection,
                                 tracer_advection)
-#=
+
 @info "Initialising with EN4"
 
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
@@ -117,7 +117,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=2minutes, stop_time=10days)
-=#
+#=
 volmask = CenterField(grid)
 set!(volmask, 1)
 wmask = ZFaceField(grid)
@@ -127,12 +127,14 @@ wmask = ZFaceField(grid)
 Atlantic_mask = basin_mask(grid, "atlantic", volmask);
 IPac_mask = basin_mask(grid, "indo-pacific", volmask);
 glob_mask = Atlantic_mask .|| IPac_mask;
+=#
 
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
+#=
 @info "Defining output tuples"
 @info "Tracers"
 
@@ -181,11 +183,11 @@ end
 @info "Merging velocity tuples"
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
-
-output_intervals = TimeInterval(5days)
+=#
+output_intervals =  AveragedTimeInterval(5days)
 callback_interval = IterationInterval(1)
 
-output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
+output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/outputs/")
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
@@ -203,7 +205,7 @@ simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 schedule = callback_interval,
                                                 filename = "fluxes",
                                                 overwrite_existing = true)
-
+#=
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = TimeInterval(output_intervals),
@@ -215,7 +217,7 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           schedule = TimeInterval(output_intervals),
                                                           filename = "mass_transport",
                                                           overwrite_existing = true)
-
+=#
 wall_time = Ref(time_ns())
 
 
@@ -265,7 +267,7 @@ function progress(sim)
             maximum(abs, (v)),
             maximum(abs, (w)))
 
-    find_nans(sim)
+#    find_nans(sim)
     
     step_time = 1e-9 * (time_ns() - wall_time[])
 
