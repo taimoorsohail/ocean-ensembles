@@ -76,7 +76,7 @@ hm = heatmap!(axs, view(interior(fluxes["sensible_heat"][time_slice]), :, :, 1),
 Colorbar(fig[1, 4], hm, label = "Sensible Heat (W/m2)")
 Label(fig[0, :], title)
 
-save("/g/data/v46/txs156/ocean-ensembles/figures/surface_fluxes.png", fig, px_per_unit=3)
+save(figdir * "surface_fluxes.png", fig, px_per_unit=3)
 
 # Define the order you want for tracers and basins
 tracers = ["T", "S", "dV"]
