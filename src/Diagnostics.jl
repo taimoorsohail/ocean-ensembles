@@ -26,16 +26,23 @@ module Diagnostics
     function volume_transport!(names, ∫outputs; outputs, operators, dims, condition, suffix::AbstractString)
         if length(outputs) == length(operators)
             for (i, key) in enumerate(keys(outputs))
+                if key == :w
+                    cond3d = condition[2]
+                else
+                    cond3d = condition[1]
+                end
+
                 f = outputs[key]
-                ∫f = sum(f * operators[i]; dims, condition)
+                
+                ∫f = sum(f * operators[i]; dims, condition = cond3d)
                 push!(∫outputs, ∫f)
                 push!(names, Symbol(key, suffix))
 
                 LX, LY, LZ = location(f)
                 onefield = Field{LX, LY, LZ}(f.grid)
                 set!(onefield, 1)
-
-                ∫dV = sum(onefield * operators[i]; dims, condition)
+                
+                ∫dV = sum(onefield * operators[i]; dims, condition = cond3d)
                 push!(∫outputs, ∫dV)
                 push!(names, Symbol(:dV, "_$(key)", suffix))
             end

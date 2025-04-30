@@ -2,7 +2,7 @@
 
 julia_version = "1.10.8"
 manifest_format = "2.0"
-project_hash = "f43f3723228a9eb10bfbd6d0b23864ebd9662f48"
+project_hash = "a00f7741bc0e351432f45670613e1f6ca4fe9b3a"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -161,9 +161,9 @@ version = "0.2.6"
 
 [[deps.CUDA]]
 deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "Crayons", "DataFrames", "ExprTools", "GPUArrays", "GPUCompiler", "GPUToolbox", "KernelAbstractions", "LLVM", "LLVMLoopInfo", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "NVTX", "Preferences", "PrettyTables", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "StaticArrays", "Statistics", "demumble_jll"]
-git-tree-sha1 = "acfe6dc14594afba70c002e3b4bfc2f1f8273347"
+git-tree-sha1 = "ee44b6eaaf518e8001ed6ed1d08a04662d63a242"
 uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "5.7.2"
+version = "5.7.3"
 
     [deps.CUDA.extensions]
     ChainRulesCoreExt = "ChainRulesCore"
@@ -197,7 +197,7 @@ version = "0.16.1+0"
 deps = ["Adapt", "CFTime", "CUDA", "ClimaSeaIce", "CubicSplines", "DataDeps", "Dates", "Downloads", "ImageMorphology", "JLD2", "KernelAbstractions", "MPI", "NCDatasets", "Oceananigans", "OffsetArrays", "PrecompileTools", "Printf", "Scratch", "SeawaterPolynomials", "StaticArrays", "Statistics", "SurfaceFluxes", "Thermodynamics", "ZipFile"]
 path = "../../ClimaOcean.jl"
 uuid = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
-version = "0.6.1"
+version = "0.6.3"
 
     [deps.ClimaOcean.extensions]
     ClimaOceanReactantExt = "Reactant"
@@ -917,8 +917,8 @@ version = "1.2.0"
 
 [[deps.OceanEnsembles]]
 deps = ["CFTime", "CUDA", "ClimaOcean", "Dates", "Oceananigans", "PolygonOps", "StaticArrays"]
-git-tree-sha1 = "1de8b077183b9b682b196274cefd9de9e2ba4722"
-repo-rev = "1f7d5c1"
+git-tree-sha1 = "049aa00c3e3538be4c091ce02ce6063733384600"
+repo-rev = "e6f38139e9d63dd0cf60b21225081bd4523dc26c"
 repo-url = ".."
 uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 version = "0.1.0"

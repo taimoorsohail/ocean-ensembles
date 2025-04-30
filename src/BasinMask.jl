@@ -109,9 +109,7 @@ function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Ocea
     is_valid || throw(ErrorException("Maximum value of mask is not 1"))
     bool_mask = convert(Array{Bool}, mask)
 
-    _, _, Nz = size(var)
-
-    return repeat(bool_mask, 1, 1, Nz)
+    return bool_mask
 end
 
 end # module
