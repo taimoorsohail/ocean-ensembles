@@ -3,11 +3,11 @@ using Oceananigans  # From local
 using Statistics
 using JLD2
 
-output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
-figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
+# output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
+# figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
 
-# output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-# figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/outputs/")
+figdir = expanduser("/g/data/v46/txs156/ocean-ensembles-2/figures/")
 
 variables_basins = ["_global_", "_atl_", "_ipac_"]
 variables_diags = ["zonal", "depth", "tot"]
