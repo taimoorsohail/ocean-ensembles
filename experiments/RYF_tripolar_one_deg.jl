@@ -95,7 +95,7 @@ view(bottom_height, 102:103, 124, 1) .= -400
 
 @info "Defining restoring rate"
 
-restoring_rate  = 1 / 5days
+restoring_rate  = 2 / 365.25days
 
 FT = DatasetRestoring(temperature, grid; rate=restoring_rate)
 FS = DatasetRestoring(salinity,    grid; rate=restoring_rate)
@@ -108,16 +108,10 @@ forcing = (T=FT, S=FS)
 
 @info "Defining closures"
 
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
-                                       DiffusiveFormulation
-
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
-                                                 skew_flux_formulation=DiffusiveFormulation())
-vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
-
-# horizontal_viscosity = HorizontalScalarDiffusivity(ν=2000)
-
-closure = (eddy_closure, vertical_mixing)
+eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=2e3, κ_symmetric=2e3)
+vertical_mixing = Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivity(minimum_tke=1e-6)
+horizontal_viscosity = HorizontalScalarDiffusivity(ν=4000)
+closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -126,13 +120,9 @@ closure = (eddy_closure, vertical_mixing)
 
 @info "Defining free surface"
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=50)
-
-momentum_advection = WENOVectorInvariant(vorticity_order=5)
-tracer_advection   = Centered()
-# momentum_advection = VectorInvariant()
-# tracer_advection   = WENO(order=5)
-
+free_surface       = SplitExplicitFreeSurface(grid; substeps=70)
+momentum_advection = WENOVectorInvariant(order=5)
+tracer_advection   = WENO(order=5)
 
 @info "Defining ocean simulation"
 
@@ -172,7 +162,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
 
 # ### A progress messenger
 #
@@ -360,6 +350,6 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 run!(simulation)
 
 simulation.Δt = 20minutes
-simulation.stop_time = 11000days
+simulation.stop_time = 1826.25days # 5 years
 
 run!(simulation)
