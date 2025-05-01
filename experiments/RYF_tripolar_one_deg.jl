@@ -42,7 +42,9 @@ end
 # ### ECCO files
 @info "Downloading/checking input data"
 
-dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
+
+@info "We download the 1990-1991 data for an RYF implementation"
 
 dataset = EN4Monthly() # Other options include ECCO2Monthly(), ECCO4Monthly() or ECCO2Daily()
 
@@ -106,16 +108,10 @@ forcing = (T=FT, S=FS)
 
 @info "Defining closures"
 
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
-                                       DiffusiveFormulation
-
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
-                                                 skew_flux_formulation=DiffusiveFormulation())
-vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
-
-# horizontal_viscosity = HorizontalScalarDiffusivity(ν=2000)
-
-closure = (eddy_closure, vertical_mixing)
+eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=2e3, κ_symmetric=2e3)
+vertical_mixing = Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivity(minimum_tke=1e-6)
+horizontal_viscosity = HorizontalScalarDiffusivity(ν=4000)
+closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -124,13 +120,9 @@ closure = (eddy_closure, vertical_mixing)
 
 @info "Defining free surface"
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=50)
-
-momentum_advection = WENOVectorInvariant(vorticity_order=5)
-tracer_advection   = Centered()
-# momentum_advection = VectorInvariant()
-# tracer_advection   = WENO(order=5)
-
+free_surface       = SplitExplicitFreeSurface(grid; substeps=70)
+momentum_advection = WENOVectorInvariant(order=5)
+tracer_advection   = WENO(order=5)
 
 @info "Defining ocean simulation"
 
@@ -170,7 +162,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
 
 # ### A progress messenger
 #
@@ -181,7 +173,7 @@ simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 wall_time = Ref(time_ns())
 
 output_intervals = AveragedTimeInterval(5days)
-callback_interval = IterationInterval(1)
+callback_interval = IterationInterval(20)
 
 # function find_nans(sim)
 #     if string(arch) == "GPU{CUDABackend}(CUDABackend(false, true))"
@@ -358,6 +350,6 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 run!(simulation)
 
 simulation.Δt = 20minutes
-simulation.stop_time = 11000days
+simulation.stop_time = 1826.25days # 5 years
 
 run!(simulation)

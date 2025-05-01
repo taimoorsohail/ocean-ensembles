@@ -92,6 +92,12 @@ lines!(ax2, times/(3600*24*365.25), SH_W, color=:black)
 lines!(ax3, times/(3600*24*365.25), mxtemp, color=:black)
 axislegend(ax1, position = :rb)
 
+dt_change = 20 / 365.25  # 20 days in years
+
+vlines!(ax1, [dt_change], color=:black, linestyle=:dash, label = "Increasing dt")
+vlines!(ax2, [dt_change], color=:black, linestyle=:dash)
+vlines!(ax3, [dt_change], color=:black, linestyle=:dash)
+
 save(figdir * "flux_issue.png", fig, px_per_unit=3)
 
 #=
