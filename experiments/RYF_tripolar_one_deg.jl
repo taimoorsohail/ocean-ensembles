@@ -12,8 +12,8 @@ using Oceananigans.Fields: ReducedField
 using CUDA
 
 # File paths
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+data_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/data/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/outputs/")
 
 ## Argument is provided by the submission script!
 
@@ -42,7 +42,9 @@ end
 # ### ECCO files
 @info "Downloading/checking input data"
 
-dates = collect(DateTime(1993, 1, 1): Month(1): DateTime(1994, 1, 1))
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
+
+@info "We download the 1990-1991 data for an RYF implementation"
 
 dataset = EN4Monthly() # Other options include ECCO2Monthly(), ECCO4Monthly() or ECCO2Daily()
 
@@ -106,16 +108,10 @@ forcing = (T=FT, S=FS)
 
 @info "Defining closures"
 
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
-                                       DiffusiveFormulation
-
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
-                                                 skew_flux_formulation=DiffusiveFormulation())
-vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
-
-# horizontal_viscosity = HorizontalScalarDiffusivity(ν=2000)
-
-closure = (eddy_closure, vertical_mixing)
+eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=2e3, κ_symmetric=2e3)
+vertical_mixing = Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivity(minimum_tke=1e-6)
+horizontal_viscosity = HorizontalScalarDiffusivity(ν=4000)
+closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -124,13 +120,9 @@ closure = (eddy_closure, vertical_mixing)
 
 @info "Defining free surface"
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=50)
-
-momentum_advection = WENOVectorInvariant(vorticity_order=5)
-tracer_advection   = Centered()
-# momentum_advection = VectorInvariant()
-# tracer_advection   = WENO(order=5)
-
+free_surface       = SplitExplicitFreeSurface(grid; substeps=70)
+momentum_advection = WENOVectorInvariant(order=5)
+tracer_advection   = WENO(order=5)
 
 @info "Defining ocean simulation"
 
@@ -170,7 +162,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
 
 # ### A progress messenger
 #
@@ -181,48 +173,48 @@ simulation = Simulation(coupled_model; Δt=1minutes, stop_time=10days)
 wall_time = Ref(time_ns())
 
 output_intervals = AveragedTimeInterval(5days)
-callback_interval = IterationInterval(1)
+callback_interval = IterationInterval(20)
 
-# function find_nans(sim)
-#     if string(arch) == "GPU{CUDABackend}(CUDABackend(false, true))"
-#         nans_in_u = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.u))
-#         nans_in_v = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.v))
-#         nans_in_T = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.T))
-#         nans_in_S = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.S))
-#     else
-#         nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
-#         nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
-#         nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
-#         nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
-#     end
-#     nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
-#     velocity_symbols = (:u, :v)
-#     tracer_symbols = (:T, :S)
+function find_nans(sim)
+    if string(arch) == "GPU{CUDABackend}(CUDABackend(false, true))"
+        nans_in_u = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.u))
+        nans_in_v = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.v))
+        nans_in_T = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.T))
+        nans_in_S = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.S))
+    else
+        nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
+        nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
+        nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
+        nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
+    end
+    nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
+    velocity_symbols = (:u, :v)
+    tracer_symbols = (:T, :S)
 
-#     for var_symbol in velocity_symbols
-#         nan_array = nan_arrays[var_symbol]
-#         if any(nan_array)
-#             sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.velocities[var_symbol]);
-#                                                                         dir = output_path,
-#                                                                         schedule = callback_interval,
-#                                                                         filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
-#                                                                         overwrite_existing = true)
-#         throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
-#         end
-#     end
+    for var_symbol in velocity_symbols
+        nan_array = nan_arrays[var_symbol]
+        if any(nan_array)
+            sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.velocities[var_symbol]);
+                                                                        dir = output_path,
+                                                                        schedule = callback_interval,
+                                                                        filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
+                                                                        overwrite_existing = true)
+        throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
+        end
+    end
 
-#     for var_symbol in tracer_symbols
-#         nan_array = nan_arrays[var_symbol]
-#         if any(nan_array)
-#             sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.tracers[var_symbol]);
-#                                                                         dir = output_path,
-#                                                                         schedule = callback_interval,
-#                                                                         filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
-#                                                                         overwrite_existing = true)
-#         throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
-#         end
-#     end
-# end
+    for var_symbol in tracer_symbols
+        nan_array = nan_arrays[var_symbol]
+        if any(nan_array)
+            sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.tracers[var_symbol]);
+                                                                        dir = output_path,
+                                                                        schedule = callback_interval,
+                                                                        filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
+                                                                        overwrite_existing = true)
+        throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
+        end
+    end
+end
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
@@ -358,6 +350,6 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 run!(simulation)
 
 simulation.Δt = 20minutes
-simulation.stop_time = 11000days
+simulation.stop_time = 1826.25days # 5 years
 
 run!(simulation)
