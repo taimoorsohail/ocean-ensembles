@@ -1,0 +1,24 @@
+grid = 360×180×40 ImmersedBoundaryGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on CUDAGPU with 5×5×4 halo:
+├── immersed_boundary: GridFittedBottom(mean(z)=-2001.43, min(z)=-4000.0, max(z)=0.0)
+├── underlying_grid: 360×180×40 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on CUDAGPU with 5×5×4 halo and with precomputed metrics
+├── centered at (λ, φ) = (70.0, 1.8005)
+├── longitude: Periodic  extent 360.162 degrees                          variably spaced with min(Δλ)=0.00753834, max(Δλ)=1.05373
+├── latitude:  Oceananigans.Grids.RightConnected  extent 170.944 degrees variably spaced with min(Δφ)=0.0113516, max(Δφ)=0.949721
+└── z:         Bounded  z ∈ [-4000.0, 0.0]                               variably spaced with min(Δz)=53.2319, max(Δz)=167.623
+206.682756 seconds (59.46 M allocations: 3.546 GiB, 2.93% gc time, 93.86% compilation time)
+ocean.model = HydrostaticFreeSurfaceModel{GPU, ImmersedBoundaryGrid}(time = 0 seconds, iteration = 0)
+├── grid: 360×180×40 ImmersedBoundaryGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on CUDAGPU with 5×5×4 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: (T, S, e)
+├── closure: Tuple with 2 closures:
+│   ├── CATKEVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
+│   └── IsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0)
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and BoussinesqEquationOfState{Float64} with ĝ = NegativeZDirection()
+├── free surface: SplitExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── substepping: FixedSubstepNumber(36)
+├── advection scheme: 
+│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+│   ├── T: Centered(order=2)
+│   ├── S: Centered(order=2)
+│   └── e: Nothing
+└── coriolis: HydrostaticSphericalCoriolis{Oceananigans.Advection.EnstrophyConserving{Float64}, Float64}
