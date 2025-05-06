@@ -1,6 +1,7 @@
 using ClimaOcean
 using Oceananigans
 using Oceananigans.Units
+import Oceananigans.Architectures: on_architecture
 using CFTime
 using Dates
 using Printf
@@ -11,6 +12,7 @@ using ClimaOcean.EN4
 using ClimaOcean.EN4: download_dataset
 using ClimaOcean.ECCO
 using ClimaOcean.ECCO: download_dataset
+using JLD2 
 
 # using ClimaOcean.DataWrangling: Restoring
 
@@ -38,21 +40,12 @@ arch = CPU()
 
 z_faces = (-4000, 0)
 
-### The below crashes immediately in a latlongrid, but not in a tripolar grid
-
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = z_faces,
                                halo = (5, 5, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
-
-# underlying_grid = LatitudeLongitudeGrid(arch;
-#                                         size = (Nx, Ny, Nz),
-#                                         z = z_faces,
-#                                         halo = (7, 7, 3),
-#                                         longitude = (0, 360),
-#                                         latitude = (-89.9,89.9))
 
 @info "Defining bottom bathymetry"
 
@@ -90,34 +83,18 @@ tracer_advection   = Centered()
 @time ocean = ocean_simulation(grid; free_surface,
                                 momentum_advection,
                                 tracer_advection)
-#=
+
 @info "Initialising with EN4"
 
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
                     S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
-
-# ## Plot the intitalised SST and SSS
-# using GLMakie
-# fig = Figure(size = (1500,2000)) # create a new figure
-# ax1 = Axis(fig[1, 1])            # add an axis to the figure
-# ax2 = Axis(fig[2, 1])        # add an axis to the figure
-# axc1 = (fig[1, 2])            # add an axis to the figure
-# axc2 = (fig[2, 2])        # add an axis to the figure
-
-# Tslice = dropdims(interior(view(ocean.model.tracers.T, :, :, Nz)), dims=3)
-# Sslice = dropdims(interior(view(ocean.model.tracers.S, :, :, Nz)), dims=3)
-# hm1 = heatmap!(ax1, Tslice; colorrange = (-3, 30), colormap = Reverse(:deep))
-# hm2 = heatmap!(ax2, Sslice; colorrange = (34,38), colormap = :bwr)
-# Colorbar(axc1, hm1, label = "°C")
-# Colorbar(axc2, hm2, label = "g/kg")
-# fig
 
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=2minutes, stop_time=10days)
-=#
+
 volmask = CenterField(grid)
 set!(volmask, 1)
 wmask = ZFaceField(grid)
@@ -182,10 +159,10 @@ end
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-output_intervals = TimeInterval(5days)
+output_intervals =  AveragedTimeInterval(5days)
 callback_interval = IterationInterval(1)
 
-output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
+output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/outputs/")
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
@@ -218,43 +195,30 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 
 wall_time = Ref(time_ns())
 
+function find_nans(sim, nans)
+    fill!(nans, false)
+    nans_in_u = any!(isnan, nans, interior(sim.model.ocean.model.velocities.u))
+    fill!(nans, false)
+    nans_in_v = any!(isnan, nans, interior(sim.model.ocean.model.velocities.v))
+    fill!(nans, false)
+    nans_in_T = any!(isnan, nans, interior(sim.model.ocean.model.tracers.T))
+    fill!(nans, false)
+    nans_in_S = any!(isnan, nans, interior(sim.model.ocean.model.tracers.S))
 
-function find_nans(sim)
-        nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
-        nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
-        nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
-        nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
+    if any([nans_in_u[], nans_in_v[], nans_in_T[], nans_in_S[]])
+        ucpu = on_architecture(CPU(), sim.model.ocean.model.velocities.u)
+        vcpu = on_architecture(CPU(), sim.model.ocean.model.velocities.v)
+        Tcpu = on_architecture(CPU(), sim.model.ocean.model.tracers.T)
+        Scpu = on_architecture(CPU(), sim.model.ocean.model.tracers.S)
 
-        nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
-        velocity_symbols = (:u, :v)
-        tracer_symbols = (:T, :S)
+        JLD2.@save output_path * "nan_state.jld2" ucpu vcpu Tcpu Scpu
+        throw(ErrorException("NaNs detected. Saved field and halting simulation."))
+    end 
 
-        for var_symbol in velocity_symbols
-            nan_array = nan_arrays[var_symbol]
-            if any(nan_array)
-                sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.velocities[var_symbol]);
-                                                                            dir = output_path,
-                                                                            schedule = callback_interval,
-                                                                            filename = "NaN_check_" * string(var_symbol),
-                                                                            overwrite_existing = true)
-            throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
-            end
-        end
-    
-        for var_symbol in tracer_symbols
-            nan_array = nan_arrays[var_symbol]
-            if any(nan_array)
-                sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.tracers[var_symbol]);
-                                                                            dir = output_path,
-                                                                            schedule = callback_interval,
-                                                                            filename = "NaN_check_" * string(var_symbol),
-                                                                            overwrite_existing = true)
-            throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
-            end
-        end
-    end
+end
 
 function progress(sim)
+
     u, v, w = sim.model.ocean.model.velocities
     T, S, e = sim.model.ocean.model.tracers
     Trange = (maximum((T)), minimum((T)))
@@ -264,8 +228,9 @@ function progress(sim)
     umax = (maximum(abs, (u)),
             maximum(abs, (v)),
             maximum(abs, (w)))
-
-    find_nans(sim)
+    
+    nans = Field{Nothing, Nothing, Nothing}(sim.model.ocean.model.grid, Bool)
+    find_nans(sim, nans)
     
     step_time = 1e-9 * (time_ns() - wall_time[])
 
@@ -287,7 +252,7 @@ add_callback!(simulation, progress, callback_interval)
 
 run!(simulation)
 
-# simulation.Δt = 20minutes
-# simulation.stop_time = 11000days
+simulation.Δt = 20minutes
+simulation.stop_time = 11000days
 
-# run!(simulation)
+run!(simulation)
