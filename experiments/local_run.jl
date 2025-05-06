@@ -95,7 +95,6 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=2minutes, stop_time=10days)
 
-#=
 volmask = CenterField(grid)
 set!(volmask, 1)
 wmask = ZFaceField(grid)
@@ -159,12 +158,12 @@ end
 @info "Merging velocity tuples"
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
-=#
+
 output_intervals =  AveragedTimeInterval(5days)
 callback_interval = IterationInterval(1)
 
 output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/outputs/")
-#=
+
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = callback_interval,
@@ -193,7 +192,7 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           schedule = TimeInterval(output_intervals),
                                                           filename = "mass_transport",
                                                           overwrite_existing = true)
-=#
+
 wall_time = Ref(time_ns())
 
 function find_nans(sim, nans)
@@ -253,7 +252,7 @@ add_callback!(simulation, progress, callback_interval)
 
 run!(simulation)
 
-# simulation.Δt = 20minutes
-# simulation.stop_time = 11000days
+simulation.Δt = 20minutes
+simulation.stop_time = 11000days
 
-# run!(simulation)
+run!(simulation)
