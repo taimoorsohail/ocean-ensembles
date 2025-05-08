@@ -9,11 +9,11 @@ using ClimaOcean.EN4: download_dataset
 using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
-using CUDA
+using JLD2
 
 # File paths
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/data/")
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/outputs/")
+data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
 ## Argument is provided by the submission script!
 
@@ -59,7 +59,7 @@ download_dataset(salinity)
 
 Nx = Integer(360)
 Ny = Integer(180)
-Nz = Integer(100)
+Nz = Integer(50)
 
 @info "Defining vertical z faces"
 
@@ -121,7 +121,7 @@ closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 @info "Defining free surface"
 
 free_surface       = SplitExplicitFreeSurface(grid; substeps=70)
-momentum_advection = WENOVectorInvariant(order=5)
+momentum_advection = VectorInvariant()
 tracer_advection   = WENO(order=5)
 
 @info "Defining ocean simulation"
@@ -175,45 +175,26 @@ wall_time = Ref(time_ns())
 output_intervals = AveragedTimeInterval(5days)
 callback_interval = IterationInterval(20)
 
-function find_nans(sim)
-    if string(arch) == "GPU{CUDABackend}(CUDABackend(false, true))"
-        nans_in_u = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.u))
-        nans_in_v = CUDA.@allowscalar isnan.((sim.model.ocean.model.velocities.v))
-        nans_in_T = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.T))
-        nans_in_S = CUDA.@allowscalar isnan.((sim.model.ocean.model.tracers.S))
-    else
-        nans_in_u = isnan.((sim.model.ocean.model.velocities.u))
-        nans_in_v = isnan.((sim.model.ocean.model.velocities.v))
-        nans_in_T = isnan.((sim.model.ocean.model.tracers.T))
-        nans_in_S = isnan.((sim.model.ocean.model.tracers.S))
-    end
-    nan_arrays = Dict(:u => nans_in_u, :v => nans_in_v, :T => nans_in_T, :S => nans_in_S)
-    velocity_symbols = (:u, :v)
-    tracer_symbols = (:T, :S)
+function find_nans(sim, nans)
+    fill!(nans, false)
+    nans_in_u = any!(isnan, nans, interior(sim.model.ocean.model.velocities.u))
+    fill!(nans, false)
+    nans_in_v = any!(isnan, nans, interior(sim.model.ocean.model.velocities.v))
+    fill!(nans, false)
+    nans_in_T = any!(isnan, nans, interior(sim.model.ocean.model.tracers.T))
+    fill!(nans, false)
+    nans_in_S = any!(isnan, nans, interior(sim.model.ocean.model.tracers.S))
 
-    for var_symbol in velocity_symbols
-        nan_array = nan_arrays[var_symbol]
-        if any(nan_array)
-            sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.velocities[var_symbol]);
-                                                                        dir = output_path,
-                                                                        schedule = callback_interval,
-                                                                        filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
-                                                                        overwrite_existing = true)
-        throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
-        end
-    end
+    if any([nans_in_u[], nans_in_v[], nans_in_T[], nans_in_S[]])
+        ucpu = on_architecture(CPU(), sim.model.ocean.model.velocities.u)
+        vcpu = on_architecture(CPU(), sim.model.ocean.model.velocities.v)
+        Tcpu = on_architecture(CPU(), sim.model.ocean.model.tracers.T)
+        Scpu = on_architecture(CPU(), sim.model.ocean.model.tracers.S)
 
-    for var_symbol in tracer_symbols
-        nan_array = nan_arrays[var_symbol]
-        if any(nan_array)
-            sim.output_writers[Symbol("NaNs_" * string(var_symbol))] = JLD2Writer(sim.model.ocean.model, Dict(var_symbol => sim.model.ocean.model.tracers[var_symbol]);
-                                                                        dir = output_path,
-                                                                        schedule = callback_interval,
-                                                                        filename = "NaN_check_" * string(var_symbol) * "_$(ARGS[4])",
-                                                                        overwrite_existing = true)
-        throw(ErrorException("NaNs detected in variable :$var_symbol. Saved field and halting simulation."))
-        end
-    end
+        JLD2.@save output_path * "nan_state.jld2" ucpu vcpu Tcpu Scpu
+        throw(ErrorException("NaNs detected. Saved field and halting simulation."))
+    end 
+
 end
 
 function progress(sim)
@@ -227,8 +208,9 @@ function progress(sim)
             maximum(abs, (v)),
             maximum(abs, (w)))
 
-    # find_nans(sim)
-
+    nans = Field{Nothing, Nothing, Nothing}(sim.model.ocean.model.grid, Bool)
+    find_nans(sim, nans)
+        
     step_time = 1e-9 * (time_ns() - wall_time[])
 
     msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
@@ -311,8 +293,6 @@ end
 @info "Merging velocity tuples"
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
-
-# constants = simulation.model.interfaces.ocean_properties
 
 @info "Defining output writers"
 
