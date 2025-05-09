@@ -2,9 +2,12 @@ name = "OceanEnsembles-RYF-1deg"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+ClimaOcean = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
-MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+
+[extras]
+MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 
 [sources.OceanEnsembles]
 path = "../"
