@@ -33,9 +33,9 @@ function create_dict(vars, path)
 end
 
 @info "I am loading the fluxes" 
-fluxes = create_dict(variables_fluxes, output_path * "fluxes_RYF1deg.jld2")
+fluxes = create_dict(variables_fluxes, output_path * "fluxes.jld2")
 @info "I am loading the surface properties" 
-surface = create_dict(variables_surface, output_path * "global_surface_fields_RYF1deg.jld2")
+surface = create_dict(variables_surface, output_path * "one_degree_surface_fields.jld2")
 
 fig = Figure(size = (1600, 800))
 # axs = Axis(fig[1, 1], xlabel="Longitude (deg)", ylabel="Latitude (deg)")
@@ -72,8 +72,8 @@ mxtemp = zeros(length(times))  # Ensure the array is 1D with the correct size
 mntemp = zeros(length(times))  # Ensure the array is 1D with the correct size
 hightmp_counter = zeros(length(times))
 for time_step in eachindex(times)  # Proper way to iterate over indices
-    mxtemp[time_step] = maximum(filter(!isnan, surface["T"][time_step]))  # Ignore NaNs
-    mntemp[time_step] = minimum(filter(!isnan, surface["T"][time_step]))  # Ignore NaNs
+    mxtemp[time_step] = maximum(surface["T"][time_step])  # Ignore NaNs
+    mntemp[time_step] = minimum(surface["T"][time_step])  # Ignore NaNs
     T_array = interior(surface["T"][time_step])
     # Extract the interior data
     interior_data = interior(surface["T"][time_step])
@@ -89,7 +89,8 @@ ax3 = Axis(fig[2,1], xlabel="Years", ylabel="Temperature", title="Surface Temper
 
 lines!(ax1, times/(3600*24*365.25), LH_W, color=:black, label = "ClimaOcean - 1deg Tripolar")
 lines!(ax2, times/(3600*24*365.25), SH_W, color=:black)
-lines!(ax3, times/(3600*24*365.25), mxtemp, color=:black)
+lines!(ax3, times/(3600*24*365.25), mxtemp, color=:red)
+lines!(ax3, times/(3600*24*365.25), mntemp, color=:blue)
 axislegend(ax1, position = :rb)
 
 dt_change = 20 / 365.25  # 20 days in years
