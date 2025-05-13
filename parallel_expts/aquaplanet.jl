@@ -10,6 +10,7 @@ using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
+using Oceananigans.DistributedComputations
 
 arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()))
 
@@ -22,13 +23,17 @@ Nz = Integer(50)
 @info "Defining tripolar grid"
 
 grid = TripolarGrid(arch;
-                               size = (Nx, Ny, Nz),
-                               z = (-4000, 0),
-                               halo = (5, 5, 4),
-                               first_pole_longitude = 70,
-                               north_poles_latitude = 55)
+                    size = (Nx, Ny, Nz),
+                    z = (-4000, 0),
+                    halo = (6, 6, 2),
+                    first_pole_longitude = 70,
+                    north_poles_latitude = 55)
 
-ocean = ocean_simulation(grid)
+@info "Defining ocean simulation"
+
+free_surface = SplitExplicitFreeSurface(grid; substeps = 50)
+
+ocean = ocean_simulation(grid; free_surface)
 
 # We force the simulation with an JRA55-do atmospheric reanalysis.
 @info "Defining Atmospheric state"
