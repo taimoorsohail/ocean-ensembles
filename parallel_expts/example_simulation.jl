@@ -18,7 +18,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
 ## Argument is provided by the submission script!
 
-arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()))
+arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 
 @info "Using architecture: " * string(arch)
 
@@ -73,10 +73,10 @@ underlying_grid = TripolarGrid(arch;
 
 @info "Defining closures"
 
-eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=2e3, κ_symmetric=2e3)
-vertical_mixing = Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivity(minimum_tke=1e-6)
-horizontal_viscosity = HorizontalScalarDiffusivity(ν=4000)
-closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
+# eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=2e3, κ_symmetric=2e3)
+# vertical_mixing = Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivity(minimum_tke=1e-6)
+# horizontal_viscosity = HorizontalScalarDiffusivity(ν=4000)
+# closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -94,8 +94,7 @@ tracer_advection   = WENO(order=5)
 @time ocean = ocean_simulation(grid;
                          momentum_advection,
                          tracer_advection,
-                         free_surface,
-                         closure)
+                         free_surface)
 
 # ### Initial condition
 
