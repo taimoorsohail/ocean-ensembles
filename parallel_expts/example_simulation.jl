@@ -2,7 +2,7 @@ using MPI
 using CUDA
 
 MPI.Init()
-
+atexit(MPI.Finalize)  
 
 using ClimaOcean
 using Oceananigans
@@ -10,6 +10,7 @@ using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
+using Oceananigans.DistributedComputations
 
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
@@ -17,16 +18,16 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
 ## Argument is provided by the submission script!
 
-arch = Distributed(GPU())
+arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()))
 
 @info "Using architecture: " * string(arch)
 
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360/5)
-Ny = Integer(180/5)
-Nz = Integer(50/2)
+Nx = Integer(360)
+Ny = Integer(180)
+Nz = Integer(50)
 
 @info "Defining vertical z faces"
 
@@ -42,15 +43,24 @@ underlying_grid = TripolarGrid(arch;
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
 
+@info "Done defining tripolar grid"
+# underlying_grid = LatitudeLongitudeGrid(arch;
+#                              size = (Nx, Ny, Nz),
+#                              halo = (5, 5, 4),
+#                              z = z_faces,
+#                              latitude  = (-75, 75),
+#                              longitude = (0, 360))
+
+
 @info "Defining bottom bathymetry"
 
 @time bottom_height = regrid_bathymetry(underlying_grid;
                                   minimum_depth = 10,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 3, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
-view(bottom_height, 102:103, 124, 1) .= -400
+# view(bottom_height, 102:103, 124, 1) .= -400
 
 @info "Defining grid"
 
@@ -85,8 +95,7 @@ tracer_advection   = WENO(order=5)
                          momentum_advection,
                          tracer_advection,
                          free_surface,
-                         closure,
-                         forcing)
+                         closure)
 
 # ### Initial condition
 
@@ -188,5 +197,3 @@ run!(simulation)
 # simulation.stop_time = 1826.25days # 5 years
 
 # run!(simulation)
-
-MPI.Finalize()
