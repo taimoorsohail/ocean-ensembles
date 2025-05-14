@@ -22,6 +22,7 @@ export JULIA_NUM_THREADS=48
 module --force purge
 module load cuda openmpi #cray-mpich ncarenv nvhpc
 
+export LD_LIBRARY_PATH=$(dirname $(which mpirun))/../lib:$LD_LIBRARY_PATH
 # Utter mystical incantations to perform various miracles
 export MPICH_GPU_SUPPORT_ENABLED=1
 export JULIA_MPI_HAS_CUDA=true
@@ -55,4 +56,4 @@ julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 julia --project -e 'using MPI; using CUDA; CUDA.precompile_runtime()'
 
 # Finally, let's run this thing
-mpiexec -n 4 --npernode 4 ./launch.sh julia --project test_interpolate.jl
+mpiexec -n 4 --map-by ppr:4:node ./launch.sh julia --project test_interpolate.jl
