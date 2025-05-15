@@ -229,16 +229,6 @@ end
 
 add_callback!(simulation, progress, callback_interval)
 
-volmask = CenterField(grid)
-set!(volmask, 1)
-wmask = ZFaceField(grid)
-
-@info "Defining condition masks"
-
-Atlantic_mask = basin_mask(grid, "atlantic", volmask);
-IPac_mask = basin_mask(grid, "indo-pacific", volmask);
-glob_mask = Atlantic_mask .|| IPac_mask;
-
 #### SURFACE
 
 @info "Defining surface outputs"
@@ -249,6 +239,16 @@ velocities = ocean.model.velocities
 outputs = merge(tracers, velocities)
 
 #### TRACERS ####
+
+volmask = CenterField(grid)
+set!(volmask, 1)
+wmask = ZFaceField(grid)
+
+@info "Defining condition masks"
+
+Atlantic_mask = basin_mask(grid, "atlantic", volmask);
+IPac_mask = basin_mask(grid, "indo-pacific", volmask);
+glob_mask = Atlantic_mask .|| IPac_mask;
 
 tracer_volmask = [Ax, Δz, volmask]
 masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
