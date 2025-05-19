@@ -118,8 +118,7 @@ tracer_advection   = WENO(order=5)
                          momentum_advection,
                          tracer_advection,
                          free_surface,
-                         closure,
-                         forcing)
+                         closure)
 
 # ### Initial condition
 
@@ -253,7 +252,7 @@ end
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-output_intervals = AveragedTimeInterval(5days)
+output_intervals = AveragedTimeInterval(0.5days)
 
 @info "Defining output writers"
 
