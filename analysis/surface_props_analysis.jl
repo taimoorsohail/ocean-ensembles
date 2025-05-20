@@ -8,11 +8,13 @@ using JLD2
 
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+filename_surf = "global_surface_fields_distributedGPU.jld2"
+filename_flux = "fluxes.jld2"
 
 variables_tracers = ["T", "S"]
 variables_velocities =  ["u", "v", "w"]
 variables_fluxes = ["latent_heat", "sensible_heat", "water_vapor", "x_momentum", "y_momentum"]
-variables_surface = ["T"]#vcat(variables_tracers, variables_velocities)
+variables_surface = vcat(variables_tracers, variables_velocities)
 
 
 function create_dict(vars, path)
@@ -33,9 +35,14 @@ function create_dict(vars, path)
 end
 
 @info "I am loading the fluxes" 
-fluxes = create_dict(variables_fluxes, output_path * "fluxes.jld2")
+# fluxes = create_dict(variables_fluxes, output_path * filename_flux)
 @info "I am loading the surface properties" 
-surface = create_dict(variables_surface, output_path * "one_degree_surface_fields.jld2")
+surface = create_dict(variables_surface, output_path * filename_surf)
+times = surface["T"].times
+time_slice = lastindex(surface["T"].times)
+
+#=
+###### SURFACE FLUXES ######
 
 fig = Figure(size = (1600, 800))
 # axs = Axis(fig[1, 1], xlabel="Longitude (deg)", ylabel="Latitude (deg)")
@@ -58,6 +65,8 @@ Colorbar(fig[1, 4], hm, label = "Sensible Heat (W/m2)")
 Label(fig[0, :], title)
 
 save(figdir * "surface_fluxes.png", fig, px_per_unit=3)
+
+##################################################################
 
 using Oceananigans.Operators: Az
 LH_W = zeros(length(times))  # Ensure the array is 1D with the correct size
@@ -100,8 +109,9 @@ vlines!(ax2, [dt_change], color=:black, linestyle=:dash)
 vlines!(ax3, [dt_change], color=:black, linestyle=:dash)
 
 save(figdir * "flux_issue.png", fig, px_per_unit=3)
+=#
+###### SURFACE FIELDS ######
 
-#=
 fig = Figure(size = (1200, 800))
 # axs = Axis(fig[1, 1], xlabel="Longitude (deg)", ylabel="Latitude (deg)")
 
@@ -109,21 +119,20 @@ title = string("Global 1 degree ocean simulation after ",
                          prettytime(times[time_slice] - times[1]))
 
 axs = Axis(fig[1, 1], xlabel="Longitude (deg)", ylabel="Latitude (deg)")
-hm = heatmap!(axs, view(interior(surface_props["T"][time_slice]), :, :, 1), colorrange = (-1,31), colormap = :bwr, nan_color=:lightgray)
+hm = heatmap!(axs, view(interior(surface["T"][time_slice]), :, :, 1), colorrange = (-1,31), colormap = :bwr, nan_color=:lightgray)
 Colorbar(fig[1, 2], hm, label = "Temperature (ᵒC)")
 
 axs = Axis(fig[2, 1], xlabel="Longitude (deg)", ylabel="Depth (m)")
-hm = heatmap!(axs, view(interior(surface_props["u"][time_slice]), :, :, 1) , colorrange = (-1,1), colormap = :bwr, nan_color=:lightgray)
+hm = heatmap!(axs, view(interior(surface["u"][time_slice]), :, :, 1) , colorrange = (-1,1), colormap = :bwr, nan_color=:lightgray)
 Colorbar(fig[2, 2], hm, label = "u (m/s)")
 
 axs = Axis(fig[2, 3], xlabel="Longitude (deg)", ylabel="Depth (m)")
-hm = heatmap!(axs, view(interior(surface_props["v"][time_slice]), :, :, 1) , colorrange = (-1,1), colormap = :bwr, nan_color=:lightgray)
+hm = heatmap!(axs, view(interior(surface["v"][time_slice]), :, :, 1) , colorrange = (-1,1), colormap = :bwr, nan_color=:lightgray)
 Colorbar(fig[2, 4], hm, label = "v (m/s)")
 
 axs = Axis(fig[1, 3], xlabel="Longitude (deg)", ylabel="Depth (m)")
-hm = heatmap!(axs, view(interior(surface_props["S"][time_slice]), :, :, 1) , colorrange = (33, 38), colormap = :bwr, nan_color=:lightgray)
+hm = heatmap!(axs, view(interior(surface["S"][time_slice]), :, :, 1) , colorrange = (33, 38), colormap = :bwr, nan_color=:lightgray)
 Colorbar(fig[1, 4], hm, label = "Salinity (unitless)")
 
 Label(fig[0, :], title)
 save(figdir * "surface_fields.png", fig, px_per_unit=3)
-=#
