@@ -3,7 +3,7 @@ module OutputWrangling
 using Oceananigans
 using Oceananigans.Fields: location
 using JLD2
-using ClimaOcean 
+using ClimaOcean
 
 export combine_outputs
 
@@ -101,4 +101,4 @@ function combine_outputs(ranks, prefix, prefix_out; remove_split_files = false)
     end
     return nothing
 end
-end module
+end 
