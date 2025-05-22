@@ -4,6 +4,7 @@ using ClimaOcean
 using Oceananigans.Fields: location
 using JLD2
 using Test
+using CarioMakie
 
 prefix = "/g/data/v46/txs156/ocean-ensembles/outputs/global_surface_fields_distributedGPU"
 prefix_out = "/g/data/v46/txs156/ocean-ensembles/outputs/global_surface_fields_distributedGPU"
