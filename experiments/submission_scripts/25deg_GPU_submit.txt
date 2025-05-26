@@ -1,20 +1,20 @@
 #!/bin/bash
 #PBS -P v46
 #PBS -q gpuvolta
-#PBS -l walltime=48:00:00
+#PBS -l walltime=12:00:00
 #PBS -l mem=128GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
-#PBS -l ncpus=12 
-#PBS -l ngpus=1 
+#PBS -l ncpus=24 
+#PBS -l ngpus=2 
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_Clima25deg
+#PBS -N GPU_RYFqtrdg
 
 ## Where the outputs go
-#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima25deg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima25deg.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYFqtrdg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYFqtrdg.e
 
-julia --project RYF_tripolar_qtr_deg.jl --arch GPU --suffix RYF25deg
+mpirun -n 2 julia --project ../RYF_qtrdeg.jl --arch GPU > /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYFqtrdg.stdout 2> /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYFqtrdg.stderr
 

@@ -9,7 +9,8 @@ using ClimaOcean.EN4: download_dataset
 using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
-using JLD2
+using ClimaOcean.DataWrangling.ETOPO
+# using JLD2
 
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
@@ -32,7 +33,7 @@ elseif ARGS[2] == "GPU"
 elseif ARGS[2] == "CPU"
     arch = CPU()
 else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF1deg"))
+    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
 
 @info "Using architecture: " * string(arch)
@@ -77,7 +78,10 @@ underlying_grid = TripolarGrid(arch;
 
 @info "Defining bottom bathymetry"
 
-@time bottom_height = regrid_bathymetry(underlying_grid;
+ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
+ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
+
+@time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 10,
                                   interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
@@ -95,10 +99,13 @@ view(bottom_height, 102:103, 124, 1) .= -400
 
 @info "Defining restoring rate"
 
-restoring_rate  = 2 / 365.25days
+restoring_rate  = 1 / 10days
+z_below_surface = r_faces[end-1]
 
-FT = DatasetRestoring(temperature, grid; rate=restoring_rate)
-FS = DatasetRestoring(salinity,    grid; rate=restoring_rate)
+mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
+
+FT = DatasetRestoring(temperature, grid; mask, rate=restoring_rate)
+FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate)
 forcing = (T=FT, S=FS)
 
 # ### Closures
@@ -137,10 +144,10 @@ tracer_advection   = WENO(order=5)
 
 # We initialize the ocean from the ECCO state estimate.
 
-@info "Initialising with ECCO"
+@info "Initialising with EN4"
 
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
-                    S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
+                  S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
 
 # ### Atmospheric forcing
 
@@ -172,30 +179,29 @@ simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
 
 wall_time = Ref(time_ns())
 
-output_intervals = AveragedTimeInterval(5days)
 callback_interval = IterationInterval(20)
 
-function find_nans(sim, nans)
-    fill!(nans, false)
-    nans_in_u = any!(isnan, nans, interior(sim.model.ocean.model.velocities.u))
-    fill!(nans, false)
-    nans_in_v = any!(isnan, nans, interior(sim.model.ocean.model.velocities.v))
-    fill!(nans, false)
-    nans_in_T = any!(isnan, nans, interior(sim.model.ocean.model.tracers.T))
-    fill!(nans, false)
-    nans_in_S = any!(isnan, nans, interior(sim.model.ocean.model.tracers.S))
+# function find_nans(sim, nans)
+#     fill!(nans, false)
+#     nans_in_u = any!(isnan, nans, interior(sim.model.ocean.model.velocities.u))
+#     fill!(nans, false)
+#     nans_in_v = any!(isnan, nans, interior(sim.model.ocean.model.velocities.v))
+#     fill!(nans, false)
+#     nans_in_T = any!(isnan, nans, interior(sim.model.ocean.model.tracers.T))
+#     fill!(nans, false)
+#     nans_in_S = any!(isnan, nans, interior(sim.model.ocean.model.tracers.S))
 
-    if any([nans_in_u[], nans_in_v[], nans_in_T[], nans_in_S[]])
-        ucpu = on_architecture(CPU(), sim.model.ocean.model.velocities.u)
-        vcpu = on_architecture(CPU(), sim.model.ocean.model.velocities.v)
-        Tcpu = on_architecture(CPU(), sim.model.ocean.model.tracers.T)
-        Scpu = on_architecture(CPU(), sim.model.ocean.model.tracers.S)
+#     if any([nans_in_u[], nans_in_v[], nans_in_T[], nans_in_S[]])
+#         ucpu = on_architecture(CPU(), sim.model.ocean.model.velocities.u)
+#         vcpu = on_architecture(CPU(), sim.model.ocean.model.velocities.v)
+#         Tcpu = on_architecture(CPU(), sim.model.ocean.model.tracers.T)
+#         Scpu = on_architecture(CPU(), sim.model.ocean.model.tracers.S)
 
-        JLD2.@save output_path * "nan_state.jld2" ucpu vcpu Tcpu Scpu
-        throw(ErrorException("NaNs detected. Saved field and halting simulation."))
-    end 
+#         JLD2.@save output_path * "nan_state.jld2" ucpu vcpu Tcpu Scpu
+#         throw(ErrorException("NaNs detected. Saved field and halting simulation."))
+#     end 
 
-end
+# end
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
@@ -208,8 +214,8 @@ function progress(sim)
             maximum(abs, (v)),
             maximum(abs, (w)))
 
-    nans = Field{Nothing, Nothing, Nothing}(sim.model.ocean.model.grid, Bool)
-    find_nans(sim, nans)
+    # nans = Field{Nothing, Nothing, Nothing}(sim.model.ocean.model.grid, Bool)
+    # find_nans(sim, nans)
         
     step_time = 1e-9 * (time_ns() - wall_time[])
 
@@ -294,12 +300,14 @@ end
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
+output_intervals = AveragedTimeInterval(5days)
+
 @info "Defining output writers"
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_$(ARGS[4])",
+                                                 filename = "global_surface_fields_RYF1deg",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -310,19 +318,19 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
                                                 schedule = output_intervals,
-                                                filename = "fluxes_$(ARGS[4])",
+                                                filename = "fluxes_RYF1deg",
                                                 overwrite_existing = true)
 
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
-                                                          filename = "ocean_tracer_content_$(ARGS[4])",
+                                                          filename = "ocean_tracer_content_RYF1deg",
                                                           overwrite_existing = true)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
-                                                          filename = "mass_transport_$(ARGS[4])",
+                                                          filename = "mass_transport_RYF1deg",
                                                           overwrite_existing = true)
 
 @info "Running simulation"

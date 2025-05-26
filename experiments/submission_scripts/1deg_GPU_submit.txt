@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -P v46
 #PBS -q gpuvolta
-#PBS -l walltime=48:00:00
+#PBS -l walltime=12:00:00
 #PBS -l mem=128GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
@@ -10,10 +10,10 @@
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_Clima1deg
+#PBS -N GPU_RYF1dg
 
 ## Where the outputs go
-#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima1deg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima1deg.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYF1dg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYF1dg.e
 
-julia --project RYF_tripolar_one_deg.jl --arch GPU --suffix RYF1deg > /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima1deg.stdout 2> /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_Clima1deg.stderr
+julia --project ../RYF_onedeg.jl --arch GPU > /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYF1dg.stdout 2> /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYF1dg.stderr

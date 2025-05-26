@@ -1,40 +1,62 @@
+using MPI
+using CUDA
+
+MPI.Init()
+atexit(MPI.Finalize)  
+
 using ClimaOcean
 using Oceananigans
 using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
-using ClimaOcean.ECCO
-using ClimaOcean.ECCO: download_dataset
-using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
+using Oceananigans.DistributedComputations
+using OceanEnsembles
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
+using ClimaOcean.EN4
+using ClimaOcean.EN4: download_dataset
+using ClimaOcean.DataWrangling.ETOPO
+
+# File paths
+data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
 ## Argument is provided by the submission script!
 
 if isempty(ARGS)
-    arch = CPU()
+    println("No arguments provided. Please enter architecture (CPU/GPU):")
+    arch_input = readline()
+    if arch_input == "GPU"
+        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+    elseif arch_input == "CPU"
+        arch = CPU()
+    else
+        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
+    end
 elseif ARGS[2] == "GPU"
-    arch = GPU()
+    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 elseif ARGS[2] == "CPU"
     arch = CPU()
 else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF25deg"))
-end
+    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF1deg"))
+end    
 
-@info "Using architecture: ", arch
+@info "Using architecture: " * string(arch)
 
 # ### Download necessary files to run the code
 
-# ### ECCO files
-@info "Downloading/checking ECCO data"
+# ### EN4 files
+@info "Downloading/checking input data"
 
-dates = vcat(collect(DateTime(1993, 1, 1): Month(1): DateTime(1993, 4, 1)), collect(DateTime(1993, 5, 1) : Month(1) : DateTime(1994, 1, 1)))
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
 
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
+@info "We download the 1990-1991 data for an RYF implementation"
 
-temperature = Metadata(:temperature; dates, dataset=ECCO4Monthly(), dir=data_path)
-salinity    = Metadata(:salinity;    dates, dataset=ECCO4Monthly(), dir=data_path)
+dataset = EN4Monthly() # Other options include ECCO2Monthly(), ECCO4Monthly() or ECCO2Daily()
+
+temperature = Metadata(:temperature; dates, dataset = dataset, dir=data_path)
+salinity    = Metadata(:salinity;    dates, dataset = dataset, dir=data_path)
 
 download_dataset(temperature)
 download_dataset(salinity)
@@ -62,7 +84,10 @@ underlying_grid = TripolarGrid(arch;
 
 @info "Defining bottom bathymetry"
 
-@time bottom_height = regrid_bathymetry(underlying_grid;
+ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
+ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
+
+@time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 10,
                                   interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
@@ -85,8 +110,8 @@ z_below_surface = r_faces[end-1]
 
 mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
 
-FT = ECCORestoring(temperature, grid; mask, rate=restoring_rate)
-FS = ECCORestoring(salinity,    grid; mask, rate=restoring_rate)
+FT = DatasetRestoring(temperature, grid; mask, rate=restoring_rate)
+FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate)
 forcing = (T=FT, S=FS)
 
 # ### Closures
@@ -129,12 +154,12 @@ tracer_advection = WENO(order=5)
 
 # ### Initial condition
 
-# We initialize the ocean from the ECCO state estimate.
+# We initialize the ocean from the EN4 state estimate.
 
-@info "Initialising with ECCO"
+@info "Initialising with EN4"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset=ECCO4Monthly()),
-                  S=Metadata(:salinity;    dates=first(dates), dataset=ECCO4Monthly()))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
+                  S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
 
 # ### Atmospheric forcing
 
@@ -166,41 +191,36 @@ simulation = Simulation(coupled_model; Δt=30, stop_time=20days)
 
 wall_time = Ref(time_ns())
 
+callback_interval = IterationInterval(20)
+
 function progress(sim)
-    ocean = sim.model.ocean
-    u, v, w = ocean.model.velocities
-    T = ocean.model.tracers.T
-    Tmax = maximum(interior(T))
-    Tmin = minimum(interior(T))
-    umax = (maximum(abs, interior(u)),
-            maximum(abs, interior(v)),
-            maximum(abs, interior(w)))
+    u, v, w = sim.model.ocean.model.velocities
+    T, S, e = sim.model.ocean.model.tracers
+    Trange = (maximum((T)), minimum((T)))
+    Srange = (maximum((S)), minimum((S)))
+    erange = (maximum((e)), minimum((e)))
+
+    umax = (maximum(abs, (u)),
+            maximum(abs, (v)),
+            maximum(abs, (w)))
 
     step_time = 1e-9 * (time_ns() - wall_time[])
 
     msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
-    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Tmax, Tmin)
-    msg4 = @sprintf("wall time: %s \n", prettytime(step_time))
+    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
+    msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
+    msg5 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
+    msg6 = @sprintf("wall time: %s \n", prettytime(step_time))
 
-    @info msg1 * msg2 * msg3 * msg4
+    @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6
 
-     wall_time[] = time_ns()
+    wall_time[] = time_ns()
 
-     return nothing
+    return nothing
 end
 
-# And add it as a callback to the simulation.
-add_callback!(simulation, progress, IterationInterval(10))
-
-volmask = CenterField(grid)
-set!(volmask, 1)
-
-@info "Defining condition masks"
-
-Atlantic_mask = repeat(basin_mask(grid, "atlantic", volmask), 1, 1, Nz);
-IPac_mask = repeat(basin_mask(grid, "indo-pacific", volmask), 1, 1, Nz);
-glob_mask = Atlantic_mask .|| IPac_mask;
+add_callback!(simulation, progress, callback_interval)
 
 #### SURFACE
 
@@ -213,15 +233,38 @@ outputs = merge(tracers, velocities)
 
 #### TRACERS ####
 
+volmask = CenterField(grid)
+set!(volmask, 1)
+wmask = ZFaceField(grid)
+
+@info "Defining condition masks"
+
+Atlantic_mask = basin_mask(grid, "atlantic", volmask);
+IPac_mask = basin_mask(grid, "indo-pacific", volmask);
+glob_mask = Atlantic_mask .|| IPac_mask;
+
 tracer_volmask = [Ax, Δz, volmask]
-masks = [glob_mask, Atlantic_mask, IPac_mask]
+masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
+         repeat(IPac_mask, 1, 1, size(volmask)[3])]
+masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
+         repeat(IPac_mask, 1, 1, size(wmask)[3])]
+
+masks = [
+            [masks_centers[1], masks_wfaces[1]],  # Global
+            [masks_centers[2], masks_wfaces[2]],  # Atlantic
+            [masks_centers[3], masks_wfaces[3]]   # IPac
+        ]
+
 suffixes = ["_global_", "_atl_", "_ipac_"]
 tracer_names = Symbol[]
 tracer_outputs = Reduction[]
+
 for j in 1:3
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal");
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j], suffix = suffixes[j]*"depth");
-    ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j], suffix = suffixes[j]*"tot");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
 end
 
 @info "Merging tracer tuples"
@@ -235,26 +278,35 @@ transport_volmask_operators = [Ax, Ay, Az]
 transport_names = Symbol[]
 transport_outputs = ReducedField[]
 for j in 1:3
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-    volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
 end
 
 @info "Merging velocity tuples"
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-constants = simulation.model.interfaces.ocean_properties
+output_intervals = AveragedTimeInterval(5days)
 
 @info "Defining output writers"
 
-output_intervals = 5days
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+                                                          dir = output_path,
+                                                          schedule = output_intervals,
+                                                          filename = "ocean_tracer_content_qtrdeg",
+                                                          overwrite_existing = true)
+
+simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+                                                          dir = output_path,
+                                                          schedule = output_intervals,
+                                                          filename = "mass_transport_qtrdeg",
+                                                          overwrite_existing = true)
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
-                                                 schedule = TimeInterval(output_intervals),
-                                                 filename = "global_surface_fields_$(ARGS[4])",
+                                                 schedule = output_intervals,
+                                                 filename = "global_surface_fields_qtrdeg",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -264,27 +316,15 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
-                                                schedule = TimeInterval(output_intervals),
-                                                filename = "fluxes_$(ARGS[4])",
+                                                schedule = output_intervals,
+                                                filename = "fluxes_qtrdeg",
                                                 overwrite_existing = true)
-
-simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
-                                                          dir = output_path,
-                                                          schedule = TimeInterval(output_intervals),
-                                                          filename = "ocean_tracer_content_$(ARGS[4])",
-                                                          overwrite_existing = true)
-
-simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
-                                                          dir = output_path,
-                                                          schedule = TimeInterval(output_intervals),
-                                                          filename = "mass_transport_$(ARGS[4])",
-                                                          overwrite_existing = true)
 
 @info "Running simulation"
 
 run!(simulation)
 
-simulation.Δt = 5minutes
-simulation.stop_time = 11000days
+simulation.Δt = 20minutes
+simulation.stop_time = 1826.25days # 5 years
 
 run!(simulation)
