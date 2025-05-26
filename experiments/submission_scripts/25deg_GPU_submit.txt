@@ -13,8 +13,8 @@
 #PBS -N GPU_RYFqtrdg
 
 ## Where the outputs go
-#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYFqtrdg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYFqtrdg.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFqtrdg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFqtrdg.e
 
-mpirun -n 2 julia --project ../RYF_qtrdeg.jl --arch GPU > /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYFqtrdg.stdout 2> /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_RYFqtrdg.stderr
+mpirun -n 2 julia --project ../RYF_qtrdeg.jl --arch GPU > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFqtrdg.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFqtrdg.stderr
 

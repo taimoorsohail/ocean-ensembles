@@ -33,7 +33,7 @@ function create_dict(vars, path)
     for var in vars
         try
             # Surface
-            dicts[var] = FieldTimeSeries(path, var)
+            dicts [var] = FieldTimeSeries(path, var)
         catch e
             if e isa KeyError
                 @warn "Skipping variable $var: Key not found in file."
