@@ -95,16 +95,6 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=2minutes, stop_time=10days)
 
-volmask = CenterField(grid)
-set!(volmask, 1)
-wmask = ZFaceField(grid)
-
-@info "Defining condition masks"
-
-Atlantic_mask = basin_mask(grid, "atlantic", volmask);
-IPac_mask = basin_mask(grid, "indo-pacific", volmask);
-glob_mask = Atlantic_mask .|| IPac_mask;
-
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
@@ -114,6 +104,16 @@ outputs = merge(tracers, velocities)
 @info "Tracers"
 
 #### TRACERS ####
+
+volmask = CenterField(grid)
+set!(volmask, 1)
+wmask = ZFaceField(grid)
+
+@info "Defining condition masks"
+
+Atlantic_mask = basin_mask(grid, "atlantic", volmask);
+IPac_mask = basin_mask(grid, "indo-pacific", volmask);
+glob_mask = Atlantic_mask .|| IPac_mask;
 
 tracer_volmask = [Ax, Δz, volmask]
 masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
@@ -166,7 +166,7 @@ output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniver
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
-                                                 schedule = callback_interval,
+                                                 schedule = output_intervals,
                                                  filename = "global_surface_fields",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
@@ -177,19 +177,19 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
-                                                schedule = callback_interval,
+                                                schedule = output_intervals,
                                                 filename = "fluxes",
                                                 overwrite_existing = true)
 
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
-                                                          schedule = TimeInterval(output_intervals),
+                                                          schedule = output_intervals,
                                                           filename = "ocean_tracer_content",
                                                           overwrite_existing = true)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
-                                                          schedule = TimeInterval(output_intervals),
+                                                          schedule = output_intervals,
                                                           filename = "mass_transport",
                                                           overwrite_existing = true)
 
