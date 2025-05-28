@@ -8,8 +8,9 @@ using JLD2
 
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
-filename_surf = "global_surface_fields_distributedGPU.jld2"
-filename_flux = "fluxes.jld2"
+filename_surf = "global_surface_fields_RYF1deg.jld2"
+filename_flux = "fluxes_RYF1deg.jld2"
+suffix = "RYF1deg_uniform_thick"
 
 variables_tracers = ["T", "S"]
 variables_velocities =  ["u", "v", "w"]
@@ -35,13 +36,13 @@ function create_dict(vars, path)
 end
 
 @info "I am loading the fluxes" 
-# fluxes = create_dict(variables_fluxes, output_path * filename_flux)
+fluxes = create_dict(variables_fluxes, output_path * filename_flux)
 @info "I am loading the surface properties" 
 surface = create_dict(variables_surface, output_path * filename_surf)
 times = surface["T"].times
 time_slice = lastindex(surface["T"].times)
 
-#=
+
 ###### SURFACE FLUXES ######
 
 fig = Figure(size = (1600, 800))
@@ -64,7 +65,7 @@ hm = heatmap!(axs, view(interior(fluxes["sensible_heat"][time_slice]), :, :, 1),
 Colorbar(fig[1, 4], hm, label = "Sensible Heat (W/m2)")
 Label(fig[0, :], title)
 
-save(figdir * "surface_fluxes.png", fig, px_per_unit=3)
+save(figdir * "surface_fluxes_" * suffix * ".png", fig, px_per_unit=3)
 
 ##################################################################
 
@@ -99,7 +100,7 @@ ax3 = Axis(fig[2,1], xlabel="Years", ylabel="Temperature", title="Surface Temper
 lines!(ax1, times/(3600*24*365.25), LH_W, color=:black, label = "ClimaOcean - 1deg Tripolar")
 lines!(ax2, times/(3600*24*365.25), SH_W, color=:black)
 lines!(ax3, times/(3600*24*365.25), mxtemp, color=:red)
-lines!(ax3, times/(3600*24*365.25), mntemp, color=:blue)
+# lines!(ax3, times/(3600*24*365.25), mntemp, color=:blue)
 axislegend(ax1, position = :rb)
 
 dt_change = 20 / 365.25  # 20 days in years
@@ -108,8 +109,8 @@ vlines!(ax1, [dt_change], color=:black, linestyle=:dash, label = "Increasing dt"
 vlines!(ax2, [dt_change], color=:black, linestyle=:dash)
 vlines!(ax3, [dt_change], color=:black, linestyle=:dash)
 
-save(figdir * "flux_issue.png", fig, px_per_unit=3)
-=#
+save(figdir * "flux_issue_" * suffix * ".png", fig, px_per_unit=3)
+
 ###### SURFACE FIELDS ######
 
 fig = Figure(size = (1200, 800))
@@ -135,4 +136,4 @@ hm = heatmap!(axs, view(interior(surface["S"][time_slice]), :, :, 1) , colorrang
 Colorbar(fig[1, 4], hm, label = "Salinity (unitless)")
 
 Label(fig[0, :], title)
-save(figdir * "surface_fields.png", fig, px_per_unit=3)
+save(figdir * "surface_fields_" * suffix * ".png", fig, px_per_unit=3)

@@ -15,6 +15,7 @@ using ClimaOcean.DataWrangling.ETOPO
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+suffix = "_KDS75_nozstar"
 
 ## Argument is provided by the submission script!
 
@@ -43,7 +44,8 @@ end
 # ### ECCO files
 @info "Downloading/checking input data"
 
-dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),
+             collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
 
 @info "We download the 1990-1991 data for an RYF implementation"
 
@@ -60,18 +62,18 @@ download_dataset(salinity)
 
 Nx = Integer(360)
 Ny = Integer(180)
-Nz = Integer(50)
+Nz = Integer(75)
 
 @info "Defining vertical z faces"
 
-r_faces = exponential_z_faces(; Nz, depth=5000, h=34)
-z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
+r_faces = exponential_z_faces(; Nz, depth=5000, h=12.43)
+# z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 
 @info "Defining tripolar grid"
 
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
-                               z = z_faces,
+                               z = r_faces,
                                halo = (5, 5, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
@@ -99,7 +101,7 @@ view(bottom_height, 102:103, 124, 1) .= -400
 
 @info "Defining restoring rate"
 
-restoring_rate  = 1 / 10days
+restoring_rate  = 1 / 3days
 z_below_surface = r_faces[end-1]
 
 mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
@@ -128,7 +130,7 @@ closure = (eddy_closure, horizontal_viscosity, vertical_mixing)
 @info "Defining free surface"
 
 free_surface       = SplitExplicitFreeSurface(grid; substeps=70)
-momentum_advection = VectorInvariant()
+momentum_advection = WENOVectorInvariant(order = 5)
 tracer_advection   = WENO(order=5)
 
 @info "Defining ocean simulation"
@@ -179,7 +181,7 @@ simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
 
 wall_time = Ref(time_ns())
 
-callback_interval = IterationInterval(20)
+callback_interval = IterationInterval(100)
 
 # function find_nans(sim, nans)
 #     fill!(nans, false)
@@ -244,61 +246,61 @@ velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
-#### TRACERS ####
+# #### TRACERS ####
 
-volmask = CenterField(grid)
-set!(volmask, 1)
-wmask = ZFaceField(grid)
+# volmask = CenterField(grid)
+# set!(volmask, 1)
+# wmask = ZFaceField(grid)
 
-@info "Defining condition masks"
+# @info "Defining condition masks"
 
-Atlantic_mask = basin_mask(grid, "atlantic", volmask);
-IPac_mask = basin_mask(grid, "indo-pacific", volmask);
-glob_mask = Atlantic_mask .|| IPac_mask;
+# Atlantic_mask = basin_mask(grid, "atlantic", volmask);
+# IPac_mask = basin_mask(grid, "indo-pacific", volmask);
+# glob_mask = Atlantic_mask .|| IPac_mask;
 
-tracer_volmask = [Ax, Δz, volmask]
-masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
-         repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
-         repeat(IPac_mask, 1, 1, size(volmask)[3])]
-masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
-         repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
-         repeat(IPac_mask, 1, 1, size(wmask)[3])]
+# tracer_volmask = [Ax, Δz, volmask]
+# masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
+#          repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
+#          repeat(IPac_mask, 1, 1, size(volmask)[3])]
+# masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
+#          repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
+#          repeat(IPac_mask, 1, 1, size(wmask)[3])]
 
-masks = [
-            [masks_centers[1], masks_wfaces[1]],  # Global
-            [masks_centers[2], masks_wfaces[2]],  # Atlantic
-            [masks_centers[3], masks_wfaces[3]]   # IPac
-        ]
+# masks = [
+#             [masks_centers[1], masks_wfaces[1]],  # Global
+#             [masks_centers[2], masks_wfaces[2]],  # Atlantic
+#             [masks_centers[3], masks_wfaces[3]]   # IPac
+#         ]
 
-suffixes = ["_global_", "_atl_", "_ipac_"]
-tracer_names = Symbol[]
-tracer_outputs = Reduction[]
+# suffixes = ["_global_", "_atl_", "_ipac_"]
+# tracer_names = Symbol[]
+# tracer_outputs = Reduction[]
 
-for j in 1:3
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
-end
+# for j in 1:3
+#     @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
+#     @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+#     @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
+# end
 
-@info "Merging tracer tuples"
+# @info "Merging tracer tuples"
 
-tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
+# tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
 
-#### VELOCITIES ####
-@info "Velocities"
+# #### VELOCITIES ####
+# @info "Velocities"
 
-transport_volmask_operators = [Ax, Ay, Az]
-transport_names = Symbol[]
-transport_outputs = ReducedField[]
-for j in 1:3
-    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
-end
+# transport_volmask_operators = [Ax, Ay, Az]
+# transport_names = Symbol[]
+# transport_outputs = ReducedField[]
+# for j in 1:3
+#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
+#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
+#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
+# end
 
-@info "Merging velocity tuples"
+# @info "Merging velocity tuples"
 
-transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
+# transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
 output_intervals = AveragedTimeInterval(5days)
 
@@ -307,7 +309,7 @@ output_intervals = AveragedTimeInterval(5days)
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_RYF1deg",
+                                                 filename = "global_surface_fields_RYF1deg" * suffix,
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -318,20 +320,20 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
                                                 schedule = output_intervals,
-                                                filename = "fluxes_RYF1deg",
+                                                filename = "fluxes_RYF1deg" * suffix,
                                                 overwrite_existing = true)
 
-simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
-                                                          dir = output_path,
-                                                          schedule = output_intervals,
-                                                          filename = "ocean_tracer_content_RYF1deg",
-                                                          overwrite_existing = true)
+# simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+#                                                           dir = output_path,
+#                                                           schedule = output_intervals,
+#                                                           filename = "ocean_tracer_content_RYF1deg",
+#                                                           overwrite_existing = true)
 
-simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
-                                                          dir = output_path,
-                                                          schedule = output_intervals,
-                                                          filename = "mass_transport_RYF1deg",
-                                                          overwrite_existing = true)
+# simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+#                                                           dir = output_path,
+#                                                           schedule = output_intervals,
+#                                                           filename = "mass_transport_RYF1deg",
+#                                                           overwrite_existing = true)
 
 @info "Running simulation"
 
