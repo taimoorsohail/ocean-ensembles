@@ -4,6 +4,7 @@ using ClimaOcean
 using Oceananigans.Fields: location
 using JLD2
 using Test
+using CarioMakie
 
 prefix = "/g/data/v46/txs156/ocean-ensembles/outputs/global_surface_fields_distributedGPU"
 prefix_out = "/g/data/v46/txs156/ocean-ensembles/outputs/global_surface_fields_distributedGPU"
@@ -32,7 +33,7 @@ function create_dict(vars, path)
     for var in vars
         try
             # Surface
-            dicts[var] = FieldTimeSeries(path, var)
+            dicts [var] = FieldTimeSeries(path, var)
         catch e
             if e isa KeyError
                 @warn "Skipping variable $var: Key not found in file."

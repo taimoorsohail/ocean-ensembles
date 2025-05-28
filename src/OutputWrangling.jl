@@ -74,7 +74,6 @@ function combine_outputs(ranks, prefix, prefix_out; remove_split_files = false)
         field = Field{location(fts)...}(grid)
         Ny = size(fts, 2)
         for (idx, iter) in enumerate(iters)
-            @info "doing iter $idx of $(length(iters))"
             for rank in ranks
                 irange = ny * rank + 1 : ny * (rank + 1)
                 file   = jldopen(prefix * "_rank$(rank).jld2")
