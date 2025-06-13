@@ -66,18 +66,18 @@ download_dataset(salinity)
 
 Nx = Integer(360*6)
 Ny = Integer(180*6)
-Nz = Integer(100)
+Nz = Integer(75)
 
 @info "Defining vertical z faces"
 
-r_faces = exponential_z_faces(; Nz, depth=5000, h=34)
-z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
+r_faces = exponential_z_faces(; Nz, depth=5000, h=12.43)
+# z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 
 @info "Defining tripolar grid"
 
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
-                               z = z_faces,
+                               z = r_faces,
                                halo = (5, 5, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
@@ -121,27 +121,19 @@ forcing = (T=FT, S=FS)
 
 @info "Defining closures"
 
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
-                                       DiffusiveFormulation
+using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, CATKEMixingLength, CATKEEquation
 
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
-                                                 skew_flux_formulation=DiffusiveFormulation())
-vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
+momentum_advection = WENOVectorInvariant()
+tracer_advection   = WENO(order=7)
 
-closure = (eddy_closure, vertical_mixing)
+free_surface = SplitExplicitFreeSurface(grid; substeps=70)
 
-# ### Ocean simulation
-# Now we bring everything together to construct the ocean simulation.
-# We use a split-explicit timestepping with 30 substeps for the barotropic
-# mode.
+mixing_length = CATKEMixingLength(Cᵇ=0.01)
+turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
 
-@info "Defining free surface"
-
-free_surface = SplitExplicitFreeSurface(grid; substeps=30)
-
-# As per https://github.com/taimoorsohail/ocean-ensembles/issues/38 -- for quarter degree
-momentum_advection = WENOVectorInvariant(order=5) 
-tracer_advection = WENO(order=5)
+catke_closure = CATKEVerticalDiffusivity(ExplicitTimeDiscretization(); mixing_length, turbulent_kinetic_energy_equation) 
+closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-5))
 
 @info "Defining ocean simulation"
 
@@ -181,7 +173,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=30, stop_time=20days)
+simulation = Simulation(coupled_model; Δt=20, stop_time=60days)
 
 # ### A progress messenger
 #
@@ -320,11 +312,71 @@ simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 filename = "fluxes_sxthdeg",
                                                 overwrite_existing = true)
 
-@info "Running simulation"
+@info "Saving restart"
 
-run!(simulation)
+simulation.output_writers[:3d_field] = JLD2Writer(ocean.model, outputs;
+                                                 dir = output_path,
+                                                 schedule = TimeInterval(5days),
+                                                 filename = "restart_sxthdeg",
+                                                 with_halos = false,
+                                                 overwrite_existing = true,
+                                                 array_type = Array{Float32})
 
-simulation.Δt = 20minutes
-simulation.stop_time = 1826.25days # 5 years
 
-run!(simulation)
+
+if isfile(output_path * "restart_sxthdeg.jld2")
+    @info "Loading with restart file"
+    T_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "T")
+    S_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "S")
+    u_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "u")
+    v_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "v")
+    w_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "w")
+    e_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "e")
+
+    set!(ocean.model, T=T_field,
+    S=S_field,
+    u=u_field,
+    v=v_field,
+    w=w_field,
+    e=e_field)
+
+    Trange = (maximum((T)), minimum((T)))
+    Srange = (maximum((S)), minimum((S)))
+    erange = (maximum((e)), minimum((e)))
+
+    umax = (maximum(abs, (u)),
+            maximum(abs, (v)),
+            maximum(abs, (w)))
+
+    @show Trange, Srange, erange, umax
+
+    @info "Running simulation"
+
+    simulation.Δt = 10minutes 
+    simulation.stop_time = 5475days # 15 years # Remove the 0.25day bc it's not a leap year
+
+    run!(simulation)
+
+    combine_outputs(2, "ocean_tracer_content_sxthdeg", "ocean_tracer_content_sxthdeg"; remove_split_files = true)
+    combine_outputs(2, "mass_transport_sxthdeg", "mass_transport_sxthdeg"; remove_split_files = true)
+    combine_outputs(2, "global_surface_fields_sxthdeg", "global_surface_fields_sxthdeg"; remove_split_files = true)
+    combine_outputs(2, "fluxes_sxthdeg", "fluxes_sxthdeg"; remove_split_files = true)
+    combine_outputs(2, "restart_sxthdeg", "restart_sxthdeg"; remove_split_files = true)
+
+else
+
+    @info "Running simulation"
+
+    run!(simulation)
+
+    simulation.Δt = 10minutes 
+    simulation.stop_time = 5475days # 15 years 
+
+    run!(simulation)
+
+    combine_outputs(2, "ocean_tracer_content_sxthdeg", "ocean_tracer_content_sxthdeg"; remove_split_files = true)
+    combine_outputs(2, "mass_transport_sxthdeg", "mass_transport_sxthdeg"; remove_split_files = true)
+    combine_outputs(2, "global_surface_fields_sxthdeg", "global_surface_fields_sxthdeg"; remove_split_files = true)
+    combine_outputs(2, "fluxes_sxthdeg", "fluxes_sxthdeg"; remove_split_files = true)
+    combine_outputs(2, "restart_sxthdeg", "restart_sxthdeg"; remove_split_files = true)
+end

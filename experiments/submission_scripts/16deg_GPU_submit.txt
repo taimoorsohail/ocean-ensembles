@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -P gb02
+#PBS -q gpuvolta
+#PBS -l walltime=12:00:00
+#PBS -l mem=128GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=24 
+#PBS -l ngpus=2 
+#PBS -l jobfs=10GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N GPU_RYFsxthdg
+
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.e
+
+mpirun -n 2 julia --project \
+  ../RYF_sxthdeg.jl --arch GPU \
+  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.stdout \
+  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.stderr
+
