@@ -64,8 +64,8 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360*4)
-Ny = Integer(180*4)
+Nx = Integer(360*6)
+Ny = Integer(180*6)
 Nz = Integer(100)
 
 @info "Defining vertical z faces"
@@ -89,7 +89,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 10,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
@@ -294,19 +294,19 @@ output_intervals = AveragedTimeInterval(5days)
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
-                                                          filename = "ocean_tracer_content_qtrdeg",
+                                                          filename = "ocean_tracer_content_sxthdeg",
                                                           overwrite_existing = true)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
-                                                          filename = "mass_transport_qtrdeg",
+                                                          filename = "mass_transport_sxthdeg",
                                                           overwrite_existing = true)
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_qtrdeg",
+                                                 filename = "global_surface_fields_sxthdeg",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -317,7 +317,7 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
                                                 schedule = output_intervals,
-                                                filename = "fluxes_qtrdeg",
+                                                filename = "fluxes_sxthdeg",
                                                 overwrite_existing = true)
 
 @info "Running simulation"
