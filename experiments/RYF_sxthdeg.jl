@@ -78,7 +78,7 @@ r_faces = exponential_z_faces(; Nz, depth=5000, h=12.43)
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = r_faces,
-                               halo = (5, 5, 4),
+                               halo = (7, 7, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
 
