@@ -12,9 +12,6 @@ using Dates
 using Printf
 using Oceananigans.DistributedComputations
 using OceanEnsembles
-using JLD2
-using Test
-using CarioMakie
 
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
@@ -33,7 +30,7 @@ total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 
 Nx = Integer(360)
 Ny = Integer(180)
-Nz = Integer(100)
+Nz = Integer(75)
 
 @info "Defining vertical z faces"
 
@@ -54,7 +51,7 @@ underlying_grid = TripolarGrid(arch;
 
 @time bottom_height = regrid_bathymetry(underlying_grid;
                                   minimum_depth = 10,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
@@ -169,17 +166,3 @@ simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
 @info "Running simulation"
 
 run!(simulation)
-
-prefix = "/g/data/v46/txs156/ocean-ensembles/outputs/fluxes_distributedGPU"
-prefix_out = "/g/data/v46/txs156/ocean-ensembles/outputs/fluxes_distributedGPU"
-ranks = 0:total_ranks
-
-if isfile(prefix_out * ".jld2")
-    @info "File found! Deleting..."
-    rm(prefix_out * ".jld2")
-    combine_outputs(ranks, prefix, prefix_out)
-    @test isfile(prefix_out * ".jld2")
-else
-    combine_outputs(ranks, prefix, prefix_out)
-    @test isfile(prefix_out * ".jld2")
-end

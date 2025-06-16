@@ -1,7 +1,7 @@
 #!/bin/bash
-#PBS -P v46
+#PBS -P gb02
 #PBS -q gpuvolta
-#PBS -l walltime=12:00:00
+#PBS -l walltime=04:00:00
 #PBS -l mem=128GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
@@ -10,10 +10,10 @@
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_Clima1deg
+#PBS -N Checkpointer_example
 
 ## Where the outputs go
-#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_1deg_example.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_1deg_example.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/checkpointer_example.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/checkpointer_example.e
 
-julia --project one_degree_simulation.jl > /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_1deg_example.stdout 2> /g/data/v46/txs156/ocean-ensembles/run_logs/GPU_1deg_example.stderr
+mpirun -n 1 julia --project ../../test/test_restart.jl > /g/data/v46/txs156/ocean-ensembles/run_logs/checkpointer_example.stdout 2> /g/data/v46/txs156/ocean-ensembles/run_logs/checkpointer_example.stderr

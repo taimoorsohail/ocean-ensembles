@@ -22,6 +22,11 @@ using ClimaOcean.DataWrangling.ETOPO
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
+iteration=0
+if isfile(output_path * "iteration.jld2")
+    iteration = jldopen("iteration.jld2")
+end
+
 ## Argument is provided by the submission script!
 
 if isempty(ARGS)
@@ -39,10 +44,13 @@ elseif ARGS[2] == "GPU"
 elseif ARGS[2] == "CPU"
     arch = CPU()
 else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU --suffix RYF1deg"))
+    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
 
+total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
+
 @info "Using architecture: " * string(arch)
+@info total_ranks
 
 # ### Download necessary files to run the code
 
@@ -175,6 +183,8 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=20, stop_time=60days)
 
+simulation.iteration = iteration
+simulation.model.ocean.clock = iteration*Δt
 # ### A progress messenger
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
@@ -248,6 +258,8 @@ masks = [
             [masks_centers[2], masks_wfaces[2]],  # Atlantic
             [masks_centers[3], masks_wfaces[3]]   # IPac
         ]
+        
+@info "Tracers"
 
 suffixes = ["_global_", "_atl_", "_ipac_"]
 tracer_names = Symbol[]
@@ -286,22 +298,22 @@ output_intervals = AveragedTimeInterval(5days)
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
-                                                          filename = "ocean_tracer_content_sxthdeg",
-                                                          overwrite_existing = true)
+                                                          filename = "ocean_tracer_content_sxthdeg_" * string(iteration),
+                                                          overwrite_existing = false)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
-                                                          filename = "mass_transport_sxthdeg",
-                                                          overwrite_existing = true)
+                                                          filename = "mass_transport_sxthdeg_" * string(iteration),
+                                                          overwrite_existing = false)
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_sxthdeg",
+                                                 filename = "global_surface_fields_sxthdeg_" * string(iteration),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
-                                                 overwrite_existing = true,
+                                                 overwrite_existing = false,
                                                  array_type = Array{Float32})
 
 fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
@@ -309,31 +321,35 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
                                                 schedule = output_intervals,
-                                                filename = "fluxes_sxthdeg",
-                                                overwrite_existing = true)
+                                                filename = "fluxes_sxthdeg_" * string(iteration),
+                                                overwrite_existing = false)
 
 @info "Saving restart"
 
-simulation.output_writers[:3d_field] = JLD2Writer(ocean.model, outputs;
+restart_file = "restart_sxthdeg"
+
+simulation.output_writers[:full_field] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = TimeInterval(5days),
-                                                 filename = "restart_sxthdeg",
+                                                 filename = restart_file * "_" * string(iteration),
                                                  with_halos = false,
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
+jldsave("iteration.jld2"; iteration)
 
-
-if isfile(output_path * "restart_sxthdeg.jld2")
+if isfile(output_path * restart_file * ".jld2")
+    filename = output_path * restart_file * ".jld2"
     @info "Loading with restart file"
-    T_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "T")
-    S_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "S")
-    u_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "u")
-    v_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "v")
-    w_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "w")
-    e_field = FieldTimeSeries(output_path * "restart_sxthdeg.jld2", "e")
+    T_field = FieldTimeSeries(filename, "T")
+    S_field = FieldTimeSeries(filename, "S")
+    u_field = FieldTimeSeries(filename, "u")
+    v_field = FieldTimeSeries(filename, "v")
+    w_field = FieldTimeSeries(filename, "w")
+    e_field = FieldTimeSeries(filename, "e")
 
-    set!(ocean.model, T=T_field,
+    set!(ocean.model, 
+    T=T_field,
     S=S_field,
     u=u_field,
     v=v_field,
@@ -353,15 +369,15 @@ if isfile(output_path * "restart_sxthdeg.jld2")
     @info "Running simulation"
 
     simulation.Δt = 10minutes 
-    simulation.stop_time = 5475days # 15 years # Remove the 0.25day bc it's not a leap year
+    simulation.stop_time = 5475days # 15 years
 
     run!(simulation)
 
-    combine_outputs(2, "ocean_tracer_content_sxthdeg", "ocean_tracer_content_sxthdeg"; remove_split_files = true)
-    combine_outputs(2, "mass_transport_sxthdeg", "mass_transport_sxthdeg"; remove_split_files = true)
-    combine_outputs(2, "global_surface_fields_sxthdeg", "global_surface_fields_sxthdeg"; remove_split_files = true)
-    combine_outputs(2, "fluxes_sxthdeg", "fluxes_sxthdeg"; remove_split_files = true)
-    combine_outputs(2, "restart_sxthdeg", "restart_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * "ocean_tracer_content_sxthdeg", output_path * "ocean_tracer_content_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * "mass_transport_sxthdeg", output_path * "mass_transport_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * "global_surface_fields_sxthdeg", output_path * "global_surface_fields_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * "fluxes_sxthdeg", output_path * "fluxes_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * restart_file, output_path * restart_file; remove_split_files = true)
 
 else
 
@@ -374,9 +390,9 @@ else
 
     run!(simulation)
 
-    combine_outputs(2, "ocean_tracer_content_sxthdeg", "ocean_tracer_content_sxthdeg"; remove_split_files = true)
-    combine_outputs(2, "mass_transport_sxthdeg", "mass_transport_sxthdeg"; remove_split_files = true)
-    combine_outputs(2, "global_surface_fields_sxthdeg", "global_surface_fields_sxthdeg"; remove_split_files = true)
-    combine_outputs(2, "fluxes_sxthdeg", "fluxes_sxthdeg"; remove_split_files = true)
-    combine_outputs(2, "restart_sxthdeg", "restart_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * "ocean_tracer_content_sxthdeg", output_path * "ocean_tracer_content_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * "mass_transport_sxthdeg", output_path * "mass_transport_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * "global_surface_fields_sxthdeg", output_path * "global_surface_fields_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * "fluxes_sxthdeg", output_path * "fluxes_sxthdeg"; remove_split_files = true)
+    combine_outputs(total_ranks, output_path * restart_file, output_path * restart_file; remove_split_files = true)
 end
