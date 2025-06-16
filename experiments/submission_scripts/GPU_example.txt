@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -P gb02
+#PBS -q gpuvolta
+#PBS -l walltime=04:00:00
+#PBS -l mem=128GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=12 
+#PBS -l ngpus=1 
+#PBS -l jobfs=10GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N Checkpointer_example
+
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/run_logs/checkpointer_example.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/run_logs/checkpointer_example.e
+
+mpirun -n 1 julia --project ../../test/test_restart.jl > /g/data/v46/txs156/ocean-ensembles/run_logs/checkpointer_example.stdout 2> /g/data/v46/txs156/ocean-ensembles/run_logs/checkpointer_example.stderr

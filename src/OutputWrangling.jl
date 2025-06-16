@@ -64,6 +64,7 @@ function combine_outputs(ranks, prefix, prefix_out; remove_split_files = false)
 
     utmp = FieldTimeSeries{Face,   Center, Nothing}(grid, times; backend=OnDisk(), path=prefix_out * ".jld2", name="u")
     vtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=prefix_out * ".jld2", name="v")
+    wtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=prefix_out * ".jld2", name="w")
     Ttmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=prefix_out * ".jld2", name="T")
     Stmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=prefix_out * ".jld2", name="S")
     etmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=prefix_out * ".jld2", name="e")
@@ -74,7 +75,6 @@ function combine_outputs(ranks, prefix, prefix_out; remove_split_files = false)
         field = Field{location(fts)...}(grid)
         Ny = size(fts, 2)
         for (idx, iter) in enumerate(iters)
-            @info "doing iter $idx of $(length(iters))"
             for rank in ranks
                 irange = ny * rank + 1 : ny * (rank + 1)
                 file   = jldopen(prefix * "_rank$(rank).jld2")
@@ -90,6 +90,7 @@ function combine_outputs(ranks, prefix, prefix_out; remove_split_files = false)
 
     set_distributed_field_time_series!(utmp, prefix_out, ranks)
     set_distributed_field_time_series!(vtmp, prefix_out, ranks)
+    set_distributed_field_time_series!(wtmp, prefix_out, ranks)
     set_distributed_field_time_series!(Ttmp, prefix_out, ranks)
     set_distributed_field_time_series!(Stmp, prefix_out, ranks)
     set_distributed_field_time_series!(etmp, prefix_out, ranks)
