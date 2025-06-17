@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -P gb02
+#PBS -q gpuvolta
+#PBS -l walltime=03:00:00
+#PBS -l mem=128GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=36 
+#PBS -l ngpus=3 
+#PBS -l jobfs=10GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N checkpoint
+
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_checkpoint.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_checkpoint.e
+
+mpirun -n 3 julia --project \
+  ../../test/test_restart.jl --arch GPU \
+  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_checkpoint.stdout \
+  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_checkpoint.stderr
+
