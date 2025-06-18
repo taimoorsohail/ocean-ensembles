@@ -28,19 +28,19 @@ total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 
 @info "Using architecture: " * string(arch)
 
-clockfiles = glob("clock_distributedGPU_iteration*", output_path)
+restartfiles = glob("checkpoint_iteration*", output_path)
+
+    # Extract the numeric suffix from each filename
+restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+# clock_numbers = map(f -> parse(Int, match(r"clock_distributedGPU_iteration(\d+)", basename(f)).captures[1]), clockfiles)
 
 iteration = 0
 time = 0.0
-if !isempty(clockfiles)
+if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     # Extract the numeric suffix from each filename
-    numbers = map(f -> parse(Int, match(r"clock_distributedGPU_iteration(\d+)", basename(f)).captures[1]), clockfiles)
 
     # Get the file with the maximum number
-    max_index = argmax(numbers)
-    maxiter = clockfiles[max_index]
-    @show maxiter
-    clock_vars = jldopen(maxiter)
+    clock_vars = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
 
     iteration = clock_vars["clock"].iteration
     time = clock_vars["clock"].time
@@ -209,7 +209,7 @@ simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 filename = "fluxes_distributedGPU_iteration" * string(simulation.model.clock.iteration),
                                                 overwrite_existing = true)
 @info "Saving restart"
-restart_file = "test_checkpoint"
+# restart_file = "test_checkpoint"
 # simulation.output_writers[:full_field] = JLD2Writer(ocean.model, outputs;
 #                                                 dir = output_path,
 #                                                 schedule = TimeInterval(5days),
@@ -227,30 +227,26 @@ restart_file = "test_checkpoint"
 #                                         properties = [],
 #                                         overwrite_existing = true)
 function save_clock(sim)
-    if arch.local_rank == 0
-        jldsave(output_path * "clock_distributedGPU_iteration" * string(sim.model.clock.iteration) * ".jld2",
-        clock=sim.model.clock)
-    end
+    # if arch.local_rank == 0
+    #     jldsave(output_path * "clock_distributedGPU_iteration" * string(sim.model.clock.iteration) * ".jld2",
+    #     clock=sim.model.clock)
+    # end
     jldsave(output_path * "checkpoint_iteration" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
-    ocean.model.tracers, ocean.model.velocities)
+    ocean.model.tracers, ocean.model.velocities, clock=sim.model.clock)
 end
                                                                                                         
 add_callback!(simulation, save_clock, TimeInterval(5days))
 
-restartfiles = glob("checkpoint_iteration*", output_path)
-
-    # Extract the numeric suffix from each filename
-numbers = map(f -> parse(Int, match(r"checkpoint_iteration(\d+)", basename(f)).captures[1]), restartfiles)
-if !isempty(numbers) && maximum(numbers) != 0
+if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     # Get the file with the maximum number
     # max_index = argmax(numbers)
     # maxiter = restartfiles[max_index]
 
-    @info "Loading with restart file from iteration" * string(maximum(numbers))
+    @info "Loading with restart file from iteration" * string(maximum(restart_numbers))
     @info "Local rank ", arch.local_rank
-    @info output_path * "checkpoint_iteration" * string(maximum(numbers)) * "_rank" * string(arch.local_rank) * ".jld2"
+    @info output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2"
 
-    fields = jldopen(output_path * "checkpoint_iteration" * string(maximum(numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+    fields = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
 
     T_field = fields["tracers"].T 
     S_field = fields["tracers"].S

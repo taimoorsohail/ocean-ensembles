@@ -100,20 +100,26 @@
 │ ├── local_rank: 2 of 0-2
 │ ├── local_index: [1, 3, 1]
 └ └── connectivity: north=0 south=1
+[ Info: Moving simulation to 2880 iterations
+[ Info: Moving simulation to 2880 iterations
+[ Info: Moving simulation to 2880 iterations
+[ Info: Moving simulation to 10 days
+[ Info: Defining grid
+[ Info: Defining vertical z faces
+[ Info: Moving simulation to 10 days
+[ Info: Defining grid
+[ Info: Defining vertical z faces
+[ Info: Moving simulation to 10 days
 [ Info: Defining grid
 [ Info: Defining vertical z faces
 [ Info: Defining tripolar grid
-[ Info: Defining grid
-[ Info: Defining grid
-[ Info: Defining vertical z faces
-[ Info: Defining vertical z faces
 [ Info: Defining tripolar grid
 [ Info: Defining tripolar grid
+[ Info: Done defining tripolar grid
 [ Info: Done defining tripolar grid
 [ Info: Defining bottom bathymetry
 [ Info: Done defining tripolar grid
 [ Info: Defining bottom bathymetry
-[ Info: Done defining tripolar grid
 [ Info: Defining bottom bathymetry
 [ Info: Interpolation passes of bathymetry size (21600, 10800, 1) onto a TripolarGrid target grid of size (108, 54, 40):
 [ Info:     pass 1 to size (108, 54, 1)
@@ -129,104 +135,120 @@
 [ Info: Defining closures
 [ Info: Defining free surface
 [ Info: Defining ocean simulation
-[ Info: Defining Atmospheric state
-[ Info: Defining Atmospheric state
-[ Info: Defining Atmospheric state
-[ Info: Defining coupled model
-[ Info: Defining coupled model
-[ Info: Defining coupled model
-[ Info: Defining messenger
-[ Info: Defining messenger
-[ Info: Defining messenger
-[ Info: Defining surface outputs
-[ Info: Defining surface outputs
-[ Info: Defining surface outputs
-[ Info: Saving restart
-[ Info: Saving restart
-[ Info: Saving restart
-ERROR: LoadError: ERROR: LoadError: ERROR: LoadError: MethodError: reducing over an empty collection is not allowed; consider supplying `init` to the reducerMethodError: reducing over an empty collection is not allowed; consider supplying `init` to the reducerMethodError: reducing over an empty collection is not allowed; consider supplying `init` to the reducer
-Stacktrace:
-  [1] mapreduce_empty(::typeof(identity), op::Function, T::Type)
-    @ Base ./reduce.jl:372
-  [2] reduce_empty(op::Base.MappingRF{typeof(identity), typeof(max)}, ::Type{Int64})
-    @ Base ./reduce.jl:361
-  [3] reduce_empty_iter
-    @ ./reduce.jl:384 [inlined]
-  [4] mapreduce_empty_iter(f::Function, op::Function, itr::Vector{Int64}, ItrEltype::Base.HasEltype)
-    @ Base ./reduce.jl:380
-  [5] _mapreduce
-    @ ./reduce.jl:432 [inlined]
-  [6] _mapreduce_dim
-    @ ./reducedim.jl:367 [inlined]
-  [7] mapreduce
-    @ ./reducedim.jl:359 [inlined]
-  [8] _maximum
-    @ ./reducedim.jl:1017 [inlined]
-  [9] _maximum
-    @ ./reducedim.jl:1016 [inlined]
- [10] maximum(a::Vector{Int64})
-    @ Base ./reducedim.jl:1012
- [11] top-level scope
-    @ /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:241
-in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:241
 
-Stacktrace:
-  [1] mapreduce_empty(::typeof(identity), op::Function, T::Type)
-    @ Base ./reduce.jl:372
-  [2] reduce_empty(op::Base.MappingRF{typeof(identity), typeof(max)}, ::Type{Int64})
-    @ Base ./reduce.jl:361
-  [3] reduce_empty_iter
-    @ ./reduce.jl:384 [inlined]
-  [4] mapreduce_empty_iter(f::Function, op::Function, itr::Vector{Int64}, ItrEltype::Base.HasEltype)
-    @ Base ./reduce.jl:380
-  [5] _mapreduce
-    @ ./reduce.jl:432 [inlined]
-  [6] _mapreduce_dim
-    @ ./reducedim.jl:367 [inlined]
-  [7] mapreduce
-    @ ./reducedim.jl:359 [inlined]
-  [8] _maximum
-    @ ./reducedim.jl:1017 [inlined]
-  [9] _maximum
-    @ ./reducedim.jl:1016 [inlined]
- [10] maximum(a::Vector{Int64})
-    @ Base ./reducedim.jl:1012
- [11] top-level scope
-    @ /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:241
-in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:241
+[1425924] signal (15): Terminated
+in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:112
+obviously_unequal at /cache/build/tester-amdci4-11/julialang/julia-master/src/subtype.c:343
+ijl_types_equal at /cache/build/tester-amdci4-11/julialang/julia-master/src/subtype.c:2207
+== at ./operators.jl:250 [inlined]
+most_general_argtypes at ./compiler/inferenceresult.jl:119
+most_general_argtypes at ./compiler/inferenceresult.jl:109 [inlined]
+matching_cache_argtypes at ./compiler/inferenceresult.jl:27 [inlined]
+inflate_ir! at ./compiler/ssair/legacy.jl:13
+retrieve_ir_for_inlining at ./compiler/ssair/inlining.jl:986 [inlined]
+#resolve_todo#457 at ./compiler/ssair/inlining.jl:908
 
-Stacktrace:
-  [1] mapreduce_empty(::typeof(identity), op::Function, T::Type)
-    @ Base ./reduce.jl:372
-  [2] reduce_empty(op::Base.MappingRF{typeof(identity), typeof(max)}, ::Type{Int64})
-    @ Base ./reduce.jl:361
-  [3] reduce_empty_iter
-    @ ./reduce.jl:384 [inlined]
-  [4] mapreduce_empty_iter(f::Function, op::Function, itr::Vector{Int64}, ItrEltype::Base.HasEltype)
-    @ Base ./reduce.jl:380
-  [5] _mapreduce
-    @ ./reduce.jl:432 [inlined]
-  [6] _mapreduce_dim
-    @ ./reducedim.jl:367 [inlined]
-  [7] mapreduce
-    @ ./reducedim.jl:359 [inlined]
-  [8] _maximum
-    @ ./reducedim.jl:1017 [inlined]
-  [9] _maximum
-    @ ./reducedim.jl:1016 [inlined]
- [10] maximum(a::Vector{Int64})
-    @ Base ./reducedim.jl:1012
- [11] top-level scope
-    @ /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:241
-in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:241
---------------------------------------------------------------------------
-Primary job  terminated normally, but 1 process returned
-a non-zero exit code. Per user-direction, the job has been aborted.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-mpirun detected that one or more processes exited with non-zero status, thus causing
-the job to be terminated. The first process to do so was:
-
-  Process name: [[8254,1],0]
-  Exit code:    1
---------------------------------------------------------------------------
+[1425926] signal (15): Terminated
+in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:112
+_ZN4llvm19SmallPtrSetImplBase14insert_imp_bigEPKv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm18ScheduleDAGSDNodes15BuildSchedUnitsEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm18ScheduleDAGSDNodes15BuildSchedGraphEPNS_9AAResultsE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN12_GLOBAL__N_117ScheduleDAGRRList8ScheduleEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm16SelectionDAGISel17CodeGenAndEmitDAGEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm16SelectionDAGISel20SelectAllBasicBlocksERKNS_8FunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm16SelectionDAGISel20runOnMachineFunctionERNS_15MachineFunctionE.part.950 at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN12_GLOBAL__N_115X86DAGToDAGISel20runOnMachineFunctionERN4llvm15MachineFunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm19MachineFunctionPass13runOnFunctionERNS_8FunctionE.part.68 at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm13FPPassManager13runOnFunctionERNS_8FunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm13FPPassManager11runOnModuleERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm6legacy15PassManagerImpl3runERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc14SimpleCompilerclERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+operator() at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1311
+_ZN4llvm3orc14IRCompileLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16IRTransformLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+emit at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:724
+_ZN4llvm3orc31BasicIRLayerMaterializationUnit11materializeESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc19MaterializationTask3runEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm6detail18UniqueFunctionBaseIvJSt10unique_ptrINS_3orc4TaskESt14default_deleteIS4_EEEE8CallImplIPFvS7_EEEvPvRS7_ at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession22dispatchOutstandingMUsEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession17OL_completeLookupESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EESt10shared_ptrINS0_23AsynchronousSymbolQueryEESt8functionIFvRKNS_8DenseMapIPNS0_8JITDylibENS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISF_vEEEENSG_ISD_vEENS_6detail12DenseMapPairI
+[1425925] signal (15): Terminated
+in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:112
+_ZN4llvm17LiveIntervalUnion5Query23collectInterferingVRegsEj at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZNK4llvm22DefaultEvictionAdvisor31canEvictInterferenceBasedOnCostERKNS_12LiveIntervalENS_10MCRegisterEbRNS_12EvictionCostERKNS_8SmallSetINS_8RegisterELj16ESt4lessIS8_EEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZNK4llvm22DefaultEvictionAdvisor24tryFindEvictionCandidateERKNS_12LiveIntervalERKNS_15AllocationOrderEhRKNS_8SmallSetINS_8RegisterELj16ESt4lessIS8_EEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm8RAGreedy8tryEvictERKNS_12LiveIntervalERNS_15AllocationOrderERNS_15SmallVectorImplINS_8RegisterEEEhRKNS_8SmallSetIS7_Lj16ESt4lessIS7_EEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm8RAGreedy17selectOrSplitImplERKNS_12LiveIntervalERNS_15SmallVectorImplINS_8RegisterEEERNS_8SmallSetIS5_Lj16ESt4lessIS5_EEERNS_11SmallVectorISt4pairIPS2_NS_10MCRegisterEELj8EEEj at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm8RAGreedy13selectOrSplitERKNS_12LiveIntervalERNS_15SmallVectorImplINS_8RegisterEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm12RegAllocBase16allocatePhysRegsEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm8RAGreedy20runOnMachineFunctionERNS_15MachineFunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm19MachineFunctionPass13runOnFunctionERNS_8FunctionE.part.68 at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm13FPPassManager13runOnFunctionERNS_8FunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm13FPPassManager11runOnModuleERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm6legacy15PassManagerImpl3runERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc14SimpleCompilerclERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+operator() at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1311
+_ZN4llvm3orc14IRCompileLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16IRTransformLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+emit at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:724
+_ZN4llvm3orc31BasicIRLayerMaterializationUnit11materializeESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc19MaterializationTask3runEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm6detail18UniqueFunctionBaseIvJSt10unique_ptrINS_3orc4TaskESt14default_deleteIS4_EEEE8CallImplIPFvS7_EEEvPvRS7_ at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession22dispatchOutstandingMUsEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession17OL_completeLookupESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EESt10shared_ptrINS0_23AsynchronousSymbolQueryEESt8functionIFvRKNS_8DenseMapIPNS0_8JITDylibENS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISF_vEEEENSG_ISD_vEENS_6detail12DenseMapPairISD_SI_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc25InProgressFullLookupState8completeESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession19OL_applyQueryPhase1ESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EENS_5ErrorE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupENS0_10LookupKindERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS8_EENS0_15SymbolLookupSetENS0_11SymbolStateENS_15unique_functionIFvNS_8ExpectedINS_8DenseMapINS0_15SymbolStringPtrENS_18JITEvaluatedSymbolENS_12DenseMapInfoISI_vEENS_6detail12DenseMapPairISI_SJ_EEEEEEEEESt8functionIFvRKNSH_IS6_NS_8DenseSetISI_SL_EENSK_IS6_vEENSN_IS6_SV_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS7_EENS0_15SymbolLookupSetENS0_10LookupKindENS0_11SymbolStateESt8functionIFvRKNS_8DenseMapIS5_NS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISI_vEEEENSJ_IS5_vEENS_6detail12DenseMapPairIS5_SL_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+addModule at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1604
+jl_add_to_ee at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:2015
+_jl_compile_codeinst at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:276
+jl_generate_fptr_impl at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:528
+jl_compile_method_internal at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2481 [inlined]
+jl_compile_method_internal at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2368
+_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2887 [inlined]
+ijl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2902
+_mean at /g/data/e14/txs156/.julia/packages/Oceananigans/TXJRi/src/Fields/field.jl:734 [inlined]
+#mean#58 at /g/data/e14/txs156/.julia/packages/Oceananigans/TXJRi/src/Fields/field.jl:748 [inlined]
+mean at /g/data/e14/txs156/.julia/packages/Oceananigans/TXJRi/src/Fields/field.jl:748 [inlined]
+estimate_maximum_Δt at /g/data/e14/txs156/.julia/packages/ClimaOcean/hqC9J/src/OceanSimulations/ocean_simulation.jl:42
+ocean_simulation at /g/data/e14/txs156/.julia/packages/ClimaOcean/hqC9J/src/OceanSimulations/ocean_simulation.jl:126
+unknown function (ip: 0x151260157969)
+_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2895 [inlined]
+ijl_apply_generic at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:3077
+macro expansion at ./timing.jl:279 [inlined]
+top-level scope at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:269
+jl_toplevel_eval_flex at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:925
+jl_toplevel_eval_flex at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:877
+ijl_toplevel_eval_in at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:985
+eval at ./boot.jl:385 [inlined]
+include_string at ./loading.jl:2146
+_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2895 [inlined]
+ijl_apply_generic at /cache/build/tester-amdci4-11/julialang/julia-maSD_SI_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc25InProgressFullLookupState8completeESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession19OL_applyQueryPhase1ESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EENS_5ErrorE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupENS0_10LookupKindERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS8_EENS0_15SymbolLookupSetENS0_11SymbolStateENS_15unique_functionIFvNS_8ExpectedINS_8DenseMapINS0_15SymbolStringPtrENS_18JITEvaluatedSymbolENS_12DenseMapInfoISI_vEENS_6detail12DenseMapPairISI_SJ_EEEEEEEEESt8functionIFvRKNSH_IS6_NS_8DenseSetISI_SL_EENSK_IS6_vEENSN_IS6_SV_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS7_EENS0_15SymbolLookupSetENS0_10LookupKindENS0_11SymbolStateESt8functionIFvRKNS_8DenseMapIS5_NS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISI_vEEEENSJ_IS5_vEENS_6detail12DenseMapPairIS5_SL_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
+addModule at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1604
+jl_add_to_ee at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:2015
+jl_add_to_ee at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1994
+_jl_compile_codeinst at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:276
+jl_generate_fptr_impl at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:528
+jl_compile_method_internal at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2481 [inlined]
+jl_compile_method_internal at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2368
+_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2887 [inlined]
+ijl_apply_generic at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:3077
+macro expansion at ./timing.jl:279 [inlined]
+top-level scope at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:269
+jl_toplevel_eval_flex at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:925
+jl_toplevel_eval_flex at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:877
+ijl_toplevel_eval_in at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:985
+eval at ./boot.jl:385 [inlined]
+include_string at ./loading.jl:2146
+_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2895 [inlined]
+ijl_apply_generic at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:3077
+_include at ./loading.jl:2206
+include at ./Base.jl:495
+ster/src/gf.c:3077
+_include at ./loading.jl:2206
+include at ./Base.jl:495
