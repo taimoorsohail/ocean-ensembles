@@ -66,3 +66,12 @@
 [ Info: Defining surface outputs
 [ Info: Defining surface outputs
 [ Info: Defining surface outputs
+[ Info: Loading with restart file from iteration 2880
+[ Info: Loading with restart file from iteration 2880
+[ Info: ("Local rank ", 1)
+[ Info: /g/data/v46/txs156/ocean-ensembles/outputs/checkpoint_iteration2880_rank1.jld2
+[ Info: ("Local rank ", 2)
+[ Info: /g/data/v46/txs156/ocean-ensembles/outputs/checkpoint_iteration2880_rank2.jld2
+[ Info: Loading with restart file from iteration 2880
+[ Info: ("Local rank ", 0)
+[ Info: /g/data/v46/txs156/ocean-ensembles/outputs/checkpoint_iteration2880_rank0.jld2
