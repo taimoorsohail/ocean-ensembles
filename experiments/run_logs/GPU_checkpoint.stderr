@@ -1,90 +1,9 @@
 ┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
 └ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
-┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
-┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
-┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
 ┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
 └ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
-┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
-┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
-┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
 ┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
 └ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
-┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
-┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
-┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:218
 [LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
 [LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
 [LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
@@ -104,20 +23,20 @@
 [ Info: Moving simulation to 2880 iterations
 [ Info: Moving simulation to 2880 iterations
 [ Info: Moving simulation to 10 days
+[ Info: Moving simulation to 10 days
+[ Info: Defining grid
+[ Info: Defining vertical z faces
 [ Info: Defining grid
 [ Info: Defining vertical z faces
 [ Info: Moving simulation to 10 days
 [ Info: Defining grid
 [ Info: Defining vertical z faces
-[ Info: Moving simulation to 10 days
-[ Info: Defining grid
-[ Info: Defining vertical z faces
 [ Info: Defining tripolar grid
 [ Info: Defining tripolar grid
 [ Info: Defining tripolar grid
-[ Info: Done defining tripolar grid
 [ Info: Done defining tripolar grid
 [ Info: Defining bottom bathymetry
+[ Info: Done defining tripolar grid
 [ Info: Done defining tripolar grid
 [ Info: Defining bottom bathymetry
 [ Info: Defining bottom bathymetry
@@ -129,126 +48,9 @@
 [ Info: Defining closures
 [ Info: Defining free surface
 [ Info: Defining closures
+[ Info: Defining ocean simulation
 [ Info: Defining free surface
-[ Info: Defining ocean simulation
-[ Info: Defining ocean simulation
 [ Info: Defining closures
 [ Info: Defining free surface
 [ Info: Defining ocean simulation
-
-[1425924] signal (15): Terminated
-in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:112
-obviously_unequal at /cache/build/tester-amdci4-11/julialang/julia-master/src/subtype.c:343
-ijl_types_equal at /cache/build/tester-amdci4-11/julialang/julia-master/src/subtype.c:2207
-== at ./operators.jl:250 [inlined]
-most_general_argtypes at ./compiler/inferenceresult.jl:119
-most_general_argtypes at ./compiler/inferenceresult.jl:109 [inlined]
-matching_cache_argtypes at ./compiler/inferenceresult.jl:27 [inlined]
-inflate_ir! at ./compiler/ssair/legacy.jl:13
-retrieve_ir_for_inlining at ./compiler/ssair/inlining.jl:986 [inlined]
-#resolve_todo#457 at ./compiler/ssair/inlining.jl:908
-
-[1425926] signal (15): Terminated
-in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:112
-_ZN4llvm19SmallPtrSetImplBase14insert_imp_bigEPKv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm18ScheduleDAGSDNodes15BuildSchedUnitsEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm18ScheduleDAGSDNodes15BuildSchedGraphEPNS_9AAResultsE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN12_GLOBAL__N_117ScheduleDAGRRList8ScheduleEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm16SelectionDAGISel17CodeGenAndEmitDAGEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm16SelectionDAGISel20SelectAllBasicBlocksERKNS_8FunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm16SelectionDAGISel20runOnMachineFunctionERNS_15MachineFunctionE.part.950 at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN12_GLOBAL__N_115X86DAGToDAGISel20runOnMachineFunctionERN4llvm15MachineFunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm19MachineFunctionPass13runOnFunctionERNS_8FunctionE.part.68 at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm13FPPassManager13runOnFunctionERNS_8FunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm13FPPassManager11runOnModuleERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm6legacy15PassManagerImpl3runERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc14SimpleCompilerclERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-operator() at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1311
-_ZN4llvm3orc14IRCompileLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16IRTransformLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-emit at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:724
-_ZN4llvm3orc31BasicIRLayerMaterializationUnit11materializeESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc19MaterializationTask3runEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm6detail18UniqueFunctionBaseIvJSt10unique_ptrINS_3orc4TaskESt14default_deleteIS4_EEEE8CallImplIPFvS7_EEEvPvRS7_ at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession22dispatchOutstandingMUsEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession17OL_completeLookupESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EESt10shared_ptrINS0_23AsynchronousSymbolQueryEESt8functionIFvRKNS_8DenseMapIPNS0_8JITDylibENS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISF_vEEEENSG_ISD_vEENS_6detail12DenseMapPairI
-[1425925] signal (15): Terminated
-in expression starting at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:112
-_ZN4llvm17LiveIntervalUnion5Query23collectInterferingVRegsEj at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZNK4llvm22DefaultEvictionAdvisor31canEvictInterferenceBasedOnCostERKNS_12LiveIntervalENS_10MCRegisterEbRNS_12EvictionCostERKNS_8SmallSetINS_8RegisterELj16ESt4lessIS8_EEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZNK4llvm22DefaultEvictionAdvisor24tryFindEvictionCandidateERKNS_12LiveIntervalERKNS_15AllocationOrderEhRKNS_8SmallSetINS_8RegisterELj16ESt4lessIS8_EEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm8RAGreedy8tryEvictERKNS_12LiveIntervalERNS_15AllocationOrderERNS_15SmallVectorImplINS_8RegisterEEEhRKNS_8SmallSetIS7_Lj16ESt4lessIS7_EEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm8RAGreedy17selectOrSplitImplERKNS_12LiveIntervalERNS_15SmallVectorImplINS_8RegisterEEERNS_8SmallSetIS5_Lj16ESt4lessIS5_EEERNS_11SmallVectorISt4pairIPS2_NS_10MCRegisterEELj8EEEj at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm8RAGreedy13selectOrSplitERKNS_12LiveIntervalERNS_15SmallVectorImplINS_8RegisterEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm12RegAllocBase16allocatePhysRegsEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm8RAGreedy20runOnMachineFunctionERNS_15MachineFunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm19MachineFunctionPass13runOnFunctionERNS_8FunctionE.part.68 at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm13FPPassManager13runOnFunctionERNS_8FunctionE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm13FPPassManager11runOnModuleERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm6legacy15PassManagerImpl3runERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc14SimpleCompilerclERNS_6ModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-operator() at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1311
-_ZN4llvm3orc14IRCompileLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16IRTransformLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-emit at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:724
-_ZN4llvm3orc31BasicIRLayerMaterializationUnit11materializeESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc19MaterializationTask3runEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm6detail18UniqueFunctionBaseIvJSt10unique_ptrINS_3orc4TaskESt14default_deleteIS4_EEEE8CallImplIPFvS7_EEEvPvRS7_ at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession22dispatchOutstandingMUsEv at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession17OL_completeLookupESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EESt10shared_ptrINS0_23AsynchronousSymbolQueryEESt8functionIFvRKNS_8DenseMapIPNS0_8JITDylibENS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISF_vEEEENSG_ISD_vEENS_6detail12DenseMapPairISD_SI_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc25InProgressFullLookupState8completeESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession19OL_applyQueryPhase1ESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EENS_5ErrorE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession6lookupENS0_10LookupKindERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS8_EENS0_15SymbolLookupSetENS0_11SymbolStateENS_15unique_functionIFvNS_8ExpectedINS_8DenseMapINS0_15SymbolStringPtrENS_18JITEvaluatedSymbolENS_12DenseMapInfoISI_vEENS_6detail12DenseMapPairISI_SJ_EEEEEEEEESt8functionIFvRKNSH_IS6_NS_8DenseSetISI_SL_EENSK_IS6_vEENSN_IS6_SV_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession6lookupERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS7_EENS0_15SymbolLookupSetENS0_10LookupKindENS0_11SymbolStateESt8functionIFvRKNS_8DenseMapIS5_NS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISI_vEEEENSJ_IS5_vEENS_6detail12DenseMapPairIS5_SL_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-addModule at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1604
-jl_add_to_ee at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:2015
-_jl_compile_codeinst at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:276
-jl_generate_fptr_impl at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:528
-jl_compile_method_internal at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2481 [inlined]
-jl_compile_method_internal at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2368
-_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2887 [inlined]
-ijl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2902
-_mean at /g/data/e14/txs156/.julia/packages/Oceananigans/TXJRi/src/Fields/field.jl:734 [inlined]
-#mean#58 at /g/data/e14/txs156/.julia/packages/Oceananigans/TXJRi/src/Fields/field.jl:748 [inlined]
-mean at /g/data/e14/txs156/.julia/packages/Oceananigans/TXJRi/src/Fields/field.jl:748 [inlined]
-estimate_maximum_Δt at /g/data/e14/txs156/.julia/packages/ClimaOcean/hqC9J/src/OceanSimulations/ocean_simulation.jl:42
-ocean_simulation at /g/data/e14/txs156/.julia/packages/ClimaOcean/hqC9J/src/OceanSimulations/ocean_simulation.jl:126
-unknown function (ip: 0x151260157969)
-_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2895 [inlined]
-ijl_apply_generic at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:3077
-macro expansion at ./timing.jl:279 [inlined]
-top-level scope at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:269
-jl_toplevel_eval_flex at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:925
-jl_toplevel_eval_flex at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:877
-ijl_toplevel_eval_in at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:985
-eval at ./boot.jl:385 [inlined]
-include_string at ./loading.jl:2146
-_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2895 [inlined]
-ijl_apply_generic at /cache/build/tester-amdci4-11/julialang/julia-maSD_SI_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc25InProgressFullLookupState8completeESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession19OL_applyQueryPhase1ESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EENS_5ErrorE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession6lookupENS0_10LookupKindERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS8_EENS0_15SymbolLookupSetENS0_11SymbolStateENS_15unique_functionIFvNS_8ExpectedINS_8DenseMapINS0_15SymbolStringPtrENS_18JITEvaluatedSymbolENS_12DenseMapInfoISI_vEENS_6detail12DenseMapPairISI_SJ_EEEEEEEEESt8functionIFvRKNSH_IS6_NS_8DenseSetISI_SL_EENSK_IS6_vEENSN_IS6_SV_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-_ZN4llvm3orc16ExecutionSession6lookupERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS7_EENS0_15SymbolLookupSetENS0_10LookupKindENS0_11SymbolStateESt8functionIFvRKNS_8DenseMapIS5_NS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISI_vEEEENSJ_IS5_vEENS_6detail12DenseMapPairIS5_SL_EEEEEE at /home/156/txs156/.julia/juliaup/julia-1.10.8+0.x64.linux.gnu/bin/../lib/julia/libLLVM-15jl.so (unknown line)
-addModule at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1604
-jl_add_to_ee at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:2015
-jl_add_to_ee at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:1994
-_jl_compile_codeinst at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:276
-jl_generate_fptr_impl at /cache/build/tester-amdci4-11/julialang/julia-master/src/jitlayers.cpp:528
-jl_compile_method_internal at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2481 [inlined]
-jl_compile_method_internal at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2368
-_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2887 [inlined]
-ijl_apply_generic at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:3077
-macro expansion at ./timing.jl:279 [inlined]
-top-level scope at /g/data/v46/txs156/ocean-ensembles/test/test_restart.jl:269
-jl_toplevel_eval_flex at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:925
-jl_toplevel_eval_flex at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:877
-ijl_toplevel_eval_in at /cache/build/tester-amdci4-11/julialang/julia-master/src/toplevel.c:985
-eval at ./boot.jl:385 [inlined]
-include_string at ./loading.jl:2146
-_jl_invoke at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:2895 [inlined]
-ijl_apply_generic at /cache/build/tester-amdci4-11/julialang/julia-master/src/gf.c:3077
-_include at ./loading.jl:2206
-include at ./Base.jl:495
-ster/src/gf.c:3077
-_include at ./loading.jl:2206
-include at ./Base.jl:495
+[ Info: Defining ocean simulation
