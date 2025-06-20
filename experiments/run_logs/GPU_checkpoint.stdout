@@ -4,3 +4,12 @@
  20.033566 seconds (5.92 M allocations: 401.798 MiB, 72.89% gc time, 24.10% compilation time)
  20.431813 seconds (5.41 M allocations: 362.505 MiB, 73.43% gc time, 21.61% compilation time)
  20.963285 seconds (5.50 M allocations: 373.907 MiB, 72.82% gc time, 21.35% compilation time)
+455.213662 seconds (66.13 M allocations: 3.728 GiB, 4.00% gc time, 85.32% compilation time)
+454.539151 seconds (69.61 M allocations: 3.952 GiB, 4.12% gc time, 93.71% compilation time)
+454.777199 seconds (68.70 M allocations: 3.890 GiB, 4.17% gc time, 91.21% compilation time)
+prettytime(time) = "0 seconds"
+prettytime(time) = "0 seconds"
+prettytime(time) = "0 seconds"
+iteration = 2880iteration = 
+2880
+iteration = 2880
