@@ -16,8 +16,8 @@
 #PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_checkpoint.o
 #PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_checkpoint.e
 
-mpirun -n 3 julia --project \
-  ../../test/test_restart.jl --arch GPU \
+mpirun -n 2 julia --project \
+  ../../test/synching_clock.jl --arch GPU \
   > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_checkpoint.stdout \
   2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_checkpoint.stderr
 

@@ -77,7 +77,7 @@ function progress(sim)
 
     wall_time[] = time_ns()
 
-    jldsave(output_path * "test_rank$(arch.local_rank).jld2", 
+    jldsave(output_path * "test_Oceananigans_rank$(arch.local_rank).jld2", 
     u=on_architecture(CPU(), interior(model.velocities.u)),
     v=on_architecture(CPU(), interior(model.velocities.v)),
     w=on_architecture(CPU(), interior(model.velocities.w)),

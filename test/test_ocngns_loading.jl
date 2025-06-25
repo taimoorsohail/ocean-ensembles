@@ -29,7 +29,7 @@ free_surface = SplitExplicitFreeSurface(grid; substeps=1)
 model = HydrostaticFreeSurfaceModel(; grid, free_surface, momentum_advection = VectorInvariant())
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
-data = jldopen(output_path * "test_rank$(arch.local_rank).jld2")
+data = jldopen(output_path * "test_Oceananigans_rank$(arch.local_rank).jld2")
 u_data = data["u"]
 v_data = data["v"]
 w_data = data["w"]
