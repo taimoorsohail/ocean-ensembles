@@ -43,7 +43,7 @@ iteration = 2880
 @show simulation.model.atmosphere.clock.iteration = iteration
 @show simulation.model.atmosphere.clock.time = time
 @show simulation.model.clock.iteration = iteration
-@show simulation.model.clock.time = 0.0
+@show simulation.model.clock.time = time
 
 @info "Defining messenger"
 
