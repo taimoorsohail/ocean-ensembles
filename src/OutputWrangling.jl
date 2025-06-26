@@ -107,7 +107,6 @@ end
 end 
 
 function identify_combination_targets(prefix)
-    
     file_pattern = prefix * "_iteration*_rank*"
     files = glob(file_pattern, ".")
 
@@ -115,7 +114,7 @@ function identify_combination_targets(prefix)
     iter_rank_map = Dict{Int, Vector{Int}}()
 
     for file in files
-        m = match(r"test_iteration(\d+)_rank(\d+)", file)
+        m = match(r"$(prefix)_iteration(\d+)_rank(\d+)", file)
         if m !== nothing
             iter = parse(Int, m.captures[1])
             rank = parse(Int, m.captures[2])
