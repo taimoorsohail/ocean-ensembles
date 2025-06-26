@@ -4,8 +4,10 @@ using Oceananigans
 using Oceananigans.Fields: location
 using JLD2
 using ClimaOcean
+using Glob
+using Printf
 
-export combine_outputs
+export combine_outputs, identify_combination_targets
 
 function grid_metrics(prefix, ranks)
     file   = jldopen(prefix * "_rank$(ranks[1]).jld2")
@@ -23,7 +25,7 @@ end
 
 function create_grid(prefix, ranks)
     Nx, Ny, Nz, Hx, Hy, Hz, nx, ny, z_faces = grid_metrics(prefix, ranks)
-
+    @warn "We assume a tripolar grid when combining outputs! If this is not the case, please modify the source code..."
     grid = TripolarGrid(CPU();
                         size = (Nx, Ny, Nz),
                         z = z_faces,
@@ -103,3 +105,31 @@ function combine_outputs(ranks, prefix, prefix_out; remove_split_files = false)
     return nothing
 end
 end 
+
+function identify_combination_targets(prefix)
+    
+    file_pattern = prefix * "_iteration*_rank*"
+    files = glob(file_pattern, ".")
+
+    # Step 1: Parse iteration and rank from filenames
+    iter_rank_map = Dict{Int, Vector{Int}}()
+
+    for file in files
+        m = match(r"test_iteration(\d+)_rank(\d+)", file)
+        if m !== nothing
+            iter = parse(Int, m.captures[1])
+            rank = parse(Int, m.captures[2])
+            push!(get!(iter_rank_map, iter, Int[]), rank)
+        end
+    end
+
+    return iter_rank_map
+end
+    # # Step 2: Loop over iteration numbers that have multiple ranks
+    # for (iter, ranks) in sort(collect(iter_rank_map); by=first)
+    #     if length(ranks) > 1
+    #         num_ranks = maximum(ranks) + 1  # Assumes ranks are 0-indexed
+    #         @info "Combining iteration $iter with $num_ranks ranks"
+    #         combine_outputs(iter, num_ranks)
+    #     end
+    # end

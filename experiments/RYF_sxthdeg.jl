@@ -331,19 +331,19 @@ checkpoint_intervals = TimeInterval(365days)
 simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
-                                                          filename = "ocean_tracer_content_sxthdeg_" * string(iteration),
+                                                          filename = "ocean_tracer_content_sxthdeg_iteration" * string(iteration),
                                                           overwrite_existing = false)
 
 simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
-                                                          filename = "mass_transport_sxthdeg_" * string(iteration),
+                                                          filename = "mass_transport_sxthdeg_iteration" * string(iteration),
                                                           overwrite_existing = false)
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_sxthdeg_" * string(iteration),
+                                                 filename = "global_surface_fields_sxthdeg_iteration" * string(iteration),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = false,
@@ -354,7 +354,7 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
                                                 schedule = output_intervals,
-                                                filename = "fluxes_sxthdeg_" * string(iteration),
+                                                filename = "fluxes_sxthdeg_iteration" * string(iteration),
                                                 overwrite_existing = false)
 
 @info "Saving restart"
