@@ -195,26 +195,16 @@ simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 
 wall_time = Ref(time_ns())
 
-function find_nans(sim, nans)
-    fill!(nans, false)
-    nans_in_u = any!(isnan, nans, interior(sim.model.ocean.model.velocities.u))
-    fill!(nans, false)
-    nans_in_v = any!(isnan, nans, interior(sim.model.ocean.model.velocities.v))
-    fill!(nans, false)
-    nans_in_T = any!(isnan, nans, interior(sim.model.ocean.model.tracers.T))
-    fill!(nans, false)
-    nans_in_S = any!(isnan, nans, interior(sim.model.ocean.model.tracers.S))
-
-    if any([nans_in_u[], nans_in_v[], nans_in_T[], nans_in_S[]])
+function save_nans(sim)
+    if simulation.callbacks[:nan_checker].func.erroring == true
         ucpu = on_architecture(CPU(), sim.model.ocean.model.velocities.u)
         vcpu = on_architecture(CPU(), sim.model.ocean.model.velocities.v)
         Tcpu = on_architecture(CPU(), sim.model.ocean.model.tracers.T)
         Scpu = on_architecture(CPU(), sim.model.ocean.model.tracers.S)
 
         JLD2.@save output_path * "nan_state.jld2" ucpu vcpu Tcpu Scpu
-        throw(ErrorException("NaNs detected. Saved field and halting simulation."))
+        throw(ErrorException("NaNs detected - Saved field."))
     end 
-
 end
 
 function progress(sim)
@@ -229,9 +219,8 @@ function progress(sim)
             maximum(abs, (v)),
             maximum(abs, (w)))
     
-    nans = Field{Nothing, Nothing, Nothing}(sim.model.ocean.model.grid, Bool)
-    find_nans(sim, nans)
-    
+    save_nans(sim)
+
     step_time = 1e-9 * (time_ns() - wall_time[])
 
     msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
