@@ -15,12 +15,13 @@ using OceanEnsembles
 using JLD2
 using Test
 using Glob
+using Oceananigans.Architectures: on_architecture
 
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
-
+target_time = 365days
 ## Argument is provided by the submission script!
 
 arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
@@ -28,26 +29,30 @@ total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 
 @info "Using architecture: " * string(arch)
 
-# clockfiles = glob("clock_distributedGPU*", output_path)
+restartfiles = glob("checkpoint_iteration*", output_path)
 
-# iteration = 0
-# time = 0.0
-# if !isempty(clockfiles)
-#     # Extract the numeric suffix from each filename
-#     numbers = map(f -> parse(Int, match(r"clock_distributedGPU_(\d+)", basename(f)).captures[1]), clockfiles)
+# Extract the numeric suffix from each filename
+restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration(\d+)", basename(f)).captures[1]), restartfiles)
 
-#     # Get the file with the maximum number
-#     max_index = argmax(numbers)
-#     maxiter = clockfiles[max_index]
+iteration = 0
+time = 0.0
+if !isempty(restart_numbers) && maximum(restart_numbers) != 0
+    # Extract the numeric suffix from each filename
 
-#     clock_vars = jldopen(maxiter)
+    # Get the file with the maximum number
+    clock_vars = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
 
-#     iteration = clock_vars["iteration"]
-#     time = clock_vars["time"]
-#     @info "Moving simulation to " * string(iteration) * " iterations"
-#     @info "Moving simulation to " * string(time) * " time"
+    iteration = deepcopy(clock_vars["clock"].iteration)
+    time = deepcopy(clock_vars["clock"].time)
+    @info "Moving simulation to " * string(iteration) * " iterations"
+    @info "Moving simulation to " * string(prettytime(time))
 
-# end
+    close(clock_vars)
+end
+
+if time == target_time
+    error("Terminating simulation at target time.")
+end
 
 # ### Grid and Bathymetry
 @info "Defining grid"
@@ -131,6 +136,18 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=5minutes, stop_time=10days)
 
+time = 0.0
+
+@show prettytime(time)
+@show iteration
+
+simulation.model.ocean.model.clock.iteration = iteration
+simulation.model.ocean.model.clock.time = time
+simulation.model.atmosphere.clock.iteration = iteration
+simulation.model.atmosphere.clock.time = time
+simulation.model.clock.iteration = iteration
+simulation.model.clock.time = time
+
 # ### A progress messenger
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
@@ -154,7 +171,7 @@ function progress(sim)
         
     step_time = 1e-9 * (time_ns() - wall_time[])
 
-    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
+    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), Oceananigans.iteration(sim), prettytime(sim.Δt))
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
     msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
     msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
@@ -178,15 +195,13 @@ velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
-@info "Saving restart"
-
 output_intervals = AveragedTimeInterval(5days)
 checkpoint_intervals = TimeInterval(5days)
 
 simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_distributedGPU",
+                                                 filename = "global_surface_fields_distributedGPU_iteration" * string(simulation.model.clock.iteration),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -197,97 +212,110 @@ fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
                                                 dir = output_path,
                                                 schedule = output_intervals,
-                                                filename = "fluxes_distributedGPU",
+                                                filename = "fluxes_distributedGPU_iteration" * string(simulation.model.clock.iteration),
                                                 overwrite_existing = true)
 
-simulation.output_writers[:checkpoint] = Checkpointer(ocean.model;
-                                        dir = output_path,
-                                        schedule = checkpoint_intervals,
-                                        prefix = "test_checkpoint",
-                                        properties = [:grid, :particles, :clock],
-                                        overwrite_existing = true)
-# function save_clock(sim)
-#     if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-#         jldsave(output_path * "clock_distributedGPU_" * string(sim.model.clock.iteration) * ".jld2",
-#                 sim.model.clock)
-#     end
-# end
+# simulation.output_writers[:full_field] = JLD2Writer(ocean.model, outputs;
+#                                                 dir = output_path,
+#                                                 schedule = restart_interval,
+#                                                 filename = restart_file * "_" * string(simulation.model.clock.iteration),
+#                                                 with_halos = false,
+#                                                 overwrite_existing = true,
+#                                                 file_splitting = restart_interval
+#                                                 array_type = Array{Float32})
+
+#                                                 @info "Saving restart"
+
+# simulation.output_writers[:checkpoint] = Checkpointer(ocean.model;
+#                                         dir = output_path,
+#                                         schedule = checkpoint_intervals,
+#                                         prefix = "test_checkpoint",
+#                                         properties = [],
+#                                         overwrite_existing = true)
+function save_restart(sim)
+    @info @sprintf("Saving checkpoint file")
+
+    jldsave(output_path * "checkpoint_iteration" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
+    u = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.u)),
+    v = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.v)),
+    w = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.w)),
+    T = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.T)),
+    S = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.S)),
+    e = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.e)),
+    clock = sim.model.clock)
+
+    # # Delete older checkpoint files for this rank
+    # files = readdir(output_path; join=true)
+    # for file in files
+    #     if occursin("checkpoint_iteration", file) &&
+    #         occursin("_rank$(arch.local_rank).jld2", file)
+
+    #         # Extract the iteration number using a regex
+    #         m = match(r"checkpoint_iteration(\d+)_rank$arch.local_rank\.jld2", basename(file))
+    #         if m !== nothing
+    #             old_iter = parse(Int, m.captures[1])
+    #             if old_iter < sim.model.clock.iteration
+    #                 rm(file; force=true)
+    #             end
+    #         end
+    #     end
+    # end
+end
                                                                                                         
-# add_callback!(simulation, save_clock, TimeInterval(5days))
+add_callback!(simulation, save_restart, checkpoint_intervals)
 
-restartfiles = glob("test_checkpoint*", output_path)
+if !isempty(restart_numbers) && maximum(restart_numbers) != 0
+    @info "Loading with restart file from iteration " * string(maximum(restart_numbers))
+    @info "Local rank ", arch.local_rank
+    @info output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2"
 
-if !isempty(restartfiles)
-    # Extract the numeric suffix from each filename
-    numbers = map(f -> parse(Int, match(r"test_checkpoint_(\d+)", basename(f)).captures[1]), restartfiles)
+    fields = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
 
-    # Get the file with the maximum number
-    max_index = argmax(numbers)
-    maxiter = restartfiles[max_index]
+    T_field = fields["T"]
+    S_field = fields["S"]
+    e_field = fields["e"]
+    u_field = fields["u"]
+    v_field = fields["v"]
+    w_field = fields["w"]
 
-    # @info "Loading with restart file from iteration" * string(max(numbers))
+    close(fields)
 
-    # T_field = FieldTimeSeries(maxiter, "T")
-    # S_field = FieldTimeSeries(maxiter, "S")
-    # u_field = FieldTimeSeries(maxiter, "u")
-    # v_field = FieldTimeSeries(maxiter, "v")
-    # w_field = FieldTimeSeries(maxiter, "w")
-    # e_field = FieldTimeSeries(maxiter, "e")
+    set!(ocean.model, 
+    T = (T_field),
+    S = (S_field),
+    u = (u_field),
+    v = (v_field),
+    w = (w_field),
+    e = (e_field))
 
-    # set!(ocean.model, 
-    # T=T_field,
-    # S=S_field,
-    # u=u_field,
-    # v=v_field,
-    # w=w_field,
-    # e=e_field)
+    u, v, w = ocean.model.velocities
+    T, S, e = ocean.model.tracers
 
-    # Trange = (maximum((T)), minimum((T)))
-    # Srange = (maximum((S)), minimum((S)))
-    # erange = (maximum((e)), minimum((e)))
+    Trange = (maximum((T)), minimum((T)))
+    Srange = (maximum((S)), minimum((S)))
+    erange = (maximum((e)), minimum((e)))
 
-    # umax = (maximum(abs, (u)),
-    #         maximum(abs, (v)),
-    #         maximum(abs, (w)))
+    umax = (maximum(abs, (u)),
+            maximum(abs, (v)),
+            maximum(abs, (w)))
 
-    # @test abs(Trange[1])>0
-    # @test abs(Trange[2])>0
-    # @test abs(Srange[1])>0
-    # @test abs(Srange[2])>0
-    # @test abs(erange[1])>0
-    # @test abs(erange[2])>0
-    # @test abs(umax[1])>0
-    # @test abs(umax[2])>0
-    # @test abs(umax[3])>0
+    @info Trange, Srange, erange, umax
+    
+    @info "Restart found at " * string(prettytime(time))
 
-    @info "Running simulation"
+    simulation.Δt = 5minutes 
+    simulation.stop_time = target_time # 1 year 
 
-    run!(simulation, pickup = maxiter)
-
-    # combine_outputs(total_ranks, output_path * "restart_distributedGPU_" * string(simulation.model.clock.iteration),
-    #  output_path * "restart_distributedGPU_" * string(simulation.model.clock.iteration); remove_split_files = true)
-    # combine_outputs(total_ranks, output_path * "clock_distributedGPU_" * string(simulation.model.clock.iteration),
-    #  output_path * "clock_distributedGPU_" * string(simulation.model.clock.iteration); remove_split_files = true)
-#     combine_outputs(total_ranks, output_path * "fluxes_distributedGPU_" * string(simulation.model.clock.iteration),
-#     output_path * "fluxes_distributedGPU_" * string(simulation.model.clock.iteration); remove_split_files = true)
-#    combine_outputs(total_ranks, output_path * "global_surface_fields_distributedGPU_" * string(simulation.model.clock.iteration),
-#     output_path * "global_surface_fields_distributedGPU_" * string(simulation.model.clock.iteration); remove_split_files = true)
-
-
-    #  @test isfile(output_path * "restart_distributedGPU_" * string(simulation.model.clock.iteration) * ".jld2")
-    #  @test isfile(output_path * "fluxes_distributedGPU_" * string(simulation.model.clock.iteration) * ".jld2")
-    #  @test isfile(output_path * "global_surface_fields_distributedGPU_" * string(simulation.model.clock.iteration) * ".jld2")
-    #  @test isfile(output_path * "clock_distributedGPU_" * string(simulation.model.clock.iteration) * ".jld2")
-
+    run!(simulation)
 else
     @info "Running simulation"
 
     run!(simulation)
 
-    simulation.Δt = 10minutes 
-    simulation.stop_time = 365days # 1 year 
+    # simulation.Δt = 5minutes 
+    # simulation.stop_time = target_time # 1 year 
 
-    run!(simulation)
+    # run!(simulation)
 
     # combine_outputs(total_ranks, output_path * "restart_distributedGPU_" * string(simulation.model.clock.iteration),
     #  output_path * "restart_distributedGPU_" * string(simulation.model.clock.iteration); remove_split_files = true)
@@ -302,6 +330,5 @@ else
     #  @test isfile(output_path * "fluxes_distributedGPU_" * string(simulation.model.clock.iteration) * ".jld2")
     #  @test isfile(output_path * "global_surface_fields_distributedGPU_" * string(simulation.model.clock.iteration) * ".jld2")
     #  @test isfile(output_path * "clock_distributedGPU_" * string(simulation.model.clock.iteration) * ".jld2")
-
 end
                                             
