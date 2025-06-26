@@ -1,7 +1,7 @@
 #!/bin/bash
-#PBS -P gb02
+#PBS -P fy29
 #PBS -q gpuvolta
-#PBS -l walltime=03:00:00
+#PBS -l walltime=6:00:00
 #PBS -l mem=128GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
@@ -12,12 +12,37 @@
 #PBS -j n 
 #PBS -N GPU_RYFsxthdg
 
-## Where the outputs go
+# Output logs
 #PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.o
 #PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.e
 
+# === Setup resubmission ===
+MAX_RUNS=20
+COUNTER_FILE="/g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.counter"
+
+# Initialize counter if it doesn't exist
+if [ ! -f "$COUNTER_FILE" ]; then
+    echo 1 > "$COUNTER_FILE"
+else
+    count=$(cat "$COUNTER_FILE")
+    count=$((count + 1))
+    echo $count > "$COUNTER_FILE"
+fi
+
+# Print current count
+current_count=$(cat "$COUNTER_FILE")
+echo "=== Run $current_count of $MAX_RUNS ==="
+
+# === Run simulation ===
 mpirun -n 3 julia --project \
   ../RYF_sxthdeg.jl --arch GPU \
   > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.stdout \
   2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.stderr
 
+# === Resubmit if not reached limit ===
+if [ "$current_count" -lt "$MAX_RUNS" ]; then
+    echo "Resubmitting job... (run $((current_count + 1)))"
+    qsub "$PBS_O_WORKDIR/$(basename "$0")"
+else
+    echo "Max runs ($MAX_RUNS) reached. Not resubmitting."
+fi

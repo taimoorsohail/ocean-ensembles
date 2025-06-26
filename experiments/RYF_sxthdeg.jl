@@ -17,15 +17,13 @@ using Oceananigans.Fields: ReducedField
 using ClimaOcean.EN4
 using ClimaOcean.EN4: download_dataset
 using ClimaOcean.DataWrangling.ETOPO
+using Glob 
 
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-
-iteration=0
-if isfile(output_path * "iteration.jld2")
-    iteration = jldopen("iteration.jld2")
-end
+figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+target_time = 365days
 
 ## Argument is provided by the submission script!
 
@@ -50,7 +48,31 @@ end
 total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 
 @info "Using architecture: " * string(arch)
-@info total_ranks
+
+restartfiles = glob("checkpoint_iteration*", output_path)
+
+# Extract the numeric suffix from each filename
+restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+
+iteration = 0
+time = 0.0
+if !isempty(restart_numbers) && maximum(restart_numbers) != 0
+    # Extract the numeric suffix from each filename
+
+    # Get the file with the maximum number
+    clock_vars = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+
+    iteration = deepcopy(clock_vars["clock"].iteration)
+    time = deepcopy(clock_vars["clock"].time)
+    @info "Moving simulation to " * string(iteration) * " iterations"
+    @info "Moving simulation to " * string(prettytime(time))
+
+    close(clock_vars)
+end
+
+if time == target_time
+    error("Terminating simulation at target time.")
+end
 
 # ### Download necessary files to run the code
 
@@ -97,7 +119,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 10,
-                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
@@ -183,8 +205,18 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=20, stop_time=60days)
 
-simulation.iteration = iteration
-simulation.model.ocean.clock = iteration*Δt
+time = 0.0
+
+@show prettytime(time)
+@show iteration
+
+simulation.model.ocean.model.clock.iteration = iteration
+simulation.model.ocean.model.clock.time = time
+simulation.model.atmosphere.clock.iteration = iteration
+simulation.model.atmosphere.clock.time = time
+simulation.model.clock.iteration = iteration
+simulation.model.clock.time = time
+
 # ### A progress messenger
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
@@ -193,7 +225,7 @@ simulation.model.ocean.clock = iteration*Δt
 
 wall_time = Ref(time_ns())
 
-callback_interval = IterationInterval(20)
+callback_interval = TimeInterval(5days)
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
@@ -208,7 +240,7 @@ function progress(sim)
 
     step_time = 1e-9 * (time_ns() - wall_time[])
 
-    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
+    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), Oceananigans.iteration(sim), prettytime(sim.Δt))
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
     msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
     msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
@@ -292,6 +324,7 @@ end
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
 output_intervals = AveragedTimeInterval(5days)
+checkpoint_intervals = TimeInterval(365days)
 
 @info "Defining output writers"
 
@@ -326,35 +359,47 @@ simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
 
 @info "Saving restart"
 
-restart_file = "restart_sxthdeg"
+function save_restart(sim)
+    @info @sprintf("Saving checkpoint file")
 
-simulation.output_writers[:full_field] = JLD2Writer(ocean.model, outputs;
-                                                 dir = output_path,
-                                                 schedule = TimeInterval(5days),
-                                                 filename = restart_file * "_" * string(iteration),
-                                                 with_halos = false,
-                                                 overwrite_existing = true,
-                                                 array_type = Array{Float32})
+    jldsave(output_path * "checkpoint_iteration" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
+    u = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.u)),
+    v = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.v)),
+    w = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.w)),
+    T = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.T)),
+    S = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.S)),
+    e = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.e)),
+    clock = sim.model.clock)
+end
 
-jldsave("iteration.jld2"; iteration)
+add_callback!(simulation, save_restart, checkpoint_intervals)
 
-if isfile(output_path * restart_file * ".jld2")
-    filename = output_path * restart_file * ".jld2"
-    @info "Loading with restart file"
-    T_field = FieldTimeSeries(filename, "T")
-    S_field = FieldTimeSeries(filename, "S")
-    u_field = FieldTimeSeries(filename, "u")
-    v_field = FieldTimeSeries(filename, "v")
-    w_field = FieldTimeSeries(filename, "w")
-    e_field = FieldTimeSeries(filename, "e")
+if !isempty(restart_numbers) && maximum(restart_numbers) != 0
+    @info "Loading with restart file from iteration " * string(maximum(restart_numbers))
+    @info "Local rank ", arch.local_rank
+    @info output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2"
+
+    fields = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+
+    T_field = fields["T"]
+    S_field = fields["S"]
+    e_field = fields["e"]
+    u_field = fields["u"]
+    v_field = fields["v"]
+    w_field = fields["w"]
+
+    close(fields)
 
     set!(ocean.model, 
-    T=T_field,
-    S=S_field,
-    u=u_field,
-    v=v_field,
-    w=w_field,
-    e=e_field)
+    T = (T_field),
+    S = (S_field),
+    u = (u_field),
+    v = (v_field),
+    w = (w_field),
+    e = (e_field))
+
+    u, v, w = ocean.model.velocities
+    T, S, e = ocean.model.tracers
 
     Trange = (maximum((T)), minimum((T)))
     Srange = (maximum((S)), minimum((S)))
@@ -364,35 +409,21 @@ if isfile(output_path * restart_file * ".jld2")
             maximum(abs, (v)),
             maximum(abs, (w)))
 
-    @show Trange, Srange, erange, umax
+    @info Trange, Srange, erange, umax
+    
+    @info "Restart found at " * string(prettytime(time))
 
-    @info "Running simulation"
-
-    simulation.Δt = 10minutes 
-    simulation.stop_time = 5475days # 15 years
+    simulation.Δt = 5minutes 
+    simulation.stop_time = target_time # 1 year 
 
     run!(simulation)
-
-    combine_outputs(total_ranks, output_path * "ocean_tracer_content_sxthdeg", output_path * "ocean_tracer_content_sxthdeg"; remove_split_files = true)
-    combine_outputs(total_ranks, output_path * "mass_transport_sxthdeg", output_path * "mass_transport_sxthdeg"; remove_split_files = true)
-    combine_outputs(total_ranks, output_path * "global_surface_fields_sxthdeg", output_path * "global_surface_fields_sxthdeg"; remove_split_files = true)
-    combine_outputs(total_ranks, output_path * "fluxes_sxthdeg", output_path * "fluxes_sxthdeg"; remove_split_files = true)
-    combine_outputs(total_ranks, output_path * restart_file, output_path * restart_file; remove_split_files = true)
-
 else
-
     @info "Running simulation"
 
     run!(simulation)
 
-    simulation.Δt = 10minutes 
-    simulation.stop_time = 5475days # 15 years 
+    simulation.Δt = 5minutes 
+    simulation.stop_time = target_time # 1 year 
 
     run!(simulation)
-
-    combine_outputs(total_ranks, output_path * "ocean_tracer_content_sxthdeg", output_path * "ocean_tracer_content_sxthdeg"; remove_split_files = true)
-    combine_outputs(total_ranks, output_path * "mass_transport_sxthdeg", output_path * "mass_transport_sxthdeg"; remove_split_files = true)
-    combine_outputs(total_ranks, output_path * "global_surface_fields_sxthdeg", output_path * "global_surface_fields_sxthdeg"; remove_split_files = true)
-    combine_outputs(total_ranks, output_path * "fluxes_sxthdeg", output_path * "fluxes_sxthdeg"; remove_split_files = true)
-    combine_outputs(total_ranks, output_path * restart_file, output_path * restart_file; remove_split_files = true)
 end
