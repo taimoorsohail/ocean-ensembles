@@ -1,0 +1,15 @@
+name = "OceanEnsembles-experiments"
+
+[deps]
+CFTime = "179af706-886a-5703-950a-314cd64e0468"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+ClimaOcean = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
+Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+OceanEnsembles = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[sources.OceanEnsembles]
+path = "../"

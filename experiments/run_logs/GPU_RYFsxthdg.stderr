@@ -1,0 +1,460 @@
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:200
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:200
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:200
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/LhtzZ/src/initialization.jl:218
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 0 of 0-2
+│ ├── local_index: [1, 1, 1]
+└ └── connectivity: north=1 south=2
+[ Info: 3
+[ Info: Downloading/checking input data
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 1 of 0-2
+│ ├── local_index: [1, 2, 1]
+└ └── connectivity: north=2 south=0
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 2 of 0-2
+│ ├── local_index: [1, 3, 1]
+└ └── connectivity: north=0 south=1
+[ Info: 3
+[ Info: 3
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining tripolar grid
+[ Info: Defining tripolar grid
+[ Info: Defining tripolar grid
+[ Info: Defining bottom bathymetry
+[ Info: Defining bottom bathymetry
+[ Info: Defining bottom bathymetry
+[ Info: Interpolation passes of bathymetry size (21600, 10800, 1) onto a TripolarGrid target grid of size (2160, 1080, 75):
+[ Info:     pass 1 to size (2160, 1080, 1)
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining restoring rate
+[ Info: Defining restoring rate
+[ Info: Defining restoring rate
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining ocean simulation
+[ Info: Defining ocean simulation
+[ Info: Defining ocean simulation
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining coupled model
+[ Info: Defining coupled model
+[ Info: Defining coupled model
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining surface outputs
+[ Info: Defining surface outputs
+[ Info: Defining surface outputs
+[ Info: Defining condition masks
+[ Info: Defining condition masks
+[ Info: Defining condition masks
+[ Info: Tracers
+[ Info: Tracers
+[ Info: Tracers
+[ Info: Merging tracer tuples
+[ Info: Merging tracer tuples
+[ Info: Velocities
+[ Info: Merging tracer tuples
+[ Info: Velocities
+[ Info: Velocities
+[ Info: Merging velocity tuples
+[ Info: Defining output writers
+[ Info: Merging velocity tuples
+[ Info: Defining output writers
+[ Info: Merging velocity tuples
+[ Info: Defining output writers
+[ Info: Saving restart
+[ Info: Saving restart
+[ Info: Saving restart
+[ Info: Running simulation
+[ Info: Running simulation
+[ Info: Running simulation
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (0.00e+00, 0.00e+00, 0.00e+00) m s⁻¹, extrema(T): (31.26, 0.32) ᵒC, extrema(S): (40.68, 25.37) g/kg, extrema(e): (0.00, 0.00) J, wall time: 1.835 hours 
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (0.00e+00, 0.00e+00, 0.00e+00) m s⁻¹, extrema(T): (25.67, -1.86) ᵒC, extrema(S): (40.46, 11.44) g/kg, extrema(e): (0.00, 0.00) J, wall time: 1.843 hours 
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (0.00e+00, 0.00e+00, 0.00e+00) m s⁻¹, extrema(T): (27.89, -1.88) ᵒC, extrema(S): (36.90, 30.65) g/kg, extrema(e): (0.00, 0.00) J, wall time: 1.845 hours 
+[ Info:     ... simulation initialization complete (12.368 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (12.896 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (13.047 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.208 minutes).
+[ Info:     ... initial time step complete (2.683 minutes).
+[ Info:     ... initial time step complete (2.544 minutes).
+[ Info: time: 6.667 minutes, iteration: 20, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 3.654 minutes 
+[ Info: time: 6.667 minutes, iteration: 20, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 3.585 minutes 
+[ Info: time: 6.667 minutes, iteration: 20, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 4.183 minutes 
+[ Info: time: 13.333 minutes, iteration: 40, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.912 seconds 
+[ Info: time: 13.333 minutes, iteration: 40, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.852 seconds 
+[ Info: time: 13.333 minutes, iteration: 40, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.831 seconds 
+[ Info: time: 20 minutes, iteration: 60, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.719 seconds 
+[ Info: time: 20 minutes, iteration: 60, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.744 seconds 
+[ Info: time: 20 minutes, iteration: 60, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.769 seconds 
+[ Info: time: 26.667 minutes, iteration: 80, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.886 seconds 
+[ Info: time: 26.667 minutes, iteration: 80, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.784 seconds 
+[ Info: time: 26.667 minutes, iteration: 80, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.833 seconds 
+[ Info: time = 2000.0, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: time: 33.333 minutes, iteration: 100, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.705 seconds 
+[ Info: Initializing simulation...
+[ Info: time = 2000.0, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: time = 2000.0, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: time: 33.333 minutes, iteration: 100, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.873 seconds 
+[ Info: Initializing simulation...
+[ Info: time: 33.333 minutes, iteration: 100, Δt: 20 seconds, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.901 seconds 
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (204.224 ms)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (463.955 ms)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (164.728 ms)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (496.090 ms).
+[ Info:     ... initial time step complete (493.192 ms).
+[ Info:     ... initial time step complete (495.550 ms).
+[ Info: time: 3.889 hours, iteration: 120, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 13.553 seconds 
+[ Info: time: 3.889 hours, iteration: 120, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 13.419 seconds 
+[ Info: time: 3.889 hours, iteration: 120, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 13.492 seconds 
+[ Info: time: 7.222 hours, iteration: 140, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.942 seconds 
+[ Info: time: 7.222 hours, iteration: 140, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.898 seconds 
+[ Info: time: 7.222 hours, iteration: 140, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.940 seconds 
+[ Info: time: 10.556 hours, iteration: 160, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.925 seconds 
+[ Info: time: 10.556 hours, iteration: 160, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.864 seconds 
+[ Info: time: 10.556 hours, iteration: 160, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.897 seconds 
+[ Info: time: 13.889 hours, iteration: 180, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.849 seconds 
+[ Info: time: 13.889 hours, iteration: 180, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.877 seconds 
+[ Info: time: 13.889 hours, iteration: 180, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.948 seconds 
+[ Info: time = 62000.0, iteration = 200: NaN found in field u_ocean. Stopping simulation.
+[ Info: time: 17.222 hours, iteration: 200, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.912 seconds 
+[ Info: time = 62000.0, iteration = 200: NaN found in field u_ocean. Stopping simulation.
+[ Info: time = 62000.0, iteration = 200: NaN found in field u_ocean. Stopping simulation.
+[ Info: time: 17.222 hours, iteration: 200, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.928 seconds 
+[ Info: time: 17.222 hours, iteration: 200, Δt: 10 minutes, max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 12.951 seconds 
+┌ Warning: Opening file with JLD2.MmapIO failed, falling back to IOStream
+└ @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:152
+┌ Warning: Opening file with JLD2.MmapIO failed, falling back to IOStream
+└ @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:152
+┌ Warning: Opening file with JLD2.MmapIO failed, falling back to IOStream
+└ @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:152
+ERROR: ERROR: ERROR: LoadError: LoadError: LoadError: SystemError: opening file "/g/data/v46/txs156/ocean-ensembles/outputs/ocean_tracer_content_sxthdeg_rank3.jld2": No such file or directorySystemError: opening file "/g/data/v46/txs156/ocean-ensembles/outputs/ocean_tracer_content_sxthdeg_rank3.jld2": No such file or directorySystemError: opening file "/g/data/v46/txs156/ocean-ensembles/outputs/ocean_tracer_content_sxthdeg_rank3.jld2": No such file or directory
+Stacktrace:
+  [1] systemerror(p::String, errno::Int32; extrainfo::Nothing)
+    @ Base ./error.jl:176
+  [2] systemerror
+    @ ./error.jl:176
+  [3] systemerror
+    @ ./error.jl:175 [inlined]
+  [4] open(fname::String; lock::Bool, read::Bool, write::Bool, create::Bool, truncate::Bool, append::Bool)
+    @ Base ./iostream.jl:293
+  [5] open
+    @ ./iostream.jl:275 [inlined]
+  [6] openfile
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:142 [inlined]
+  [7] openfile(T::Type, fname::String, wr::Bool, create::Bool, truncate::Bool, fallback::Type)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:153
+  [8] jldopen(fname::String, wr::Bool, create::Bool, truncate::Bool, iotype::Type{JLD2.MmapIO}; fallback::Type{IOStream}, compress::Bool, mmaparrays::Bool, typemap::Dict{String, Any}, parallel_read::Bool, plain::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:214
+  [9] jldopen
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:163 [inlined]
+ [10] #jldopen#23
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:285 [inlined]
+ [11] jldopen (repeats 2 times)
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:278 [inlined]
+ [12] grid_metrics(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:11
+ [13] create_grid(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:25
+ [14] combine_outputs(ranks::Int64, prefix::String, prefix_out::String; remove_split_files::Bool)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:58
+ [15] top-level scope
+    @ /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:381
+in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:330
+
+Stacktrace:
+  [1] systemerror(p::String, errno::Int32; extrainfo::Nothing)
+    @ Base ./error.jl:176
+  [2] systemerror
+    @ ./error.jl:176
+  [3] systemerror
+    @ ./error.jl:175 [inlined]
+  [4] 
+caused by: open(fname::String; lock::Bool, read::Bool, write::Bool, create::Bool, truncate::Bool, append::Bool)
+    @ Base ./iostream.jl:293
+  [5] open
+    @ ./iostream.jl:275 [inlined]
+  [6] openfile
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:142 [inlined]
+  [7] openfile(T::Type, fname::String, wr::Bool, create::Bool, truncate::Bool, fallback::Type)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:153
+  [8] jldopen(fname::String, wr::Bool, create::Bool, truncate::Bool, iotype::Type{JLD2.MmapIO}; fallback::Type{IOStream}, compress::Bool, mmaparrays::Bool, typemap::Dict{String, Any}, parallel_read::Bool, plain::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:214
+  [9] jldopen
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:163 [inlined]
+ [10] #jldopen#23
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:285 [inlined]
+ [11] jldopen (repeats 2 times)
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:278 [inlined]
+ [12] grid_metrics(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:11
+ [13] create_grid(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:25
+ [14] combine_outputs(ranks::Int64, prefix::String, prefix_out::String; remove_split_files::Bool)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:58
+ [15] top-level scope
+    @ /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:381
+in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:330
+
+caused by: SystemError: opening file "/g/data/v46/txs156/ocean-ensembles/outputs/ocean_tracer_content_sxthdeg_rank3.jld2": No such file or directory
+Stacktrace:
+  [1] systemerror(p::String, errno::Int32; extrainfo::Nothing)
+    @ Base ./error.jl:176
+  [2] systemerror
+    @ ./error.jl:176
+  [3] systemerror
+    @ ./error.jl:175 [inlined]
+  [4] open(fname::String; lock::Bool, read::Bool, write::Bool, create::Bool, truncate::Bool, append::Bool)
+    @ Base ./iostream.jl:293
+  [5] open
+    @ ./iostream.jl:275 [inlined]
+  [6] SystemError: opening file "/g/data/v46/txs156/ocean-ensembles/outputs/ocean_tracer_content_sxthdeg_rank3.jld2": No such file or directory
+Stacktrace:
+  [1] systemerror(p::String, errno::Int32; extrainfo::Nothing)
+    @ Base ./error.jl:176
+  [2] systemerror
+    @ ./error.jl:176
+  [3] systemerror
+    @ ./error.jl:175 [inlined]
+  [4] open(fname::String; lock::Bool, read::Bool, write::Bool, create::Bool, truncate::Bool, append::Bool)
+    @ Base ./iostream.jl:293
+  [5] open
+    @ ./iostream.jl:275 [inlined]
+  [6] 
+Stacktrace:
+  [1] systemerror(p::String, errno::Int32; extrainfo::Nothing)
+    @ Base ./error.jl:176
+  [2] systemerror
+    @ ./error.jl:176
+  [3] systemerror
+    @ ./error.jl:175 [inlined]
+  [4] open(fname::String; lock::Bool, read::Bool, write::Bool, create::Bool, truncate::Bool, append::Bool)
+    @ Base ./iostream.jl:293
+  [5] open
+    @ ./iostream.jl:275 [inlined]
+  [6] openfile
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:142 [inlined]
+  [7] openfile(T::Type, fname::String, wr::Bool, create::Bool, truncate::Bool, fallback::Type)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:153
+  [8] jldopen(fname::String, wr::Bool, create::Bool, truncate::Bool, iotype::Type{JLD2.MmapIO}; fallback::Type{IOStream}, compress::Bool, mmaparrays::Bool, typemap::Dict{String, Any}, parallel_read::Bool, plain::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:214
+  [9] jldopen
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:163 [inlined]
+ [10] #jldopen#23
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:285 [inlined]
+ [11] jldopen (repeats 2 times)
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:278 [inlined]
+ [12] grid_metrics(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:11
+ [13] create_grid(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:25
+ [14] combine_outputs(ranks::Int64, prefix::String, prefix_out::String; remove_split_files::Bool)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:58
+ [15] top-level scope
+    @ /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:381
+in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:330
+
+caused by: SystemError: opening file "/g/data/v46/txs156/ocean-ensembles/outputs/ocean_tracer_content_sxthdeg_rank3.jld2": No such file or directory
+Stacktrace:
+  [1] systemerror(p::String, errno::Int32; extrainfo::Nothing)
+    @ Base ./error.jl:176
+  [2] systemerror
+    @ ./error.jl:176
+  [3] systemerror
+    @ ./error.jl:175 [inlined]
+  [4] open(fname::String; lock::Bool, read::Bool, write::Bool, create::Bool, truncate::Bool, append::Bool)
+    @ Base ./iostream.jl:293
+  [5] open
+    @ ./iostream.jl:275 [inlined]
+  [6] JLD2.MmapIO(fname::String, write::Bool, create::Bool, truncate::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/io/mmapio.jl:101
+  [7] openfile
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:145 [inlined]
+  [8] openfile(T::Type, fname::String, wr::Bool, create::Bool, truncate::Bool, fallback::Type)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:150
+  [9] jldopen(fname::String, wr::Bool, create::Bool, truncate::Bool, iotype::Type{JLD2.MmapIO}; fallback::Type{IOStream}, compress::Bool, mmaparrays::Bool, typemap::Dict{String, Any}, parallel_read::Bool, plain::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:214
+ [10] jldopen
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:163 [inlined]
+ [11] #jldopen#23
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:285 [inlined]
+ [12] jldopen (repeats 2 times)
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:278 [inlined]
+ [13] grid_metrics(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:11
+ [14] create_grid(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:25
+ [15] combine_outputs(ranks::Int64, prefix::String, prefix_out::String; remove_split_files::Bool)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:58
+ [16] top-level scope
+    @ /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:381
+JLD2.MmapIO(fname::String, write::Bool, create::Bool, truncate::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/io/mmapio.jl:101
+  [7] openfile
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:145 [inlined]
+  [8] openfile(T::Type, fname::String, wr::Bool, create::Bool, truncate::Bool, fallback::Type)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:150
+  [9] jldopen(fname::String, wr::Bool, create::Bool, truncate::Bool, iotype::Type{JLD2.MmapIO}; fallback::Type{IOStream}, compress::Bool, mmaparrays::Bool, typemap::Dict{String, Any}, parallel_read::Bool, plain::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:214
+ [10] jldopen
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:163 [inlined]
+ [11] #jldopen#23
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:285 [inlined]
+ [12] jldopen (repeats 2 times)
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:278 [inlined]
+ [13] grid_metrics(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:11
+ [14] create_grid(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:25
+ [15] combine_outputs(ranks::Int64, prefix::String, prefix_out::String; remove_split_files::Bool)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:58
+ [16] top-level scope
+    @ /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:381
+JLD2.MmapIO(fname::String, write::Bool, create::Bool, truncate::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/io/mmapio.jl:101
+  [7] openfile
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:145 [inlined]
+  [8] openfile(T::Type, fname::String, wr::Bool, create::Bool, truncate::Bool, fallback::Type)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:150
+  [9] jldopen(fname::String, wr::Bool, create::Bool, truncate::Bool, iotype::Type{JLD2.MmapIO}; fallback::Type{IOStream}, compress::Bool, mmaparrays::Bool, typemap::Dict{String, Any}, parallel_read::Bool, plain::Bool)
+    @ JLD2 /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:214
+ [10] jldopen
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:163 [inlined]
+ [11] #jldopen#23
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:285 [inlined]
+ [12] jldopen (repeats 2 times)
+    @ /g/data/e14/txs156/.julia/packages/JLD2/pdSa4/src/JLD2.jl:278 [inlined]
+ [13] grid_metrics(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:11
+ [14] create_grid(prefix::String, ranks::Int64)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:25
+ [15] combine_outputs(ranks::Int64, prefix::String, prefix_out::String; remove_split_files::Bool)
+    @ OceanEnsembles.OutputWrangling /g/data/e14/txs156/.julia/packages/OceanEnsembles/pRqU3/src/OutputWrangling.jl:58
+ [16] top-level scope
+    @ /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:381
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[16937,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------
