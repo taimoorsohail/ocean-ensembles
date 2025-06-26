@@ -23,7 +23,8 @@ using Glob
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
-target_time = 365days
+
+target_time = 20*365days
 
 ## Argument is provided by the submission script!
 
@@ -189,7 +190,7 @@ set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
+atmosphere = JRA55PrescribedAtmosphere(arch; backend=InMemory())
 
 # ### Coupled simulation
 
@@ -204,11 +205,6 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=20, stop_time=60days)
-
-time = 0.0
-
-@show prettytime(time)
-@show iteration
 
 simulation.model.ocean.model.clock.iteration = iteration
 simulation.model.ocean.model.clock.time = time
@@ -324,7 +320,7 @@ end
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
 output_intervals = AveragedTimeInterval(5days)
-checkpoint_intervals = TimeInterval(365days)
+checkpoint_intervals = TimeInterval(73days)
 
 @info "Defining output writers"
 
@@ -414,7 +410,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     @info "Restart found at " * string(prettytime(time))
 
     simulation.Δt = 5minutes 
-    simulation.stop_time = target_time # 1 year 
+    simulation.stop_time = target_time # 20 years 
 
     run!(simulation)
 else
@@ -423,7 +419,7 @@ else
     run!(simulation)
 
     simulation.Δt = 5minutes 
-    simulation.stop_time = target_time # 1 year 
+    simulation.stop_time = target_time # 20 years 
 
     run!(simulation)
 end

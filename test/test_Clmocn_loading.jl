@@ -18,8 +18,7 @@ using Test
 using Glob
 using Oceananigans.Architectures: on_architecture
 
-# arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-arch = CPU()#Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 
 Nx, Ny, Nz = 10,10,10
 depth = 6000meters
@@ -42,22 +41,26 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
+@info "Loading atmosphere in memory"
+atmosphere = JRA55PrescribedAtmosphere(arch; backend=InMemory())
 
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+# output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
-data = jldopen(output_path * "test_ClimaOcean_rank$(arch.local_rank).jld2")
-T_data = data["T"]
-S_data = data["S"]
-e_data = data["e"]
-@show time = data["clock"].time
-@show iteration = data["clock"].iteration
-close(data)
+# data = jldopen(output_path * "test_ClimaOcean_rank$(arch.local_rank).jld2")
+# T_data = data["T"]
+# S_data = data["S"]
+# e_data = data["e"]
+# @show time = data["clock"].time
+# @show iteration = data["clock"].iteration
+# close(data)
+
+time = 599529600.0
+iteration = 28880
 
 simulation.model.ocean.model.clock.iteration = iteration
 simulation.model.ocean.model.clock.time = time

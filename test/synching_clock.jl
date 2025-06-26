@@ -1,87 +1,39 @@
-using ClimaOcean
-using Oceananigans
-using Oceananigans.Units
-using Oceananigans.DistributedComputations
-using Printf
+using ClimaOcean, Oceananigans, Oceananigans.Units
 
 arch = GPU()
-
-Nx, Ny, Nz = 10,10,10
-depth = 6000meters
-z_faces = (0,depth)
-
-grid = LatitudeLongitudeGrid(arch;
-                             size = (Nx, Ny, Nz),
-                             halo = (7, 7, 7),
-                             z = z_faces,
-                             latitude  = (-75, 75),
-                             longitude = (0, 360))
-                         
-free_surface = SplitExplicitFreeSurface(grid; substeps=1)
-@info "Defining Ocean"
-
-@time ocean = ocean_simulation(grid;
-                         free_surface)
-
-@info "Defining Atmosphere"
-
+grid = LatitudeLongitudeGrid(arch, size = (60, 30, 10), z = (-6000, 0), latitude  = (-75, 75), longitude = (0, 360), halo = (6, 6, 3))
+ocean = ocean_simulation(grid; free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
-
-@info "Defining coupled model"
-
+atmosphere = JRA55PrescribedAtmosphere(arch; backend=InMemory())
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+for step in 0days:2hours:370days
+    @info "step = $(prettytime(step))"
 
-time = 864000.0
-iteration = 2880
+    iteration = 2880
+    time = step
 
-@show simulation.model.ocean.model.clock.iteration = iteration
-@show simulation.model.ocean.model.clock.time = time
-@show simulation.model.atmosphere.clock.iteration = iteration
-@show simulation.model.atmosphere.clock.time = time
-@show simulation.model.clock.iteration = iteration
-@show simulation.model.clock.time = time
+    coupled_model.ocean.model.clock.iteration = iteration
+    coupled_model.ocean.model.clock.time = time
+    coupled_model.atmosphere.clock.iteration = iteration
+    coupled_model.atmosphere.clock.time = time
+    coupled_model.clock.iteration = iteration
+    coupled_model.clock.time = time
 
-@info "Defining messenger"
+    Oceananigans.TimeSteppers.update_state!(coupled_model)
+    @info "done update_state!, moving on"
+    Oceananigans.TimeSteppers.time_step!(coupled_model, 5minutes)
+    @info "done time_step!, moving on"
 
-wall_time = Ref(time_ns())
+    iteration = 0
+    time = 0.0
 
-callback_interval = IterationInterval(20)
+    coupled_model.ocean.model.clock.iteration = iteration
+    coupled_model.ocean.model.clock.time = time
+    coupled_model.atmosphere.clock.iteration = iteration
+    coupled_model.atmosphere.clock.time = time
+    coupled_model.clock.iteration = iteration
+    coupled_model.clock.time = time
 
-function progress(sim)
-    T, S, e = sim.model.ocean.model.tracers
-
-    Trange = (maximum((T)), minimum((T)))
-    Srange = (maximum((S)), minimum((S)))
-    erange = (maximum((e)), minimum((e)))
-        
-    step_time = 1e-9 * (time_ns() - wall_time[])
-
-    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), Oceananigans.iteration(sim), prettytime(sim.Δt))
-    # msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
-    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
-    msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
-    msg5 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
-    msg6 = @sprintf("wall time: %s \n", prettytime(step_time))
-
-    @info msg1 * msg3 * msg4 * msg5 * msg6
-
-    wall_time[] = time_ns()
-
-    return nothing
+    Oceananigans.TimeSteppers.update_state!(coupled_model)
 end
-
-add_callback!(simulation, progress, callback_interval)
-
-# for field in simulation.model.ocean.model.timestepper.G⁻
-#     fill!(field, 0)
-# end
-
-# for field in simulation.model.ocean.model.timestepper.Gⁿ
-#     fill!(field, 0)
-# end
-
-run!(simulation)
