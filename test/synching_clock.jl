@@ -1,15 +1,17 @@
 using ClimaOcean, Oceananigans, Oceananigans.Units
 
 arch = GPU()
-grid = LatitudeLongitudeGrid(arch, size = (60, 30, 10), z = (-6000, 0), latitude  = (-75, 75), longitude = (0, 360), halo = (6, 6, 3))
-ocean = ocean_simulation(grid; free_surface = SplitExplicitFreeSurface(grid; substeps=10))
-radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=InMemory())
-coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 
-for step in 0days:2hours:370days
+for step in 0days:100hours:370days
     @info "step = $(prettytime(step))"
-
+    start_number = Integer(ceil(step/3hours)+1)
+    @info "start_number = $(start_number)"
+    grid = LatitudeLongitudeGrid(arch, size = (60, 30, 10), z = (-6000, 0), latitude  = (-75, 75), longitude = (0, 360), halo = (6, 6, 3))
+    ocean = ocean_simulation(grid; free_surface = SplitExplicitFreeSurface(grid; substeps=10))
+    radiation  = Radiation(arch)
+    atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(start_number))
+    coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
+    
     iteration = 2880
     time = step
 

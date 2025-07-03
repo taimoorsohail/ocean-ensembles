@@ -18,13 +18,15 @@ using ClimaOcean.EN4
 using ClimaOcean.EN4: download_dataset
 using ClimaOcean.DataWrangling.ETOPO
 using Glob 
+using Oceananigans.Architectures: on_architecture
+using JLD2
 
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-target_time = 20*365days
+target_time = 365days
 
 ## Argument is provided by the submission script!
 
@@ -41,12 +43,13 @@ if isempty(ARGS)
 elseif ARGS[2] == "GPU"
     arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 elseif ARGS[2] == "CPU"
-    arch = CPU()
+    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
 
 total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
+@info "Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 @info "Using architecture: " * string(arch)
 
@@ -112,6 +115,7 @@ underlying_grid = TripolarGrid(arch;
                                halo = (7, 7, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
+@info "underlying grid - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 @info "Defining bottom bathymetry"
 
@@ -119,9 +123,10 @@ ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
 ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
-                                  minimum_depth = 10,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
-				                  major_basins = 2)
+                                  minimum_depth = 15,
+				                  major_basins = 1)
+
+@info "Botom height - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
 # view(bottom_height, 102:103, 124, 1) .= -400
@@ -129,6 +134,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+@info "Grid - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 # ### Restoring
 #
@@ -152,19 +158,19 @@ forcing = (T=FT, S=FS)
 
 @info "Defining closures"
 
-using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, CATKEMixingLength, CATKEEquation
-
-momentum_advection = WENOVectorInvariant()
-tracer_advection   = WENO(order=7)
+momentum_advection = WENOVectorInvariant(order=5) 
+tracer_advection = WENO(order=5)
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=70)
 
-mixing_length = CATKEMixingLength(Cᵇ=0.01)
-turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
+                                       DiffusiveFormulation
 
-catke_closure = CATKEVerticalDiffusivity(ExplicitTimeDiscretization(); mixing_length, turbulent_kinetic_energy_equation) 
-closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-5))
+eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
+                                                 skew_flux_formulation=DiffusiveFormulation())
+vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
+
+closure = (eddy_closure, vertical_mixing)
 
 @info "Defining ocean simulation"
 
@@ -174,6 +180,8 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-5))
                          free_surface,
                          closure,
                          forcing)
+
+@info "Ocean - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 # ### Initial condition
 
@@ -190,7 +198,9 @@ set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=InMemory())
+@info "Radiation - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
+@time atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(25))
+@info "Atmos - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 # ### Coupled simulation
 
@@ -204,7 +214,11 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=InMemory())
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=20, stop_time=60days)
+simulation = Simulation(coupled_model; Δt=10minutes, stop_time=60days)
+@info "Coupled model - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
+
+#We set time to zero because we need to run just to 1 year at a time for JRA
+time = 0.0
 
 simulation.model.ocean.model.clock.iteration = iteration
 simulation.model.ocean.model.clock.time = time
@@ -221,7 +235,8 @@ simulation.model.clock.time = time
 
 wall_time = Ref(time_ns())
 
-callback_interval = TimeInterval(5days)
+# callback_interval = TimeInterval(5days)
+callback_interval = IterationInterval(1)
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
@@ -251,6 +266,9 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
+
+output_intervals = TimeInterval(1days)
+checkpoint_intervals = TimeInterval(365days)
 
 #### SURFACE
 
@@ -319,39 +337,36 @@ end
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-output_intervals = AveragedTimeInterval(5days)
-checkpoint_intervals = TimeInterval(73days)
-
 @info "Defining output writers"
 
-simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+@time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
                                                           filename = "ocean_tracer_content_sxthdeg_iteration" * string(iteration),
-                                                          overwrite_existing = false)
+                                                          overwrite_existing = true)
 
-simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+@time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
                                                           schedule = output_intervals,
                                                           filename = "mass_transport_sxthdeg_iteration" * string(iteration),
-                                                          overwrite_existing = false)
+                                                          overwrite_existing = true)
 
-simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
+@time simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
                                                  filename = "global_surface_fields_sxthdeg_iteration" * string(iteration),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
-                                                 overwrite_existing = false,
+                                                 overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
+# fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
-simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
-                                                dir = output_path,
-                                                schedule = output_intervals,
-                                                filename = "fluxes_sxthdeg_iteration" * string(iteration),
-                                                overwrite_existing = false)
+# simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
+#                                                 dir = output_path,
+#                                                 schedule = output_intervals,
+#                                                 filename = "fluxes_sxthdeg_iteration" * string(iteration),
+#                                                 overwrite_existing = true)
 
 @info "Saving restart"
 
@@ -385,6 +400,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     w_field = fields["w"]
 
     close(fields)
+    @info "Setting restart - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
     set!(ocean.model, 
     T = (T_field),
@@ -407,10 +423,10 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
 
     @info Trange, Srange, erange, umax
     
-    @info "Restart found at " * string(prettytime(time))
+    @info "Restart found at " * string(maximum(restart_numbers))
 
     simulation.Δt = 5minutes 
-    simulation.stop_time = target_time # 20 years 
+    simulation.stop_time = target_time # 1 year
 
     run!(simulation)
 else
@@ -419,7 +435,7 @@ else
     run!(simulation)
 
     simulation.Δt = 5minutes 
-    simulation.stop_time = target_time # 20 years 
+    simulation.stop_time = target_time # 1 year 
 
     run!(simulation)
 end

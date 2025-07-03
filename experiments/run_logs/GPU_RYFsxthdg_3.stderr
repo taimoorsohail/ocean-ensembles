@@ -1,0 +1,143 @@
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[ Info: Used Memory: 2.85 %; rank: 0
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 0 of 0-2
+│ ├── local_index: [1, 1, 1]
+└ └── connectivity: north=1 south=2
+[ Info: Used Memory: 0.95 %; rank: 1
+[ Info: Used Memory: 0.95 %; rank: 2
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 1 of 0-2
+│ ├── local_index: [1, 2, 1]
+└ └── connectivity: north=2 south=0
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 2 of 0-2
+│ ├── local_index: [1, 3, 1]
+└ └── connectivity: north=0 south=1
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: Downloading/checking input data
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining tripolar grid
+[ Info: Defining tripolar grid
+[ Info: Defining tripolar grid
+[ Info: underlying grid - Used Memory: 1.45 %; rank: 1
+[ Info: Defining bottom bathymetry
+[ Info: underlying grid - Used Memory: 1.45 %; rank: 2
+[ Info: Defining bottom bathymetry
+[ Info: underlying grid - Used Memory: 3.35 %; rank: 0
+[ Info: Defining bottom bathymetry
+[ Info: Interpolation passes of bathymetry size (21600, 10800, 1) onto a TripolarGrid target grid of size (2160, 1080, 75):
+[ Info:     pass 1 to size (19656, 9828, 1)
+[ Info:     pass 2 to size (17712, 8856, 1)
+[ Info:     pass 3 to size (15768, 7884, 1)
+[ Info:     pass 4 to size (13824, 6912, 1)
+[ Info:     pass 5 to size (11880, 5940, 1)
+[ Info:     pass 6 to size (9936, 4968, 1)
+[ Info:     pass 7 to size (7992, 3996, 1)
+[ Info:     pass 8 to size (6048, 3024, 1)
+[ Info:     pass 9 to size (4104, 2052, 1)
+[ Info:     pass 10 to size (2160, 1080, 1)
+[ Info: Botom height - Used Memory: 3.49 %; rank: 0
+[ Info: Defining grid
+[ Info: Botom height - Used Memory: 1.62 %; rank: 2
+[ Info: Botom height - Used Memory: 1.62 %; rank: 1
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Grid - Used Memory: 2.12 %; rank: 2
+[ Info: Defining restoring rate
+[ Info: Grid - Used Memory: 2.56 %; rank: 1
+[ Info: Defining restoring rate
+[ Info: Grid - Used Memory: 4.51 %; rank: 0
+[ Info: Defining restoring rate
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining ocean simulation
+[ Info: Defining ocean simulation
+[ Info: Defining ocean simulation
+[ Info: Ocean - Used Memory: 51.47 %; rank: 1
+[ Info: Ocean - Used Memory: 48.47 %; rank: 2
+[ Info: Ocean - Used Memory: 51.39 %; rank: 0
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Radiation - Used Memory: 51.51 %; rank: 1
+[ Info: Radiation - Used Memory: 48.54 %; rank: 2
+[ Info: Radiation - Used Memory: 51.47 %; rank: 0
+[ Info: Atmos - Used Memory: 52.47 %; rank: 0
+[ Info: Defining coupled model
+[ Info: Atmos - Used Memory: 49.36 %; rank: 2
+[ Info: Defining coupled model
+[ Info: Atmos - Used Memory: 52.37 %; rank: 1
+[ Info: Defining coupled model
+[ Info: Coupled model - Used Memory: 49.82 %; rank: 2
+[ Info: Coupled model - Used Memory: 52.74 %; rank: 0
+[ Info: Coupled model - Used Memory: 52.83 %; rank: 1
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining surface outputs
+[ Info: Defining surface outputs
+[ Info: Defining surface outputs
+[ Info: Defining condition masks
+[ Info: Defining condition masks
+[ Info: Defining condition masks
+[ Info: Tracers
+[ Info: Tracers
+[ Info: Tracers
+[ Info: Tracers - Used Memory: 62.77 %; rank: 0
+[ Info: Tracers - Used Memory: 59.84 %; rank: 2
+[ Info: Tracers - Used Memory: 63.47 %; rank: 1
+[ Info: Tracers - Used Memory: 69.78 %; rank: 0
+[ Info: Tracers - Used Memory: 66.86 %; rank: 2
+[ Info: Tracers - Used Memory: 70.67 %; rank: 1
+[ Info: Tracers - Used Memory: 76.8 %; rank: 0
+[ Info: Merging tracer tuples
+[ Info: tracers2 - Used Memory: 76.8 %; rank: 0
+[ Info: Velocities
+[ Info: Tracers - Used Memory: 73.88 %; rank: 2
+[ Info: Merging tracer tuples
+[ Info: Tracers - Used Memory: 77.87 %; rank: 1
+[ Info: Merging tracer tuples
+[ Info: tracers2 - Used Memory: 73.88 %; rank: 2
+[ Info: Velocities
+[ Info: tracers2 - Used Memory: 77.87 %; rank: 1
+[ Info: Velocities
+
+[3226248] signal (15): Terminated
+in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:332
+pthread_cond_wait at /lib64/libpthread.so.0 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:883
+ijl_task_get_next at /cache/build/tester-amdci4-11/julialang/julia-master/src/partr.c:517
+
+[3226246] signal (15): Terminated
+in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:332
+pthread_cond_wait at /lib64/libpthread.so.0 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:883
+ijl_task_get_next at /cache/build/tester-amdci4-11/julialang/julia-master/src/partr.c:517
+
+[3226247] signal (15): Terminated
+in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:332
+pthread_cond_wait at /lib64/libpthread.so.0 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:883
+ijl_task_get_next at /cache/build/tester-amdci4-11/julialang/julia-master/src/partr.c:517
