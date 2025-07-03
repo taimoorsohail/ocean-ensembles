@@ -170,9 +170,10 @@ simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
 
 run!(simulation)
 
-prefix = "/g/data/v46/txs156/ocean-ensembles/outputs/fluxes_distributedGPU"
-prefix_out = "/g/data/v46/txs156/ocean-ensembles/outputs/fluxes_distributedGPU"
-ranks = 0:total_ranks
+output_path = "/g/data/v46/txs156/ocean-ensembles/outputs/"
+
+prefix = output_path * "fluxes_distributedGPU"
+prefix_out = output_path * "fluxes_distributedGPU"
 
 if isfile(prefix_out * ".jld2")
     @info "File found! Deleting..."

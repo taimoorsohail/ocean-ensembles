@@ -1,87 +1,41 @@
-using ClimaOcean
-using Oceananigans
-using Oceananigans.Units
-using Oceananigans.DistributedComputations
-using Printf
+using ClimaOcean, Oceananigans, Oceananigans.Units
 
 arch = GPU()
 
-Nx, Ny, Nz = 10,10,10
-depth = 6000meters
-z_faces = (0,depth)
+for step in 0days:100hours:370days
+    @info "step = $(prettytime(step))"
+    start_number = Integer(ceil(step/3hours)+1)
+    @info "start_number = $(start_number)"
+    grid = LatitudeLongitudeGrid(arch, size = (60, 30, 10), z = (-6000, 0), latitude  = (-75, 75), longitude = (0, 360), halo = (6, 6, 3))
+    ocean = ocean_simulation(grid; free_surface = SplitExplicitFreeSurface(grid; substeps=10))
+    radiation  = Radiation(arch)
+    atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(start_number))
+    coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
+    
+    iteration = 2880
+    time = step
 
-grid = LatitudeLongitudeGrid(arch;
-                             size = (Nx, Ny, Nz),
-                             halo = (7, 7, 7),
-                             z = z_faces,
-                             latitude  = (-75, 75),
-                             longitude = (0, 360))
-                         
-free_surface = SplitExplicitFreeSurface(grid; substeps=1)
-@info "Defining Ocean"
+    coupled_model.ocean.model.clock.iteration = iteration
+    coupled_model.ocean.model.clock.time = time
+    coupled_model.atmosphere.clock.iteration = iteration
+    coupled_model.atmosphere.clock.time = time
+    coupled_model.clock.iteration = iteration
+    coupled_model.clock.time = time
 
-@time ocean = ocean_simulation(grid;
-                         free_surface)
+    Oceananigans.TimeSteppers.update_state!(coupled_model)
+    @info "done update_state!, moving on"
+    Oceananigans.TimeSteppers.time_step!(coupled_model, 5minutes)
+    @info "done time_step!, moving on"
 
-@info "Defining Atmosphere"
+    iteration = 0
+    time = 0.0
 
-radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
+    coupled_model.ocean.model.clock.iteration = iteration
+    coupled_model.ocean.model.clock.time = time
+    coupled_model.atmosphere.clock.iteration = iteration
+    coupled_model.atmosphere.clock.time = time
+    coupled_model.clock.iteration = iteration
+    coupled_model.clock.time = time
 
-@info "Defining coupled model"
-
-coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
-
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-
-time = 864000.0
-iteration = 2880
-
-@show simulation.model.ocean.model.clock.iteration = iteration
-@show simulation.model.ocean.model.clock.time = time
-@show simulation.model.atmosphere.clock.iteration = iteration
-@show simulation.model.atmosphere.clock.time = time
-@show simulation.model.clock.iteration = iteration
-@show simulation.model.clock.time = time
-
-@info "Defining messenger"
-
-wall_time = Ref(time_ns())
-
-callback_interval = IterationInterval(20)
-
-function progress(sim)
-    T, S, e = sim.model.ocean.model.tracers
-
-    Trange = (maximum((T)), minimum((T)))
-    Srange = (maximum((S)), minimum((S)))
-    erange = (maximum((e)), minimum((e)))
-        
-    step_time = 1e-9 * (time_ns() - wall_time[])
-
-    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), Oceananigans.iteration(sim), prettytime(sim.Δt))
-    # msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
-    msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
-    msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
-    msg5 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
-    msg6 = @sprintf("wall time: %s \n", prettytime(step_time))
-
-    @info msg1 * msg3 * msg4 * msg5 * msg6
-
-    wall_time[] = time_ns()
-
-    return nothing
+    Oceananigans.TimeSteppers.update_state!(coupled_model)
 end
-
-add_callback!(simulation, progress, callback_interval)
-
-# for field in simulation.model.ocean.model.timestepper.G⁻
-#     fill!(field, 0)
-# end
-
-# for field in simulation.model.ocean.model.timestepper.Gⁿ
-#     fill!(field, 0)
-# end
-
-run!(simulation)

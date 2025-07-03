@@ -1,0 +1,200 @@
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[ Info: Used Memory: 2.85 %; rank: 0
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 0 of 0-2
+│ ├── local_index: [1, 1, 1]
+└ └── connectivity: north=1 south=2
+[ Info: Used Memory: 0.95 %; rank: 1
+[ Info: Used Memory: 0.95 %; rank: 2
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 1 of 0-2
+│ ├── local_index: [1, 2, 1]
+└ └── connectivity: north=2 south=0
+┌ Info: Using architecture: Distributed{GPU{CUDABackend}} across 3 = 1×3×1 ranks:
+│ ├── local_rank: 2 of 0-2
+│ ├── local_index: [1, 3, 1]
+└ └── connectivity: north=0 south=1
+[ Info: Downloading/checking input data
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining tripolar grid
+[ Info: Defining tripolar grid
+[ Info: Defining tripolar grid
+[ Info: underlying grid - Used Memory: 1.45 %; rank: 2
+[ Info: Defining bottom bathymetry
+[ Info: underlying grid - Used Memory: 1.45 %; rank: 1
+[ Info: Defining bottom bathymetry
+[ Info: underlying grid - Used Memory: 3.35 %; rank: 0
+[ Info: Defining bottom bathymetry
+[ Info: Interpolation passes of bathymetry size (21600, 10800, 1) onto a TripolarGrid target grid of size (2160, 1080, 75):
+[ Info:     pass 1 to size (19656, 9828, 1)
+[ Info:     pass 2 to size (17712, 8856, 1)
+[ Info:     pass 3 to size (15768, 7884, 1)
+[ Info:     pass 4 to size (13824, 6912, 1)
+[ Info:     pass 5 to size (11880, 5940, 1)
+[ Info:     pass 6 to size (9936, 4968, 1)
+[ Info:     pass 7 to size (7992, 3996, 1)
+[ Info:     pass 8 to size (6048, 3024, 1)
+[ Info:     pass 9 to size (4104, 2052, 1)
+[ Info:     pass 10 to size (2160, 1080, 1)
+[ Info: Botom height - Used Memory: 3.49 %; rank: 0
+[ Info: Defining grid
+[ Info: Botom height - Used Memory: 1.6 %; rank: 2
+[ Info: Defining grid
+[ Info: Botom height - Used Memory: 1.62 %; rank: 1
+[ Info: Defining grid
+[ Info: Grid - Used Memory: 2.12 %; rank: 2
+[ Info: Defining restoring rate
+[ Info: Grid - Used Memory: 2.56 %; rank: 1
+[ Info: Defining restoring rate
+[ Info: Grid - Used Memory: 4.51 %; rank: 0
+[ Info: Defining restoring rate
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining ocean simulation
+[ Info: Defining ocean simulation
+[ Info: Defining ocean simulation
+[ Info: Ocean - Used Memory: 51.39 %; rank: 0
+[ Info: Ocean - Used Memory: 48.47 %; rank: 2
+[ Info: Ocean - Used Memory: 51.47 %; rank: 1
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Radiation - Used Memory: 51.47 %; rank: 0
+[ Info: Radiation - Used Memory: 51.51 %; rank: 1
+[ Info: Radiation - Used Memory: 48.54 %; rank: 2
+[ Info: Atmos - Used Memory: 52.47 %; rank: 0
+[ Info: Defining coupled model
+[ Info: Atmos - Used Memory: 49.36 %; rank: 2
+[ Info: Defining coupled model
+[ Info: Atmos - Used Memory: 52.37 %; rank: 1
+[ Info: Defining coupled model
+[ Info: Coupled model - Used Memory: 49.82 %; rank: 2
+[ Info: Coupled model - Used Memory: 52.74 %; rank: 0
+[ Info: Coupled model - Used Memory: 52.83 %; rank: 1
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining surface outputs
+[ Info: Defining surface outputs
+[ Info: Defining surface outputs
+[ Info: Defining condition masks
+[ Info: Defining condition masks
+[ Info: Defining condition masks
+[ Info: Tracers
+[ Info: Tracers
+[ Info: Tracers
+[ Info: Tracers - Used Memory: 62.77 %; rank: 0
+[ Info: Tracers - Used Memory: 59.84 %; rank: 2
+[ Info: Tracers - Used Memory: 63.1 %; rank: 1
+[ Info: Tracers - Used Memory: 69.78 %; rank: 0
+[ Info: Tracers - Used Memory: 66.86 %; rank: 2
+[ Info: Tracers - Used Memory: 70.3 %; rank: 1
+[ Info: Tracers - Used Memory: 76.8 %; rank: 0
+[ Info: Merging tracer tuples
+[ Info: tracers2 - Used Memory: 76.8 %; rank: 0
+[ Info: Velocities
+[ Info: Tracers - Used Memory: 73.88 %; rank: 2
+[ Info: Merging tracer tuples
+[ Info: Tracers - Used Memory: 77.5 %; rank: 1
+[ Info: Merging tracer tuples
+[ Info: tracers2 - Used Memory: 73.88 %; rank: 2
+[ Info: Velocities
+[ Info: tracers2 - Used Memory: 77.5 %; rank: 1
+[ Info: Velocities
+[ Info: Velocity - Used Memory: 91.88 %; rank: 0
+[ Info: Velocity - Used Memory: 88.96 %; rank: 2
+[ Info: Velocity - Used Memory: 93.14 %; rank: 1
+[ Info: Velocity - Used Memory: 85.44 %; rank: 0
+[ Info: Velocity - Used Memory: 79.03 %; rank: 2
+[ Info: Velocity - Used Memory: 86.28 %; rank: 1
+[ Info: Velocity - Used Memory: 78.65 %; rank: 0
+[ Info: Merging velocity tuples
+[ Info: Velocity2 - Used Memory: 78.65 %; rank: 0
+[ Info: Defining output writers
+[ Info: Velocity - Used Memory: 93.93 %; rank: 2
+[ Info: Merging velocity tuples
+[ Info: Velocity2 - Used Memory: 93.93 %; rank: 2
+[ Info: Defining output writers
+[ Info: Velocity - Used Memory: 79.42 %; rank: 1
+[ Info: Merging velocity tuples
+[ Info: Velocity2 - Used Memory: 79.42 %; rank: 1
+[ Info: Defining output writers
+┌ Warning: Failed to save and serialize [:grid, :coriolis, :buoyancy, :closure] in /g/data/v46/txs156/ocean-ensembles/outputs/fluxes_sxthdeg_iteration0_rank1.jld2 because ArgumentError: ArgumentError: a group or dataset named x is already present within this group
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:195
+┌ Warning: Failed to save and serialize [:grid, :coriolis, :buoyancy, :closure] in /g/data/v46/txs156/ocean-ensembles/outputs/fluxes_sxthdeg_iteration0_rank2.jld2 because ArgumentError: ArgumentError: a group or dataset named x is already present within this group
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:195
+┌ Warning: Failed to save and serialize [:grid, :coriolis, :buoyancy, :closure] in /g/data/v46/txs156/ocean-ensembles/outputs/fluxes_sxthdeg_iteration0_rank0.jld2 because ArgumentError: ArgumentError: a group or dataset named x is already present within this group
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:195
+[ Info: Outputs - Used Memory: 77.21 %; rank: 0
+[ Info: Saving restart
+[ Info: Outputs - Used Memory: 77.92 %; rank: 1
+[ Info: Saving restart
+[ Info: Running simulation
+[ Info: Running simulation
+[ Info: Outputs - Used Memory: 74.29 %; rank: 2
+[ Info: Saving restart
+[ Info: Running simulation
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (0.00e+00, -Inf, 0.00e+00) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (-Inf, 24.54) g/kg, extrema(e): (0.00, Inf) J, wall time: 1.801 hours 
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (-Inf, -Inf, -Inf) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (36.90, Inf) g/kg, extrema(e): (-Inf, 0.00) J, wall time: 1.801 hours 
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (-Inf, 0.00e+00, -Inf) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 1.801 hours 
+[ Info: Saving checkpoint file
+[ Info: Saving checkpoint file
+[ Info: Saving checkpoint file
+┌ Warning: Iteration 0 was found in /g/data/v46/txs156/ocean-ensembles/outputs/fluxes_sxthdeg_iteration0_rank2.jld2. Skipping output writing (for now...)
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:245
+[ Info:     ... simulation initialization complete (12.828 minutes)
+[ Info: Executing initial time step...
+┌ Warning: Iteration 0 was found in /g/data/v46/txs156/ocean-ensembles/outputs/fluxes_sxthdeg_iteration0_rank1.jld2. Skipping output writing (for now...)
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:245
+[ Info:     ... simulation initialization complete (12.847 minutes)
+[ Info: Executing initial time step...
+┌ Warning: Iteration 0 was found in /g/data/v46/txs156/ocean-ensembles/outputs/fluxes_sxthdeg_iteration0_rank0.jld2. Skipping output writing (for now...)
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:245
+[ Info:     ... simulation initialization complete (12.855 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.634 minutes).
+[ Info:     ... initial time step complete (2.623 minutes).
+[ Info:     ... initial time step complete (2.633 minutes).
+[ Info: time = 2000.0, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: Initializing simulation...
+[ Info: time = 2000.0, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: Initializing simulation...
+[ Info: time = 2000.0, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (88.565 ms)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (129.157 ms)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (297.661 ms)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (556.515 ms).
+[ Info:     ... initial time step complete (556.279 ms).
+[ Info:     ... initial time step complete (557.795 ms).
+[ Info: time = 32000.0, iteration = 200: NaN found in field u_ocean. Stopping simulation.
+[ Info: time = 32000.0, iteration = 200: NaN found in field u_ocean. Stopping simulation.
+[ Info: time = 32000.0, iteration = 200: NaN found in field u_ocean. Stopping simulation.
