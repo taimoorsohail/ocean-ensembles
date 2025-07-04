@@ -214,7 +214,7 @@ radiation  = Radiation(arch)
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=10minutes, stop_time=60days)
+simulation = Simulation(coupled_model; Δt=5minutes, stop_time=60days)
 @info "Coupled model - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 #We set time to zero because we need to run just to 1 year at a time for JRA
