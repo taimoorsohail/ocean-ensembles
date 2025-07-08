@@ -115,6 +115,7 @@ underlying_grid = TripolarGrid(arch;
                                halo = (7, 7, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
+
 @info "underlying grid - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 @info "Defining bottom bathymetry"
@@ -163,14 +164,14 @@ tracer_advection = WENO(order=5)
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=70)
 
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
-                                       DiffusiveFormulation
+# using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
+#                                        DiffusiveFormulation
 
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
-                                                 skew_flux_formulation=DiffusiveFormulation())
+# eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3,
+#                                                  skew_flux_formulation=DiffusiveFormulation())
 vertical_mixing = ClimaOcean.OceanSimulations.default_ocean_closure()
 
-closure = (eddy_closure, vertical_mixing)
+closure = vertical_mixing
 
 @info "Defining ocean simulation"
 
@@ -214,7 +215,7 @@ radiation  = Radiation(arch)
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=5minutes, stop_time=60days)
+simulation = Simulation(coupled_model; Δt=1minutes, stop_time=30days)
 @info "Coupled model - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 #We set time to zero because we need to run just to 1 year at a time for JRA
@@ -236,7 +237,7 @@ simulation.model.clock.time = time
 wall_time = Ref(time_ns())
 
 # callback_interval = TimeInterval(5days)
-callback_interval = IterationInterval(1)
+callback_interval = TimeInterval(1days)
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
@@ -425,7 +426,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     
     @info "Restart found at " * string(maximum(restart_numbers))
 
-    simulation.Δt = 5minutes 
+    simulation.Δt = 10minutes 
     simulation.stop_time = target_time # 1 year
 
     run!(simulation)
@@ -434,7 +435,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 5minutes 
+    simulation.Δt = 10minutes 
     simulation.stop_time = target_time # 1 year 
 
     run!(simulation)
