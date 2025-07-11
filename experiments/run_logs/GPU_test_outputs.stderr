@@ -1,0 +1,124 @@
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+┌ Error: JULIA_CUDA_USE_BINARYBUILDER is deprecated. Call `CUDA.jl.set_runtime_version!` to use a local toolkit.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/ja0IX/src/initialization.jl:200
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[LOG_CAT_BASESMUMA] Failed to create rcache for KNEM device
+[ Info: Using the advection scheme WENO(order=5) in the y-direction because size(grid, 2) = 3
+[ Info: Using the advection scheme WENO(order=5) in the y-direction because size(grid, 2) = 3
+[ Info: Using the advection scheme WENO(order=5) in the y-direction because size(grid, 2) = 3
+[ Info: Using the advection scheme WENO(order=5) in the y-direction because size(grid, 2) = 3
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining coupled model
+[ Info: Defining coupled model
+[ Info: Defining coupled model
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining surface outputs
+[ Info: Defining surface outputs
+[ Info: Defining surface outputs
+[ Info: Defining condition masks
+[ Info: Defining condition masks
+[ Info: Defining condition masks
+[ Info: Tracers
+[ Info: Tracers
+[ Info: Tracers
+[ Info: Merging tracer tuples
+[ Info: Merging tracer tuples
+[ Info: Merging tracer tuples
+[ Info: Velocities
+[ Info: Velocities
+[ Info: Velocities
+[ Info: Merging velocity tuples
+[ Info: Merging velocity tuples
+[ Info: Merging velocity tuples
+[ Info: Defining output writers
+[ Info: Defining output writers
+[ Info: Defining output writers
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+[ Info: time: 0 seconds, iteration: 0, Δt: 10 ms, extrema(T): (0.00, 0.00) ᵒC, extrema(S): (0.00, 0.00) g/kg, extrema(e): (0.00, 0.00) J, wall time: 10.675 minutes 
+[ Info: time: 0 seconds, iteration: 0, Δt: 10 ms, extrema(T): (0.00, 0.00) ᵒC, extrema(S): (0.00, 0.00) g/kg, extrema(e): (0.00, 0.00) J, wall time: 10.675 minutes 
+[ Info: time: 0 seconds, iteration: 0, Δt: 10 ms, extrema(T): (0.00, 0.00) ᵒC, extrema(S): (0.00, 0.00) g/kg, extrema(e): (0.00, 0.00) J, wall time: 10.675 minutes 
+[ Info: Saving checkpoint file
+[ Info: Saving checkpoint file
+[ Info: Saving checkpoint file
+[ Info:     ... simulation initialization complete (10.099 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (10.088 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (10.150 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (1.502 minutes).
+[ Info:     ... initial time step complete (1.690 minutes).
+[ Info:     ... initial time step complete (1.266 minutes).
+[ Info: time: 50 ms, iteration: 5, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 9.026 minutes 
+[ Info: time: 50 ms, iteration: 5, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 9.026 minutes 
+[ Info: time: 50 ms, iteration: 5, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 9.026 minutes 
+[ Info: time: 100.000 ms, iteration: 10, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 228.464 ms 
+[ Info: time: 100.000 ms, iteration: 10, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 228.455 ms 
+[ Info: time: 100.000 ms, iteration: 10, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 228.461 ms 
+[ Info: time: 150 ms, iteration: 15, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 591.692 ms 
+[ Info: time: 150 ms, iteration: 15, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 591.689 ms 
+[ Info: time: 150 ms, iteration: 15, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 591.693 ms 
+[ Info: time: 200.000 ms, iteration: 20, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 201.217 ms 
+[ Info: time: 200.000 ms, iteration: 20, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 201.227 ms 
+[ Info: time: 200.000 ms, iteration: 20, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 201.228 ms 
+[ Info: time: 250.000 ms, iteration: 25, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 833.187 ms 
+[ Info: time: 250.000 ms, iteration: 25, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 833.156 ms 
+[ Info: time: 250.000 ms, iteration: 25, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 833.150 ms 
+[ Info: time: 300.000 ms, iteration: 30, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 202.278 ms 
+[ Info: time: 300.000 ms, iteration: 30, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 202.252 ms 
+[ Info: time: 300.000 ms, iteration: 30, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 202.278 ms 
+[ Info: time: 350.000 ms, iteration: 35, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 456.865 ms 
+[ Info: time: 350.000 ms, iteration: 35, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 456.863 ms 
+[ Info: time: 350.000 ms, iteration: 35, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 456.861 ms 
+[ Info: time: 400.000 ms, iteration: 40, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 216.818 ms 
+[ Info: time: 400.000 ms, iteration: 40, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 216.823 ms 
+[ Info: time: 400.000 ms, iteration: 40, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 216.818 ms 
+[ Info: time: 450.000 ms, iteration: 45, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 443.058 ms 
+[ Info: time: 450.000 ms, iteration: 45, Δt: 10 ms, extrema(T): (0.00, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 443.054 ms 
+[ Info: time: 450.000 ms, iteration: 45, Δt: 10 ms, extrema(T): (0.00, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 443.054 ms 
+[ Info: time: 500.000 ms, iteration: 50, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 226.487 ms 
+[ Info: time: 500.000 ms, iteration: 50, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 226.492 ms 
+[ Info: time: 500.000 ms, iteration: 50, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 226.487 ms 
+[ Info: time: 550.000 ms, iteration: 55, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 411.342 ms 
+[ Info: time: 550.000 ms, iteration: 55, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 411.340 ms 
+[ Info: time: 550.000 ms, iteration: 55, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 411.343 ms 
+[ Info: time: 600.000 ms, iteration: 60, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 203.497 ms 
+[ Info: time: 600.000 ms, iteration: 60, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 203.494 ms 
+[ Info: time: 600.000 ms, iteration: 60, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 203.494 ms 
+[ Info: time: 650.000 ms, iteration: 65, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 406.377 ms 
+[ Info: time: 650.000 ms, iteration: 65, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 406.377 ms 
+[ Info: time: 650.000 ms, iteration: 65, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 406.375 ms 
+[ Info: time: 700.000 ms, iteration: 70, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 212.425 ms 
+[ Info: time: 700.000 ms, iteration: 70, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 212.424 ms 
+[ Info: time: 700.000 ms, iteration: 70, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 212.424 ms 
+[ Info: time: 750.000 ms, iteration: 75, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 498.000 ms 
+[ Info: time: 750.000 ms, iteration: 75, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 498.000 ms 
+[ Info: time: 750.000 ms, iteration: 75, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 497.998 ms 
+[ Info: time: 800.000 ms, iteration: 80, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 202.071 ms 
+[ Info: time: 800.000 ms, iteration: 80, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 202.074 ms 
+[ Info: time: 800.000 ms, iteration: 80, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 202.075 ms 
+[ Info: time: 850.000 ms, iteration: 85, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 585.440 ms 
+[ Info: time: 850.000 ms, iteration: 85, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 585.435 ms 
+[ Info: time: 850.000 ms, iteration: 85, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 585.432 ms 
+[ Info: time: 900.000 ms, iteration: 90, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 200.935 ms 
+[ Info: time: 900.000 ms, iteration: 90, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 200.936 ms 
+[ Info: time: 900.000 ms, iteration: 90, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 200.938 ms 
+[ Info: time: 950.000 ms, iteration: 95, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 471.972 ms 
+[ Info: time: 950.000 ms, iteration: 95, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 471.969 ms 
+[ Info: time: 950.000 ms, iteration: 95, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 471.972 ms 
+[ Info: time = 1.0000000000000007, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: time = 1.0000000000000007, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: time = 1.0000000000000007, iteration = 100: NaN found in field u_ocean. Stopping simulation.
+[ Info: time: 1.000 seconds, iteration: 100, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 207.746 ms 
+[ Info: time: 1.000 seconds, iteration: 100, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 207.743 ms 
+[ Info: time: 1.000 seconds, iteration: 100, Δt: 10 ms, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(e): (NaN, NaN) J, wall time: 207.743 ms 

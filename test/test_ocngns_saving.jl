@@ -26,7 +26,7 @@ grid = RectilinearGrid(arch;
 )
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=1)
-model = HydrostaticFreeSurfaceModel(; grid, free_surface)
+model = HydrostaticFreeSurfaceModel(; grid, free_surface, tracers=(:T, :S, :e))
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
 simulation = Simulation(model; Δt=0.01, stop_iteration=110)

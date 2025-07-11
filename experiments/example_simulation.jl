@@ -4,19 +4,12 @@ using CUDA
 MPI.Init()
 atexit(MPI.Finalize)  
 
-using ClimaOcean
 using Oceananigans
 using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
 using Oceananigans.DistributedComputations
-using OceanEnsembles
-using Oceananigans.Operators: Ax, Ay, Az, Δz
-using Oceananigans.Fields: ReducedField
-using ClimaOcean.EN4
-using ClimaOcean.EN4: download_dataset
-
 # File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
