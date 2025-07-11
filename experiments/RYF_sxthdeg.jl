@@ -210,7 +210,7 @@ radiation  = Radiation(arch)
 @info "Defining coupled model"
 
 coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
-simulation = Simulation(coupled_model; Δt=30, stop_time=45days)
+simulation = Simulation(coupled_model; Δt=20, stop_time=45days)
 @info "Coupled model - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 #We set time to zero because we need to run just to 1 year at a time for JRA
@@ -231,7 +231,7 @@ simulation.model.clock.time = time
 
 wall_time = Ref(time_ns())
 
-callback_interval = TimeInterval(30seconds)
+callback_interval = TimeInterval(1days)
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
@@ -262,7 +262,7 @@ end
 
 add_callback!(simulation, progress, callback_interval)
 
-output_intervals = TimeInterval(30seconds)
+output_intervals = TimeInterval(1days)
 checkpoint_intervals = TimeInterval(365days)
 
 #### SURFACE
@@ -307,11 +307,9 @@ tracer_names = Symbol[]
 tracer_outputs = Reduction[]
 
 for j in 1:3
-    if j == 1
-        @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
-    # @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
-    # @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
-    end
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
 end
 
 @info "Merging tracer tuples"
@@ -325,11 +323,9 @@ transport_volmask_operators = [Ax, Ay, Az]
 transport_names = Symbol[]
 transport_outputs = ReducedField[]
 for j in 1:3
-    if j==1
     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-    # @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-    # @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
-    end
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
+    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
 end
 
 @info "Merging velocity tuples"
