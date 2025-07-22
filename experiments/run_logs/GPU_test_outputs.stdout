@@ -1,1 +1,99 @@
-]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia
+]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia199.959306 seconds (63.95 M allocations: 3.976 GiB, 2.01% gc time, 90.59% compilation time: <1% of which was recompilation)
+199.959297 seconds (66.87 M allocations: 4.174 GiB, 1.73% gc time, 93.82% compilation time: <1% of which was recompilation)
+199.959184 seconds (67.65 M allocations: 4.229 GiB, 1.82% gc time, 96.74% compilation time: <1% of which was recompilation)
+j = 1
+j = 1
+j = 1
+  6.833247 seconds (1.10 M allocations: 72.162 MiB, 0.56% gc time, 99.64% compilation time)
+  6.836954 seconds (1.10 M allocations: 72.166 MiB, 0.36% gc time, 99.72% compilation time)
+  6.902194 seconds (1.10 M allocations: 72.106 MiB, 0.42% gc time, 99.73% compilation time)
+  6.448372 seconds (533.59 k allocations: 35.583 MiB, 99.71% compilation time)
+  6.477324 seconds (535.49 k allocations: 35.574 MiB, 0.43% gc time, 99.63% compilation time)
+  6.554226 seconds (533.57 k allocations: 35.530 MiB, 99.72% compilation time)
+j = 1
+j = 1
+j = 1
+  7.762980 seconds (7.82 M allocations: 544.101 MiB, 2.46% gc time, 84.64% compilation time)
+  7.754004 seconds (7.82 M allocations: 544.268 MiB, 2.10% gc time, 85.33% compilation time)
+  7.884007 seconds (7.94 M allocations: 552.000 MiB, 2.07% gc time, 85.45% compilation time)
+transport_tuple = NamedTuple with 6 Fields on 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics:
+├── u_global_zonal: 1×4×10 Field{Nothing, Center, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── dV_u_global_zonal: 1×4×10 Field{Nothing, Center, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── v_global_zonal: 1×4×10 Field{Nothing, Face, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── dV_v_global_zonal: 1×4×10 Field{Nothing, Face, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── w_global_zonal: 1×4×11 Field{Nothing, Center, Face} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+└── dV_w_global_zonal: 1×4×11 Field{Nothing, Center, Face} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+transport_tuple = NamedTuple with 6 Fields on 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics:
+├── u_global_zonal: 1×3×10 Field{Nothing, Center, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── dV_u_global_zonal: 1×3×10 Field{Nothing, Center, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── v_global_zonal: 1×3×10 Field{Nothing, Face, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── dV_v_global_zonal: 1×3×10 Field{Nothing, Face, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── w_global_zonal: 1×3×11 Field{Nothing, Center, Face} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+└── dV_w_global_zonal: 1×3×11 Field{Nothing, Center, Face} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+transport_tuple = NamedTuple with 6 Fields on 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics:
+├── u_global_zonal: 1×3×10 Field{Nothing, Center, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── dV_u_global_zonal: 1×3×10 Field{Nothing, Center, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── v_global_zonal: 1×3×10 Field{Nothing, Face, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── dV_v_global_zonal: 1×3×10 Field{Nothing, Face, Center} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+├── w_global_zonal: 1×3×11 Field{Nothing, Center, Face} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+└── dV_w_global_zonal: 1×3×11 Field{Nothing, Center, Face} reduced over dims = (1,) on OrthogonalSphericalShellGrid on Distributed{GPU{CUDABackend}}
+tracer_tuple = (T_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, S_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, e_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, dV_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, T_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, S_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, e_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, dV_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics)
+tracer_tuple = (T_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, S_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, e_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, dV_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, T_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, S_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, e_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, dV_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×4×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×4×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.FullyConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics)
+tracer_tuple = (T_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, S_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, e_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, dV_global_zonal = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1,)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, T_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, S_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, e_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics, dV_global_depth = Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory} over dims (1, 2)
+└── operand: ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition 10×3×10 CuArray{Bool, 3, CUDA.DeviceMemory}
+    └── grid: 10×3×10 OrthogonalSphericalShellGrid{Float64, Periodic, Oceananigans.Grids.RightConnected, Bounded} on Distributed{GPU{CUDABackend}} with 7×7×4 halo and with precomputed metrics)
+380.015576 seconds (10.34 M allocations: 734.801 MiB, 0.07% gc time, 99.73% compilation time: <1% of which was recompilation)
+384.734212 seconds (10.38 M allocations: 738.141 MiB, 0.07% gc time, 99.85% compilation time: <1% of which was recompilation)
+  6.272045 seconds (944.39 k allocations: 64.806 MiB, 0.52% gc time, 92.57% compilation time)
+386.325793 seconds (10.44 M allocations: 741.904 MiB, 0.08% gc time, 99.79% compilation time: <1% of which was recompilation)
+  6.076107 seconds (833.52 k allocations: 57.520 MiB, 0.58% gc time, 90.09% compilation time)
+  5.903125 seconds (876.96 k allocations: 60.738 MiB, 91.23% compilation time)
+  7.693729 seconds (1.47 M allocations: 100.623 MiB, 0.39% gc time, 93.90% compilation time)
+  7.690756 seconds (1.52 M allocations: 104.017 MiB, 0.54% gc time, 93.63% compilation time)
+  7.594489 seconds (1.49 M allocations: 101.727 MiB, 0.44% gc time, 92.70% compilation time)

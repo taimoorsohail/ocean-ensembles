@@ -53,10 +53,10 @@ total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 
 @info "Using architecture: " * string(arch)
 
-restartfiles = glob("checkpoint_iteration*", output_path)
+restartfiles = glob("checkpoint_iteration_sxthdeg*", output_path)
 
 # Extract the numeric suffix from each filename
-restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration_sxthdeg(\d+)", basename(f)).captures[1]), restartfiles)
 
 iteration = 0
 time = 0.0
@@ -64,7 +64,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     # Extract the numeric suffix from each filename
 
     # Get the file with the maximum number
-    clock_vars = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+    clock_vars = jldopen(output_path * "checkpoint_iteration_sxthdeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
 
     iteration = deepcopy(clock_vars["clock"].iteration)
     time = deepcopy(clock_vars["clock"].time)
@@ -105,13 +105,13 @@ Nz = Integer(75)
 @info "Defining vertical z faces"
 
 r_faces = exponential_z_faces(; Nz, depth=5000, h=12.43)
-# z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
+z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 
 @info "Defining tripolar grid"
 
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
-                               z = r_faces,
+                               z = z_faces,
                                halo = (7, 7, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
@@ -125,7 +125,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-				                  major_basins = 1)
+				                  major_basins = 2)
 
 @info "Botom height - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
@@ -144,7 +144,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 @info "Defining restoring rate"
 
 restoring_rate  = 1 / 10days
-z_below_surface = r_faces[end-1]
+z_below_surface = z_faces[end-1]
 
 mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
 
@@ -368,7 +368,7 @@ transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 function save_restart(sim)
     @info @sprintf("Saving checkpoint file")
 
-    jldsave(output_path * "checkpoint_iteration" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
+    jldsave(output_path * "checkpoint_iteration_sxthdeg" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
     u = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.u)),
     v = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.v)),
     w = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.w)),
@@ -383,9 +383,9 @@ add_callback!(simulation, save_restart, checkpoint_intervals)
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     @info "Loading with restart file from iteration " * string(maximum(restart_numbers))
     @info "Local rank ", arch.local_rank
-    @info output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2"
+    @info output_path * "checkpoint_iteration_sxthdeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2"
 
-    fields = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+    fields = jldopen(output_path * "checkpoint_iteration_sxthdeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
 
     T_field = fields["T"]
     S_field = fields["S"]

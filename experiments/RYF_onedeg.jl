@@ -1,21 +1,32 @@
+using MPI
+using CUDA
+
+MPI.Init()
+atexit(MPI.Finalize)  
+
 using ClimaOcean
 using Oceananigans
 using Oceananigans.Units
 using CFTime
 using Dates
 using Printf
-using ClimaOcean.EN4
-using ClimaOcean.EN4: download_dataset
-using OceanEnsembles: basin_mask, ocean_tracer_content!, volume_transport!
+using Oceananigans.DistributedComputations
+using OceanEnsembles
 using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
+using ClimaOcean.EN4
+using ClimaOcean.EN4: download_dataset
 using ClimaOcean.DataWrangling.ETOPO
+using Glob 
+using Oceananigans.Architectures: on_architecture
+using JLD2
 # using JLD2
 
-# File paths
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-suffix = "_skintemp"
+figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+
+target_time = 365days*25 # 25 years
 
 ## Argument is provided by the submission script!
 
@@ -23,21 +34,48 @@ if isempty(ARGS)
     println("No arguments provided. Please enter architecture (CPU/GPU):")
     arch_input = readline()
     if arch_input == "GPU"
-        arch = GPU()
+        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
     elseif arch_input == "CPU"
-        arch = CPU()
+        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
     else
         throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
     end
 elseif ARGS[2] == "GPU"
-    arch = GPU()
+    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 elseif ARGS[2] == "CPU"
-    arch = CPU()
+    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
 
+total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
+
 @info "Using architecture: " * string(arch)
+
+restartfiles = glob("checkpoint_iteration_onedeg*", output_path)
+
+# Extract the numeric suffix from each filename
+restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration_onedeg(\d+)", basename(f)).captures[1]), restartfiles)
+
+iteration = 0
+time = 0.0
+if !isempty(restart_numbers) && maximum(restart_numbers) != 0
+    # Extract the numeric suffix from each filename
+
+    # Get the file with the maximum number
+    clock_vars = jldopen(output_path * "checkpoint_iteration_onedeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+
+    iteration = deepcopy(clock_vars["clock"].iteration)
+    time = deepcopy(clock_vars["clock"].time)
+    @info "Moving simulation to " * string(iteration) * " iterations"
+    @info "Moving simulation to " * string(prettytime(time))
+
+    close(clock_vars)
+end
+
+if time == target_time
+    error("Terminating simulation at target time.")
+end
 
 # ### Download necessary files to run the code
 
@@ -67,13 +105,13 @@ Nz = Integer(75)
 @info "Defining vertical z faces"
 
 r_faces = exponential_z_faces(; Nz, depth=5000, h=12.43)
-# z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
+z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 
 @info "Defining tripolar grid"
 
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
-                               z = r_faces,
+                               z = z_faces,
                                halo = (5, 5, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
@@ -101,8 +139,8 @@ view(bottom_height, 102:103, 124, 1) .= -400
 
 @info "Defining restoring rate"
 
-restoring_rate  = 1 / 3days
-z_below_surface = r_faces[end-1]
+restoring_rate  = 1 / 10days
+z_below_surface = z_faces[end-1]
 
 mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
 
@@ -157,7 +195,7 @@ set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
+atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(25))
 
 # ### Coupled simulation
 
@@ -169,14 +207,19 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(20))
 # flow fields.
 
 @info "Defining coupled model"
-diffusive_flux = ClimaOcean.OceanSeaIceModels.InterfaceComputations.DiffusiveFlux(0.5, 1000.0)
-interfaces = ClimaOcean.OceanSeaIceModels.InterfaceComputations.ComponentInterfaces(atmosphere, ocean, atmosphere_ocean_interface_temperature=ClimaOcean.SkinTemperature(diffusive_flux))
-
-coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation, interfaces)
-
-@show coupled_model.interfaces.atmosphere_ocean_interface.properties.temperature_formulation
+coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 
 simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
+
+#We set time to zero because we need to run just to 1 year at a time for JRA
+time = 0.0
+
+simulation.model.ocean.model.clock.iteration = iteration
+simulation.model.ocean.model.clock.time = time
+simulation.model.atmosphere.clock.iteration = iteration
+simulation.model.atmosphere.clock.time = time
+simulation.model.clock.iteration = iteration
+simulation.model.clock.time = time
 
 # ### A progress messenger
 #
@@ -186,35 +229,11 @@ simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
 
 wall_time = Ref(time_ns())
 
-callback_interval = IterationInterval(100)
-
-# function find_nans(sim, nans)
-#     fill!(nans, false)
-#     nans_in_u = any!(isnan, nans, interior(sim.model.ocean.model.velocities.u))
-#     fill!(nans, false)
-#     nans_in_v = any!(isnan, nans, interior(sim.model.ocean.model.velocities.v))
-#     fill!(nans, false)
-#     nans_in_T = any!(isnan, nans, interior(sim.model.ocean.model.tracers.T))
-#     fill!(nans, false)
-#     nans_in_S = any!(isnan, nans, interior(sim.model.ocean.model.tracers.S))
-
-#     if any([nans_in_u[], nans_in_v[], nans_in_T[], nans_in_S[]])
-#         ucpu = on_architecture(CPU(), sim.model.ocean.model.velocities.u)
-#         vcpu = on_architecture(CPU(), sim.model.ocean.model.velocities.v)
-#         Tcpu = on_architecture(CPU(), sim.model.ocean.model.tracers.T)
-#         Scpu = on_architecture(CPU(), sim.model.ocean.model.tracers.S)
-
-#         JLD2.@save output_path * "nan_state.jld2" ucpu vcpu Tcpu Scpu
-#         throw(ErrorException("NaNs detected. Saved field and halting simulation."))
-#     end 
-
-# end
+callback_interval = TimeInterval(1days)
 
 function progress(sim)
     u, v, w = sim.model.ocean.model.velocities
     T, S, e = sim.model.ocean.model.tracers
-    skinT = coupled_model.interfaces.atmosphere_ocean_interface.temperature
-    skinTrange = maximum(skinT), minimum(skinT)
     Trange = (maximum((T)), minimum((T)))
     Srange = (maximum((S)), minimum((S)))
     erange = (maximum((e)), minimum((e)))
@@ -223,20 +242,16 @@ function progress(sim)
             maximum(abs, (v)),
             maximum(abs, (w)))
 
-    # nans = Field{Nothing, Nothing, Nothing}(sim.model.ocean.model.grid, Bool)
-    # find_nans(sim, nans)
-        
     step_time = 1e-9 * (time_ns() - wall_time[])
 
-    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration(sim), prettytime(sim.Δt))
+    msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), Oceananigans.iteration(sim), prettytime(sim.Δt))
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
     msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
-    msg4 = @sprintf("extrema(skin_T): (%.2f, %.2f) ᵒC, ", skinTrange...)
-    msg5 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
-    msg6 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
-    msg7 = @sprintf("wall time: %s \n", prettytime(step_time))
+    msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
+    msg5 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
+    msg6 = @sprintf("wall time: %s \n", prettytime(step_time))
 
-    @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 *msg7
+    @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6
 
     wall_time[] = time_ns()
 
@@ -244,6 +259,8 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
+output_intervals = TimeInterval(1days)
+checkpoint_intervals = TimeInterval(365days)
 
 #### SURFACE
 
@@ -310,44 +327,96 @@ end
 
 transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-output_intervals = AveragedTimeInterval(5days)
-
 @info "Defining output writers"
 
-simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
+@time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+                                                          dir = output_path,
+                                                          schedule = output_intervals,
+                                                          filename = "ocean_tracer_content_onedeg_iteration" * string(Oceananigans.iteration(simulation)),
+                                                          overwrite_existing = true)
+
+@time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+                                                          dir = output_path,
+                                                          schedule = output_intervals,
+                                                          filename = "mass_transport_onedeg_iteration" * string(Oceananigans.iteration(simulation)),
+                                                          overwrite_existing = true)
+
+@time simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_RYF1deg" * suffix,
+                                                 filename = "global_surface_fields_onedeg_iteration" * string(Oceananigans.iteration(simulation)),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
+@info "Saving restart"
 
-simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
-                                                dir = output_path,
-                                                schedule = output_intervals,
-                                                filename = "fluxes_RYF1deg" * suffix,
-                                                overwrite_existing = true)
+function save_restart(sim)
+    @info @sprintf("Saving checkpoint file")
 
-simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
-                                                          dir = output_path,
-                                                          schedule = output_intervals,
-                                                          filename = "ocean_tracer_content_RYF1deg" * suffix,
-                                                          overwrite_existing = true)
+    jldsave(output_path * "checkpoint_iteration_onedeg" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
+    u = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.u)),
+    v = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.v)),
+    w = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.w)),
+    T = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.T)),
+    S = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.S)),
+    e = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.e)),
+    clock = sim.model.clock)
+end
 
-simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
-                                                          dir = output_path,
-                                                          schedule = output_intervals,
-                                                          filename = "mass_transport_RYF1deg" * suffix,
-                                                          overwrite_existing = true)
+add_callback!(simulation, save_restart, checkpoint_intervals)
 
-@info "Running simulation"
+if !isempty(restart_numbers) && maximum(restart_numbers) != 0
+    @info "Loading with restart file from iteration " * string(maximum(restart_numbers))
+    @info "Local rank ", arch.local_rank
+    @info output_path * "checkpoint_iteration_onedeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2"
 
-run!(simulation)
+    fields = jldopen(output_path * "checkpoint_iteration_onedeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
 
-simulation.Δt = 10minutes
-simulation.stop_time = 730.5days # 5 years
+    T_field = fields["T"]
+    S_field = fields["S"]
+    e_field = fields["e"]
+    u_field = fields["u"]
+    v_field = fields["v"]
+    w_field = fields["w"]
 
-run!(simulation)
+    close(fields)
+
+    set!(ocean.model, 
+    T = (T_field),
+    S = (S_field),
+    u = (u_field),
+    v = (v_field),
+    w = (w_field),
+    e = (e_field))
+
+    u, v, w = ocean.model.velocities
+    T, S, e = ocean.model.tracers
+
+    Trange = (maximum((T)), minimum((T)))
+    Srange = (maximum((S)), minimum((S)))
+    erange = (maximum((e)), minimum((e)))
+
+    umax = (maximum(abs, (u)),
+            maximum(abs, (v)),
+            maximum(abs, (w)))
+
+    @info Trange, Srange, erange, umax
+    
+    @info "Restart found at " * string(maximum(restart_numbers))
+
+    simulation.Δt = 10minutes 
+    simulation.stop_time = target_time
+
+    run!(simulation)
+else
+    @info "Running simulation"
+
+    run!(simulation)
+
+    simulation.Δt = 10minutes 
+    simulation.stop_time = target_time
+
+    run!(simulation)
+end

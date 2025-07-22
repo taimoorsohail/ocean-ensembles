@@ -40,16 +40,16 @@
 [ Info: underlying grid - Used Memory: 3.35 %; rank: 0
 [ Info: Defining bottom bathymetry
 [ Info: underlying grid - Used Memory: 1.45 %; rank: 1
-[ Info: underlying grid - Used Memory: 1.45 %; rank: 2
 [ Info: Defining bottom bathymetry
+[ Info: underlying grid - Used Memory: 1.45 %; rank: 2
 [ Info: Defining bottom bathymetry
 [ Info: Interpolation passes of bathymetry size (21600, 10800, 1) onto a TripolarGrid target grid of size (2160, 1080, 75):
 [ Info:     pass 1 to size (2160, 1080, 1)
-[ Info: Botom height - Used Memory: 1.6 %; rank: 1
-[ Info: Botom height - Used Memory: 1.6 %; rank: 2
 [ Info: Botom height - Used Memory: 3.49 %; rank: 0
 [ Info: Defining grid
+[ Info: Botom height - Used Memory: 1.6 %; rank: 2
 [ Info: Defining grid
+[ Info: Botom height - Used Memory: 1.6 %; rank: 1
 [ Info: Defining grid
 [ Info: Grid - Used Memory: 2.12 %; rank: 2
 [ Info: Defining restoring rate
@@ -63,27 +63,27 @@
 [ Info: Defining ocean simulation
 [ Info: Defining ocean simulation
 [ Info: Defining ocean simulation
-[ Info: Ocean - Used Memory: 52.73 %; rank: 0
 [ Info: Ocean - Used Memory: 52.88 %; rank: 1
+[ Info: Ocean - Used Memory: 52.73 %; rank: 0
 [ Info: Initialising with EN4
 [ Info: Initialising with EN4
-[ Info: Ocean - Used Memory: 49.81 %; rank: 2
+[ Info: Ocean - Used Memory: 49.87 %; rank: 2
 [ Info: Initialising with EN4
 [ Info: Defining Atmospheric state
 [ Info: Defining Atmospheric state
 [ Info: Defining Atmospheric state
-[ Info: Radiation - Used Memory: 49.88 %; rank: 2
 [ Info: Radiation - Used Memory: 52.91 %; rank: 1
 [ Info: Radiation - Used Memory: 52.77 %; rank: 0
+[ Info: Radiation - Used Memory: 49.95 %; rank: 2
 [ Info: Atmos - Used Memory: 53.75 %; rank: 0
-[ Info: Atmos - Used Memory: 50.76 %; rank: 2
+[ Info: Atmos - Used Memory: 50.83 %; rank: 2
 [ Info: Defining coupled model
 [ Info: Defining coupled model
 [ Info: Atmos - Used Memory: 53.77 %; rank: 1
 [ Info: Defining coupled model
 [ Info: Coupled model - Used Memory: 54.08 %; rank: 0
 [ Info: Coupled model - Used Memory: 54.23 %; rank: 1
-[ Info: Coupled model - Used Memory: 51.16 %; rank: 2
+[ Info: Coupled model - Used Memory: 51.22 %; rank: 2
 [ Info: Defining messenger
 [ Info: Defining messenger
 [ Info: Defining messenger
@@ -97,11 +97,11 @@
 [ Info: Tracers
 [ Info: Tracers
 [ Info: Merging tracer tuples
+[ Info: Velocities
+[ Info: Merging tracer tuples
 [ Info: Merging tracer tuples
 [ Info: Velocities
 [ Info: Velocities
-[ Info: Merging tracer tuples
-[ Info: Velocities
 [ Info: Merging velocity tuples
 [ Info: Defining output writers
 [ Info: Merging velocity tuples
@@ -112,26 +112,116 @@
 [ Info: Running simulation
 [ Info: Saving restart
 [ Info: Running simulation
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
 [ Info: Saving restart
 [ Info: Running simulation
 [ Info: Initializing simulation...
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (-Inf, -Inf, -Inf) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (-Inf, 30.65) g/kg, extrema(e): (-Inf, Inf) J, wall time: 1.757 hours 
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (0.00e+00, 0.00e+00, 0.00e+00) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (40.46, Inf) g/kg, extrema(e): (-Inf, 0.00) J, wall time: 1.757 hours 
+[ Info: time: 0 seconds, iteration: 0, Δt: 20 seconds, max|u|: (-Inf, -Inf, -Inf) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (0.00, Inf) J, wall time: 1.757 hours 
+[ Info: Saving checkpoint file
+[ Info: Saving checkpoint file
+[ Info: Saving checkpoint file
+[ Info:     ... simulation initialization complete (12.936 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (12.951 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (8.292 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.589 minutes).
+[ Info:     ... initial time step complete (4.057 minutes).
+[ Info:     ... initial time step complete (4.041 minutes).
+[ Info: time: 1 day, iteration: 4320, Δt: 20 seconds, max|u|: (-Inf, 2.05e+00, -Inf) m s⁻¹, extrema(T): (27.76, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 40.515 minutes 
+[ Info: time: 1 day, iteration: 4320, Δt: 20 seconds, max|u|: (4.22e+00, -Inf, 1.84e-01) m s⁻¹, extrema(T): (25.21, Inf) ᵒC, extrema(S): (40.42, 13.34) g/kg, extrema(e): (53.38, Inf) J, wall time: 40.515 minutes 
+[ Info: time: 1 day, iteration: 4320, Δt: 20 seconds, max|u|: (3.43e+00, 5.40e+00, -Inf) m s⁻¹, extrema(T): (31.03, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (1.68, -0.18) J, wall time: 40.515 minutes 
+[ Info: time: 2 days, iteration: 8640, Δt: 20 seconds, max|u|: (-Inf, -Inf, 5.20e-02) m s⁻¹, extrema(T): (25.09, Inf) ᵒC, extrema(S): (40.42, 13.65) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.418 minutes 
+[ Info: time: 2 days, iteration: 8640, Δt: 20 seconds, max|u|: (-Inf, 2.27e+00, -Inf) m s⁻¹, extrema(T): (27.76, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, -0.00) J, wall time: 35.418 minutes 
+[ Info: time: 2 days, iteration: 8640, Δt: 20 seconds, max|u|: (3.96e+00, 3.34e+00, -Inf) m s⁻¹, extrema(T): (31.13, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (2.73, -16.46) J, wall time: 35.418 minutes 
+[ Info: time: 3 days, iteration: 12960, Δt: 20 seconds, max|u|: (-Inf, 4.19e+00, 1.44e-02) m s⁻¹, extrema(T): (28.03, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, -0.00) J, wall time: 35.421 minutes 
+[ Info: time: 3 days, iteration: 12960, Δt: 20 seconds, max|u|: (4.35e+00, 3.99e+00, 3.15e-02) m s⁻¹, extrema(T): (25.07, Inf) ᵒC, extrema(S): (40.43, 13.89) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.421 minutes 
+[ Info: time: 3 days, iteration: 12960, Δt: 20 seconds, max|u|: (-Inf, 3.36e+00, 3.29e-02) m s⁻¹, extrema(T): (31.45, Inf) ᵒC, extrema(S): (-Inf, 26.21) g/kg, extrema(e): (2.19, -2.56) J, wall time: 35.421 minutes 
+[ Info: time: 4 days, iteration: 17280, Δt: 20 seconds, max|u|: (5.27e+00, -Inf, 2.05e-02) m s⁻¹, extrema(T): (25.28, Inf) ᵒC, extrema(S): (40.44, 13.99) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.485 minutes 
+[ Info: time: 4 days, iteration: 17280, Δt: 20 seconds, max|u|: (-Inf, 2.17e+00, -Inf) m s⁻¹, extrema(T): (28.17, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.485 minutes 
+[ Info: time: 4 days, iteration: 17280, Δt: 20 seconds, max|u|: (4.13e+00, 2.18e+00, -Inf) m s⁻¹, extrema(T): (31.72, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (3.04, -0.00) J, wall time: 35.485 minutes 
+[ Info: time: 5 days, iteration: 21600, Δt: 20 seconds, max|u|: (-Inf, -Inf, -Inf) m s⁻¹, extrema(T): (28.30, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.408 minutes 
+[ Info: time: 5 days, iteration: 21600, Δt: 20 seconds, max|u|: (4.08e+00, 3.62e+00, 1.60e-02) m s⁻¹, extrema(T): (-Inf, -1.87) ᵒC, extrema(S): (40.45, 14.24) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.408 minutes 
+[ Info: time: 5 days, iteration: 21600, Δt: 20 seconds, max|u|: (4.26e+00, -Inf, 2.49e-02) m s⁻¹, extrema(T): (-Inf, Inf) ᵒC, extrema(S): (40.68, 26.52) g/kg, extrema(e): (4.30, -2.65) J, wall time: 35.408 minutes 
+[ Info: time: 6 days, iteration: 25920, Δt: 20 seconds, max|u|: (-Inf, -Inf, 1.41e-02) m s⁻¹, extrema(T): (25.30, Inf) ᵒC, extrema(S): (40.46, 14.93) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.409 minutes 
+[ Info: time: 6 days, iteration: 25920, Δt: 20 seconds, max|u|: (-Inf, 1.84e+00, -Inf) m s⁻¹, extrema(T): (28.47, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, -0.00) J, wall time: 35.409 minutes 
+[ Info: time: 6 days, iteration: 25920, Δt: 20 seconds, max|u|: (3.48e+00, 2.94e+00, 2.19e-02) m s⁻¹, extrema(T): (31.62, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (8.50, -0.00) J, wall time: 35.409 minutes 
+[ Info: time: 7 days, iteration: 30240, Δt: 20 seconds, max|u|: (-Inf, 1.83e+00, 1.63e-02) m s⁻¹, extrema(T): (28.61, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.675 minutes 
+[ Info: time: 7 days, iteration: 30240, Δt: 20 seconds, max|u|: (3.62e+00, 2.74e+00, 1.53e-02) m s⁻¹, extrema(T): (6340343805383424.00, Inf) ᵒC, extrema(S): (40.45, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.675 minutes 
+[ Info: time: 7 days, iteration: 30240, Δt: 20 seconds, max|u|: (3.04e+00, 2.73e+00, -Inf) m s⁻¹, extrema(T): (31.79, Inf) ᵒC, extrema(S): (40.68, 26.72) g/kg, extrema(e): (6.49, -0.05) J, wall time: 35.675 minutes 
+[ Info: time: 8 days, iteration: 34560, Δt: 20 seconds, max|u|: (3.46e+00, 3.65e+00, 1.27e-02) m s⁻¹, extrema(T): (25.34, Inf) ᵒC, extrema(S): (40.47, 15.29) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.749 minutes 
+[ Info: time: 8 days, iteration: 34560, Δt: 20 seconds, max|u|: (-Inf, 1.45e+00, 1.24e-02) m s⁻¹, extrema(T): (28.65, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, -0.00) J, wall time: 35.749 minutes 
+[ Info: time: 8 days, iteration: 34560, Δt: 20 seconds, max|u|: (-Inf, 3.01e+00, 1.94e-02) m s⁻¹, extrema(T): (32.11, Inf) ᵒC, extrema(S): (-Inf, 26.74) g/kg, extrema(e): (6.22, -0.03) J, wall time: 35.749 minutes 
+[ Info: time: 9 days, iteration: 38880, Δt: 20 seconds, max|u|: (-Inf, 1.84e+00, -Inf) m s⁻¹, extrema(T): (28.66, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.268 minutes 
+[ Info: time: 9 days, iteration: 38880, Δt: 20 seconds, max|u|: (-Inf, -Inf, 1.22e-02) m s⁻¹, extrema(T): (25.39, Inf) ᵒC, extrema(S): (40.46, 15.29) g/kg, extrema(e): (1.96, Inf) J, wall time: 35.268 minutes 
+[ Info: time: 9 days, iteration: 38880, Δt: 20 seconds, max|u|: (3.42e+00, 3.26e+00, -Inf) m s⁻¹, extrema(T): (32.00, Inf) ᵒC, extrema(S): (-Inf, 26.99) g/kg, extrema(e): (8.24, -0.72) J, wall time: 35.268 minutes 
+[ Info: time: 10 days, iteration: 43200, Δt: 20 seconds, max|u|: (2.85e+00, 4.16e+00, 1.25e-02) m s⁻¹, extrema(T): (-Inf, -1.89) ᵒC, extrema(S): (40.48, 15.31) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.348 minutes 
+[ Info: time: 10 days, iteration: 43200, Δt: 20 seconds, max|u|: (-Inf, -Inf, 1.27e-02) m s⁻¹, extrema(T): (28.83, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.348 minutes 
+[ Info: time: 10 days, iteration: 43200, Δt: 20 seconds, max|u|: (2.52e+00, -Inf, 1.88e-02) m s⁻¹, extrema(T): (-Inf, Inf) ᵒC, extrema(S): (-Inf, 27.03) g/kg, extrema(e): (5.58, -0.35) J, wall time: 35.348 minutes 
+[ Info: time: 11 days, iteration: 47520, Δt: 20 seconds, max|u|: (-Inf, 6.53e+00, -Inf) m s⁻¹, extrema(T): (29.34, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.358 minutes 
+[ Info: time: 11 days, iteration: 47520, Δt: 20 seconds, max|u|: (2.24e+00, 3.39e+00, 1.12e-02) m s⁻¹, extrema(T): (25.47, Inf) ᵒC, extrema(S): (40.49, 15.32) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.358 minutes 
+[ Info: time: 11 days, iteration: 47520, Δt: 20 seconds, max|u|: (2.60e+00, 3.47e+00, -Inf) m s⁻¹, extrema(T): (32.32, Inf) ᵒC, extrema(S): (-Inf, 27.03) g/kg, extrema(e): (5.08, -0.01) J, wall time: 35.358 minutes 
+[ Info: time: 12 days, iteration: 51840, Δt: 20 seconds, max|u|: (-Inf, -Inf, 9.73e-03) m s⁻¹, extrema(T): (25.60, Inf) ᵒC, extrema(S): (40.48, 15.34) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.388 minutes 
+[ Info: time: 12 days, iteration: 51840, Δt: 20 seconds, max|u|: (-Inf, 7.42e+00, -Inf) m s⁻¹, extrema(T): (29.55, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.388 minutes 
+[ Info: time: 12 days, iteration: 51840, Δt: 20 seconds, max|u|: (2.57e+00, 3.91e+00, -Inf) m s⁻¹, extrema(T): (32.61, Inf) ᵒC, extrema(S): (-Inf, 27.05) g/kg, extrema(e): (3.10, -7.15) J, wall time: 35.388 minutes 
+[ Info: time: 13 days, iteration: 56160, Δt: 20 seconds, max|u|: (-Inf, 7.54e+00, -Inf) m s⁻¹, extrema(T): (29.69, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.443 minutes 
+[ Info: time: 13 days, iteration: 56160, Δt: 20 seconds, max|u|: (2.15e+00, -Inf, 1.08e-02) m s⁻¹, extrema(T): (25.55, Inf) ᵒC, extrema(S): (40.45, 15.35) g/kg, extrema(e): (2.37, Inf) J, wall time: 35.443 minutes 
+[ Info: time: 13 days, iteration: 56160, Δt: 20 seconds, max|u|: (2.64e+00, 3.83e+00, -Inf) m s⁻¹, extrema(T): (32.71, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (2.39, -0.00) J, wall time: 35.443 minutes 
+[ Info: time: 14 days, iteration: 60480, Δt: 20 seconds, max|u|: (-Inf, -Inf, 1.26e-02) m s⁻¹, extrema(T): (25.48, Inf) ᵒC, extrema(S): (40.43, 15.36) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.418 minutes 
+[ Info: time: 14 days, iteration: 60480, Δt: 20 seconds, max|u|: (-Inf, 7.35e+00, -Inf) m s⁻¹, extrema(T): (29.81, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.418 minutes 
+[ Info: time: 14 days, iteration: 60480, Δt: 20 seconds, max|u|: (2.70e+00, 4.20e+00, 1.91e-02) m s⁻¹, extrema(T): (32.84, Inf) ᵒC, extrema(S): (-Inf, 27.12) g/kg, extrema(e): (2.84, -0.00) J, wall time: 35.418 minutes 
+[ Info: time: 15 days, iteration: 64800, Δt: 20 seconds, max|u|: (-Inf, -Inf, -Inf) m s⁻¹, extrema(T): (29.78, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.429 minutes 
+[ Info: time: 15 days, iteration: 64800, Δt: 20 seconds, max|u|: (2.34e+00, 3.40e+00, 9.04e-03) m s⁻¹, extrema(T): (-Inf, -1.91) ᵒC, extrema(S): (40.41, 15.38) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.429 minutes 
+[ Info: time: 15 days, iteration: 64800, Δt: 20 seconds, max|u|: (2.75e+00, -Inf, 1.80e-02) m s⁻¹, extrema(T): (-Inf, Inf) ᵒC, extrema(S): (40.68, 27.10) g/kg, extrema(e): (3.33, -5.87) J, wall time: 35.429 minutes 
+[ Info: time: 16 days, iteration: 69120, Δt: 20 seconds, max|u|: (2.49e+00, 3.11e+00, 8.19e-03) m s⁻¹, extrema(T): (25.90, Inf) ᵒC, extrema(S): (40.39, 15.41) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.509 minutes 
+[ Info: time: 16 days, iteration: 69120, Δt: 20 seconds, max|u|: (-Inf, 7.78e+00, -Inf) m s⁻¹, extrema(T): (29.87, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.509 minutes 
+[ Info: time: 16 days, iteration: 69120, Δt: 20 seconds, max|u|: (-Inf, 3.74e+00, 1.53e-02) m s⁻¹, extrema(T): (33.28, Inf) ᵒC, extrema(S): (-Inf, 27.12) g/kg, extrema(e): (2.98, -0.00) J, wall time: 35.509 minutes 
+[ Info: time: 17 days, iteration: 73440, Δt: 20 seconds, max|u|: (-Inf, -Inf, -Inf) m s⁻¹, extrema(T): (30.22, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.483 minutes 
+[ Info: time: 17 days, iteration: 73440, Δt: 20 seconds, max|u|: (-Inf, 3.79e+00, 8.71e-03) m s⁻¹, extrema(T): (25.97, Inf) ᵒC, extrema(S): (40.38, 15.43) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.483 minutes 
+[ Info: time: 17 days, iteration: 73440, Δt: 20 seconds, max|u|: (2.68e+00, 3.62e+00, -Inf) m s⁻¹, extrema(T): (33.42, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (2.43, -0.14) J, wall time: 35.483 minutes 
+[ Info: time: 18 days, iteration: 77760, Δt: 20 seconds, max|u|: (2.46e+00, -Inf, 8.31e-03) m s⁻¹, extrema(T): (26.12, Inf) ᵒC, extrema(S): (40.37, 15.47) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.491 minutes 
+[ Info: time: 18 days, iteration: 77760, Δt: 20 seconds, max|u|: (-Inf, 3.21e+00, -Inf) m s⁻¹, extrema(T): (30.43, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.491 minutes 
+[ Info: time: 18 days, iteration: 77760, Δt: 20 seconds, max|u|: (2.70e+00, 3.36e+00, -Inf) m s⁻¹, extrema(T): (33.59, Inf) ᵒC, extrema(S): (-Inf, 27.17) g/kg, extrema(e): (2.88, -4.04) J, wall time: 35.491 minutes 
+[ Info: time: 19 days, iteration: 82080, Δt: 20 seconds, max|u|: (-Inf, -Inf, -Inf) m s⁻¹, extrema(T): (30.59, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.535 minutes 
+[ Info: time: 19 days, iteration: 82080, Δt: 20 seconds, max|u|: (-Inf, -Inf, 7.94e-03) m s⁻¹, extrema(T): (26.18, Inf) ᵒC, extrema(S): (40.37, 15.49) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.535 minutes 
+[ Info: time: 19 days, iteration: 82080, Δt: 20 seconds, max|u|: (2.44e+00, 3.19e+00, -Inf) m s⁻¹, extrema(T): (33.56, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (5.68, -0.01) J, wall time: 35.535 minutes 
+[ Info: time: 20 days, iteration: 86400, Δt: 20 seconds, max|u|: (2.74e+00, 5.10e+00, 7.84e-03) m s⁻¹, extrema(T): (-Inf, -1.91) ᵒC, extrema(S): (40.36, 15.51) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.510 minutes 
+[ Info: time: 20 days, iteration: 86400, Δt: 20 seconds, max|u|: (-Inf, -Inf, 1.71e-02) m s⁻¹, extrema(T): (30.41, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.510 minutes 
+[ Info: time: 20 days, iteration: 86400, Δt: 20 seconds, max|u|: (2.58e+00, -Inf, 1.30e-02) m s⁻¹, extrema(T): (-Inf, Inf) ᵒC, extrema(S): (40.68, 27.16) g/kg, extrema(e): (4.10, -0.11) J, wall time: 35.510 minutes 
+[ Info: time: 21 days, iteration: 90720, Δt: 20 seconds, max|u|: (-Inf, 2.25e+00, -Inf) m s⁻¹, extrema(T): (30.33, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.507 minutes 
+[ Info: time: 21 days, iteration: 90720, Δt: 20 seconds, max|u|: (-Inf, -Inf, 9.86e-03) m s⁻¹, extrema(T): (26.25, Inf) ᵒC, extrema(S): (40.34, 15.51) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.507 minutes 
+[ Info: time: 21 days, iteration: 90720, Δt: 20 seconds, max|u|: (2.33e+00, 4.01e+00, -Inf) m s⁻¹, extrema(T): (33.79, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (3.48, -47.51) J, wall time: 35.507 minutes 
+[ Info: time: 22 days, iteration: 95040, Δt: 20 seconds, max|u|: (-Inf, -Inf, 8.21e-03) m s⁻¹, extrema(T): (26.37, Inf) ᵒC, extrema(S): (40.34, 15.51) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.582 minutes 
+[ Info: time: 22 days, iteration: 95040, Δt: 20 seconds, max|u|: (-Inf, 2.19e+00, -Inf) m s⁻¹, extrema(T): (30.54, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.582 minutes 
+[ Info: time: 22 days, iteration: 95040, Δt: 20 seconds, max|u|: (2.32e+00, 3.97e+00, -Inf) m s⁻¹, extrema(T): (33.65, Inf) ᵒC, extrema(S): (-Inf, 27.19) g/kg, extrema(e): (58.87, -0.21) J, wall time: 35.582 minutes 
+[ Info: time: 23 days, iteration: 99360, Δt: 20 seconds, max|u|: (-Inf, 2.52e+00, -Inf) m s⁻¹, extrema(T): (30.70, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.593 minutes 
+[ Info: time: 23 days, iteration: 99360, Δt: 20 seconds, max|u|: (-Inf, -Inf, 9.26e-03) m s⁻¹, extrema(T): (26.53, Inf) ᵒC, extrema(S): (40.34, 15.53) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.593 minutes 
+[ Info: time: 23 days, iteration: 99360, Δt: 20 seconds, max|u|: (2.45e+00, 3.81e+00, 1.18e-02) m s⁻¹, extrema(T): (33.81, Inf) ᵒC, extrema(S): (-Inf, 27.22) g/kg, extrema(e): (3.43, -0.06) J, wall time: 35.593 minutes 
+[ Info: time: 24 days, iteration: 103680, Δt: 20 seconds, max|u|: (3.41e+00, -Inf, 9.13e-03) m s⁻¹, extrema(T): (26.58, Inf) ᵒC, extrema(S): (40.35, 15.56) g/kg, extrema(e): (0.90, Inf) J, wall time: 35.606 minutes 
+[ Info: time: 24 days, iteration: 103680, Δt: 20 seconds, max|u|: (-Inf, 2.40e+00, -Inf) m s⁻¹, extrema(T): (30.88, -1.88) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.606 minutes 
+[ Info: time: 24 days, iteration: 103680, Δt: 20 seconds, max|u|: (2.45e+00, 4.12e+00, -Inf) m s⁻¹, extrema(T): (34.07, Inf) ᵒC, extrema(S): (-Inf, 27.27) g/kg, extrema(e): (2.76, -0.00) J, wall time: 35.606 minutes 
+[ Info: time: 25 days, iteration: 108000, Δt: 20 seconds, max|u|: (-Inf, -Inf, 2.24e-02) m s⁻¹, extrema(T): (30.92, Inf) ᵒC, extrema(S): (-Inf, Inf) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.664 minutes 
+[ Info: time: 25 days, iteration: 108000, Δt: 20 seconds, max|u|: (3.98e+00, 4.34e+00, 9.23e-03) m s⁻¹, extrema(T): (-Inf, -1.91) ᵒC, extrema(S): (40.35, 15.56) g/kg, extrema(e): (-Inf, Inf) J, wall time: 35.664 minutes 
+[ Info: time: 25 days, iteration: 108000, Δt: 20 seconds, max|u|: (1.43e+01, -Inf, 3.57e-02) m s⁻¹, extrema(T): (-Inf, Inf) ᵒC, extrema(S): (40.68, 27.31) g/kg, extrema(e): (70.86, -0.00) J, wall time: 35.664 minutes 
+[ Info: time = 2.244e6, iteration = 112200: NaN found in field u_ocean. Stopping simulation.
 [ Info: Initializing simulation...
+[ Info: time = 2.244e6, iteration = 112200: NaN found in field u_ocean. Stopping simulation.
 [ Info: Initializing simulation...
-
-[3993466] signal (15): Terminated
-in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:385
-pthread_cond_wait at /lib64/libpthread.so.0 (unknown line)
-uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:883
-ijl_task_get_next at /cache/build/tester-amdci4-11/julialang/julia-master/src/partr.c:517
-
-[3993465] signal (15): Terminated
-in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:385
-pthread_cond_wait at /lib64/libpthread.so.0 (unknown line)
-uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:883
-ijl_task_get_next at /cache/build/tester-amdci4-11/julialang/julia-master/src/partr.c:517
-
-[3993467] signal (15): Terminated
-in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/RYF_sxthdeg.jl:385
-pthread_cond_wait at /lib64/libpthread.so.0 (unknown line)
-uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:883
-ijl_task_get_next at /cache/build/tester-amdci4-11/julialang/julia-master/src/partr.c:517
+[ Info: time = 2.244e6, iteration = 112200: NaN found in field u_ocean. Stopping simulation.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (202.904 ms)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (100.319 ms)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (90.553 ms)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (476.949 ms).
+[ Info:     ... initial time step complete (476.884 ms).
+[ Info:     ... initial time step complete (479.559 ms).
+[ Info: time = 2.304e6, iteration = 112300: NaN found in field u_ocean. Stopping simulation.
+[ Info: time = 2.304e6, iteration = 112300: NaN found in field u_ocean. Stopping simulation.
+[ Info: time = 2.304e6, iteration = 112300: NaN found in field u_ocean. Stopping simulation.
