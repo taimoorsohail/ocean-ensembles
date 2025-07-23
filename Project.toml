@@ -17,9 +17,8 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-ClimaOcean = "0.6"
+ClimaOcean = "0.7"
 CFTime = "0.1.4"
-ClimaOcean = "0.6"
 CUDA = "5.7"
 Oceananigans = "0.96"
 PolygonOps = "0.1.2"

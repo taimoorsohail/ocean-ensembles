@@ -104,14 +104,15 @@ Nz = Integer(75)
 
 @info "Defining vertical z faces"
 
-r_faces = exponential_z_faces(; Nz, depth=5000, h=12.43)
-z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
+r_faces = ExponentialCoordinate(Nz, depth, scale=(34/Nz)*depth)
+@show r_faces
+# z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 
 @info "Defining tripolar grid"
 
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
-                               z = z_faces,
+                               z = r_faces,
                                halo = (7, 7, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
@@ -194,9 +195,7 @@ set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-@info "Radiation - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 @time atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(25))
-@info "Atmos - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 # ### Coupled simulation
 
