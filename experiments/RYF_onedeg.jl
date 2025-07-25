@@ -26,7 +26,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 target_time = 365days*25 # 25 years
-checkpoint_type = "first" # could be "last" or "first"
+checkpoint_type = "last" # could be "last" or "first"
 
 ## Argument is provided by the submission script!
 
@@ -52,10 +52,10 @@ total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 
 @info "Using architecture: " * string(arch)
 
-restartfiles = glob("checkpoint_iteration_onedeg*", output_path)
+restartfiles = glob("checkpoint_onedeg_iteration*", output_path)
 
 # Extract the numeric suffix from each filename
-restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration_onedeg(\d+)", basename(f)).captures[1]), restartfiles)
+restart_numbers = map(f -> parse(Int, match(r"checkpoint_onedeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
 
 iteration = 0
 time = 0.0
@@ -64,9 +64,9 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
 
     # Get the file with the maximum number
     if checkpoint_type == "last"
-        clock_vars = jldopen(output_path * "checkpoint_iteration_onedeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+        clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
     elseif checkpoint_type == "first"
-        clock_vars = jldopen(output_path * "checkpoint_iteration_onedeg" * string(minimum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+        clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
     end        
 
     iteration = deepcopy(clock_vars["clock"].iteration)
@@ -129,7 +129,7 @@ ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
 ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
-                                  minimum_depth = 30,
+                                  minimum_depth = 10,
                                   interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 1)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
@@ -360,19 +360,33 @@ outputs = merge(tracers, velocities)
 function save_restart(sim)
     @info @sprintf("Saving checkpoint file")
 
-    jldsave(output_path * "checkpoint_iteration_onedeg" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
+    jldsave(output_path * "checkpoint_onedeg_iteration" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
     u = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.u)),
     v = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.v)),
     w = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.w)),
     T = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.T)),
     S = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.S)),
     e = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.e)),
+    u_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.u)),
+    v_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.v)),
+    U_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.U)),
+    V_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.V)),
+    T_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.T)),
+    S_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.S)),
+    e_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.e)),
+    u_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.u)),
+    v_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.v)),
+    U_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.U)),
+    V_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.V)),
+    T_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.T)),
+    S_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.S)),
+    e_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.e)),
     clock = sim.model.ocean.model.clock)
 
-    restartfiles = glob("checkpoint_iteration_onedeg*", output_path)
+    restartfiles = glob("checkpoint_onedeg_iteration*", output_path)
 
     # Extract the numeric suffix from each filename
-    restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration_onedeg(\d+)", basename(f)).captures[1]), restartfiles)
+    restart_numbers = map(f -> parse(Int, match(r"checkpoint_onedeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
 
     sorted_restart_numbers = sort(unique(restart_numbers))
 
@@ -403,10 +417,10 @@ add_callback!(simulation, save_restart, checkpoint_intervals)
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     if checkpoint_type == "last"
         @info "Restarting from last checkpoint at iteration " * string(maximum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_iteration_onedeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+        fields_loaded = jldopen(output_path * "checkpoint_onedeg_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
     elseif checkpoint_type == "first"
         @info "Restarting from first checkpoint at iteration " * string(minimum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_iteration_onedeg" * string(minimum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+        fields_loaded = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
     end
 
     T_field = fields_loaded["T"]
@@ -415,6 +429,22 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     u_field = fields_loaded["u"]
     v_field = fields_loaded["v"]
     w_field = fields_loaded["w"]
+
+    T_field_Gⁿ = fields_loaded["T_Gⁿ"]
+    S_field_Gⁿ = fields_loaded["S_Gⁿ"]
+    e_field_Gⁿ = fields_loaded["e_Gⁿ"]
+    u_field_Gⁿ = fields_loaded["u_Gⁿ"]
+    v_field_Gⁿ = fields_loaded["v_Gⁿ"]
+    U_field_Gⁿ = fields_loaded["U_Gⁿ"]
+    V_field_Gⁿ = fields_loaded["V_Gⁿ"]
+
+    T_field_G⁻ = fields_loaded["T_G⁻"]
+    S_field_G⁻ = fields_loaded["S_G⁻"]
+    e_field_G⁻ = fields_loaded["e_G⁻"]
+    u_field_G⁻ = fields_loaded["u_G⁻"]
+    v_field_G⁻ = fields_loaded["v_G⁻"]
+    U_field_G⁻ = fields_loaded["U_G⁻"]
+    V_field_G⁻ = fields_loaded["V_G⁻"]
 
     close(fields_loaded)
     @info "Setting fields"
@@ -426,7 +456,26 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     v = (v_field),
     w = (w_field),
     e = (e_field))
+
     @info "Setting timesteppers"
+
+    set!(ocean.model.timestepper.Gⁿ, 
+    T = (T_field_Gⁿ),
+    S = (S_field_Gⁿ),
+    u = (u_field_Gⁿ),
+    v = (v_field_Gⁿ),
+    U = (U_field_Gⁿ),
+    V = (V_field_Gⁿ),
+    e = (e_field_Gⁿ))
+
+    set!(ocean.model.timestepper.G⁻, 
+    T = (T_field_G⁻),
+    S = (S_field_G⁻),
+    u = (u_field_G⁻),
+    v = (v_field_G⁻),       
+    U = (U_field_G⁻),
+    V = (V_field_G⁻),
+    e = (e_field_G⁻))         
 
     for f in ocean.model.timestepper.Gⁿ
         Oceananigans.ImmersedBoundaries.mask_immersed_field!(f)
@@ -457,7 +506,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
         @info "Restarting from iteration " * string(minimum(restart_numbers))
     end
 
-    simulation.Δt = 10minutes 
+    simulation.Δt = 5minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -466,8 +515,8 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 10minutes 
-    simulation.stop_time = target_time
+    # simulation.Δt = 5minutes 
+    # simulation.stop_time = target_time
 
-    run!(simulation)
+    # run!(simulation)
 end

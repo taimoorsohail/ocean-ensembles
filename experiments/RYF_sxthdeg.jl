@@ -26,7 +26,8 @@ data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-target_time = 365days
+target_time = 365days*25
+checkpoint_type = "last" # could be "last" or "first"
 
 ## Argument is provided by the submission script!
 
@@ -49,14 +50,13 @@ else
 end    
 
 total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
-@info "Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 @info "Using architecture: " * string(arch)
 
-restartfiles = glob("checkpoint_iteration_sxthdeg*", output_path)
+restartfiles = glob("checkpoint_sxthdeg_iteration*", output_path)
 
 # Extract the numeric suffix from each filename
-restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration_sxthdeg(\d+)", basename(f)).captures[1]), restartfiles)
+restart_numbers = map(f -> parse(Int, match(r"checkpoint_sxthdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
 
 iteration = 0
 time = 0.0
@@ -64,12 +64,19 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0
     # Extract the numeric suffix from each filename
 
     # Get the file with the maximum number
-    clock_vars = jldopen(output_path * "checkpoint_iteration_sxthdeg" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+    if checkpoint_type == "last"
+        clock_vars = jldopen(output_path * "checkpoint_sxthdeg_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+    elseif checkpoint_type == "first"
+        clock_vars = jldopen(output_path * "checkpoint_sxthdeg_iteration" * string(minimum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+    end        
 
     iteration = deepcopy(clock_vars["clock"].iteration)
     time = deepcopy(clock_vars["clock"].time)
+    last_Δt = deepcopy(clock_vars["clock"].last_Δt)   
+
     @info "Moving simulation to " * string(iteration) * " iterations"
     @info "Moving simulation to " * string(prettytime(time))
+    @info "Moving simulation last_dt to " * string(last_Δt)
 
     close(clock_vars)
 end
@@ -104,20 +111,18 @@ Nz = Integer(75)
 
 @info "Defining vertical z faces"
 
-r_faces = ExponentialCoordinate(Nz, depth, scale=(34/Nz)*depth)
-@show r_faces
-# z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
+@info "Defining vertical z faces"
+depth = -6000.0 # Depth of the ocean in meters
+r_faces = ExponentialCoordinate(Nz, depth)
 
 @info "Defining tripolar grid"
 
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),
                                z = r_faces,
-                               halo = (7, 7, 4),
+                               halo = (5, 5, 4),
                                first_pole_longitude = 70,
                                north_poles_latitude = 55)
-
-@info "underlying grid - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 @info "Defining bottom bathymetry"
 
@@ -126,9 +131,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-				                  major_basins = 2)
-
-@info "Botom height - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
+				                  major_basins = 1)
 
 # For this bathymetry at this horizontal resolution we need to manually open the Gibraltar strait.
 # view(bottom_height, 102:103, 124, 1) .= -400
@@ -136,22 +139,21 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
-@info "Grid - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
 
 # ### Restoring
 #
 # We include temperature and salinity surface restoring to ECCO data.
 
-@info "Defining restoring rate"
+# @info "Defining restoring rate"
 
-restoring_rate  = 1 / 10days
-z_below_surface = z_faces[end-1]
+# restoring_rate  = 1 / 10days
+# z_below_surface = z_faces[end-1]
 
-mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
+# mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
 
-FT = DatasetRestoring(temperature, grid; mask, rate=restoring_rate)
-FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate)
-forcing = (T=FT, S=FS)
+# FT = DatasetRestoring(temperature, grid; mask, rate=restoring_rate)
+# FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate)
+# forcing = (T=FT, S=FS)
 
 # ### Closures
 # We include a Gent-McWilliam isopycnal diffusivity as a parameterization for the mesoscale
@@ -175,10 +177,7 @@ closure = vertical_mixing
                          momentum_advection,
                          tracer_advection,
                          free_surface,
-                         closure,
-                         forcing)
-
-@info "Ocean - Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
+                         closure)
 
 # ### Initial condition
 

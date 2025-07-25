@@ -1,6 +1,6 @@
 module OceanEnsembles
 
-export basin_mask, ocean_tracer_content!, volume_transport!, combine_outputs, identify_combination_targets
+export basin_mask, ocean_tracer_content!, volume_transport!, combine_ranks, identify_combination_targets
 
 using ClimaOcean, Oceananigans, Glob
 
