@@ -5,8 +5,8 @@
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
-#PBS -l ncpus=36 
-#PBS -l ngpus=3
+#PBS -l ncpus=12 
+#PBS -l ngpus=1
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
@@ -31,7 +31,7 @@ fi
 # Log submission counters
 echo "Run $count of $max"
 
-mpirun -n 3 julia --project \
+julia --project \
   ../RYF_onedeg.jl --arch GPU \
   > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1dg_$count.stdout \
   2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1dg_$count.stderr

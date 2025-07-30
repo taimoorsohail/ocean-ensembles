@@ -1,24 +1,23 @@
-#!/usr/bin/env bash
-#PBS -q expressbw
-#PBS -P fy29
-#PBS -l walltime=00:15:00
-#PBS -l ncpus=1
-#PBS -l mem=10GB
-#PBS -p +4
-#PBS -N HelloWorld
+#!/bin/bash
+#PBS -P v46
+#PBS -q gpuvolta
+#PBS -l walltime=4:00:00
+#PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=12 
+#PBS -l ngpus=1
+#PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
+#PBS -N RYF1dg_ex
 
-##PBS -wd
-#PBS -joe
+# Output logs
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_1dgexample.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_1dgexample.e
 
-
-# Test bash script to demonstrate resubmissions
+# === Setup resubmission ===
 script_name='resub.sh'
-
-#script_name='./diablo > output.dat &'
-
 
 # Set default values of count and max
 if [ -z $count ]; then
@@ -31,23 +30,12 @@ fi
 
 # Log submission counters
 echo "Run $count of $max"
-echo "$PBS_O_WORKDIR"
-# if [ $count -gt 1 ]; then
-#     # Copy previous restart files to input path
-#     cd $PBS_O_WORKDIR
-#     ./copy_start_saved 
-#     echo 'Copy files here'
-# fi
 
-# Run the model
-#module load openmpi
-#module load ipm
-#module load totalview/8.7.0-3
-#export IPM_LOGDIR=/short/x52/bishakh/ipm_logs
-#export IPM_LOGFILE=$PBS_JOBID.$USER.$PROJECT.`date +%s`
+julia --project \
+  ../one_degree_simulation.jl \
+  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_1dgexample_$count.stdout \
+  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_1dgexample_$count.stderr
 
-julia --project -e '@info "Hello World"'
-#mpirun --debug -n 49 ./diablo > output.dat -a
 
 ((count++))
 
@@ -56,5 +44,5 @@ if [ $count -le $max ]; then
     cd $PBS_O_WORKDIR
     qsub -v count=$count,max=$max $script_name
 else
-    echo "Last submission"
+    echo "Last submission; $count of $max"
 fi

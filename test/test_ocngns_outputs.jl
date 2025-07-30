@@ -66,7 +66,6 @@ end
 
 add_callback!(simulation, progress, callback_interval)
 
-output_intervals = IterationInterval(10)
 checkpoint_intervals = TimeInterval(365days)
 
 #### SURFACE
@@ -79,94 +78,94 @@ velocities = model.velocities
 outputs = tracers
 
 outputs2 = velocities
+#=
+#### TRACERS ####
 
+volmask = CenterField(grid)
+set!(volmask, 1)
+wmask = ZFaceField(grid)
 
-# #### TRACERS ####
+@info "Defining condition masks"
 
-# volmask = CenterField(grid)
-# set!(volmask, 1)
-# wmask = ZFaceField(grid)
+Atlantic_mask = basin_mask(grid, "atlantic", volmask);
+IPac_mask = basin_mask(grid, "indo-pacific", volmask);
+glob_mask = Atlantic_mask .|| IPac_mask;
 
-# @info "Defining condition masks"
+tracer_volmask = [Ax, Δz, volmask]
+masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
+         repeat(IPac_mask, 1, 1, size(volmask)[3])]
+masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
+         repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
+         repeat(IPac_mask, 1, 1, size(wmask)[3])]
 
-# Atlantic_mask = basin_mask(grid, "atlantic", volmask);
-# IPac_mask = basin_mask(grid, "indo-pacific", volmask);
-# glob_mask = Atlantic_mask .|| IPac_mask;
-
-# tracer_volmask = [Ax, Δz, volmask]
-# masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
-#          repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
-#          repeat(IPac_mask, 1, 1, size(volmask)[3])]
-# masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
-#          repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
-#          repeat(IPac_mask, 1, 1, size(wmask)[3])]
-
-# masks = [
-#             [masks_centers[1], masks_wfaces[1]],  # Global
-#             [masks_centers[2], masks_wfaces[2]],  # Atlantic
-#             [masks_centers[3], masks_wfaces[3]]   # IPac
-#         ]
+masks = [
+            [masks_centers[1], masks_wfaces[1]],  # Global
+            [masks_centers[2], masks_wfaces[2]],  # Atlantic
+            [masks_centers[3], masks_wfaces[3]]   # IPac
+        ]
         
-# @info "Tracers"
+@info "Tracers"
 
-# suffixes = ["_global_", "_atl_", "_ipac_"]
-# tracer_names = Symbol[]
-# tracer_outputs = Reduction[]
+suffixes = ["_global_", "_atl_", "_ipac_"]
+tracer_names = Symbol[]
+tracer_outputs = Reduction[]
 
-# for j in 1:3
-#     if j == 1
-#         @show j
-#         @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
-#         # @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
-#         # @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
-#     end
-# end
+for j in 1:3
+    if j == 1
+        @show j
+        @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
+        # @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+        # @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
+    end
+end
 
-# @info "Merging tracer tuples"
+@info "Merging tracer tuples"
 
-# tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
+tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
 
-# #### VELOCITIES ####
-# @info "Velocities"
+#### VELOCITIES ####
+@info "Velocities"
 
-# transport_volmask_operators = [Ax, Ay, Az]
-# transport_names = Symbol[]
-# transport_outputs = ReducedField[]
-# for j in 1:3
-#     if j == 1
-#         @show j
-#         @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-#         # @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-#         # @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
-#     end
-# end
+transport_volmask_operators = [Ax, Ay, Az]
+transport_names = Symbol[]
+transport_outputs = ReducedField[]
+for j in 1:3
+    if j == 1
+        @show j
+        @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
+        # @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
+        # @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
+    end
+end
 
-# @info "Merging velocity tuples"
+@info "Merging velocity tuples"
 
-# transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
+transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
-# @show transport_tuple
-# @show tracer_tuple
+@info "Defining output writers"
 
-# @info "Defining output writers"
+@time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+                                                          dir = output_path,
+                                                          schedule = output_intervals,
+                                                          filename = "ocean_tracer_content_test_iteration" * string(iteration),
+                                                          overwrite_existing = true)
 
-# @time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
-#                                                           dir = output_path,
-#                                                           schedule = output_intervals,
-#                                                           filename = "ocean_tracer_content_test_iteration" * string(iteration),
-#                                                           overwrite_existing = true)
+@time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+                                                          dir = output_path,
+                                                          schedule = output_intervals,
+                                                          filename = "mass_transport_test_iteration" * string(iteration),
+                                                          overwrite_existing = true)
 
-# @time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
-#                                                           dir = output_path,
-#                                                           schedule = output_intervals,
-#                                                           filename = "mass_transport_test_iteration" * string(iteration),
-#                                                           overwrite_existing = true)
+=#
+output_intervals = TimeInterval(0.1)
+
 iteration = 0
 
 @time simulation.output_writers[:surface] = JLD2Writer(model, outputs;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_test_iteration" * string(iteration),
+                                                 filename = "global_surface_fields_test_ocngns_iteration" * string(iteration),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -175,24 +174,10 @@ iteration = 0
 @time simulation.output_writers[:surface2] = JLD2Writer(model, outputs2;
                                                  dir = output_path,
                                                  schedule = output_intervals,
-                                                 filename = "global_surface_fields_test2_iteration" * string(iteration),
+                                                 filename = "global_surface_fields_test2_ocngns_iteration" * string(iteration),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
-function save_restart(sim)
-    @info @sprintf("Saving checkpoint file")
-
-    jldsave(output_path * "checkpoint_iteration" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
-    u = on_architecture(CPU(), interior(sim.model.velocities.u)),
-    v = on_architecture(CPU(), interior(sim.model.velocities.v)),
-    w = on_architecture(CPU(), interior(sim.model.velocities.w)),
-    T = on_architecture(CPU(), interior(sim.model.tracers.T)),
-    S = on_architecture(CPU(), interior(sim.model.tracers.S)),
-    e = on_architecture(CPU(), interior(sim.model.tracers.e)),
-    clock = sim.model.clock)
-end
-
-add_callback!(simulation, save_restart, checkpoint_intervals)
                                                 
 run!(simulation)
