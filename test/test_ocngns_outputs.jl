@@ -1,8 +1,8 @@
-using MPI
-using CUDA
+# using MPI
+# using CUDA
 
-MPI.Init()
-atexit(MPI.Finalize)  
+# MPI.Init()
+# atexit(MPI.Finalize)  
 
 using ClimaOcean
 using Oceananigans
@@ -17,25 +17,28 @@ using Test
 using Glob
 using Oceananigans.Architectures: on_architecture
 
-arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+arch = CPU()#Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 grid = RectilinearGrid(arch;
     size = (12, 40, 10),
     halo = (1, 2, 1),              # <= This must be ≤ size
     x = (0, 1), y = (0, 1), z = (0, 1),
     topology = (Periodic, Periodic, Bounded)
 )
+@info "Defining free surface"
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=1)
+@info "Defining model"
+
 model = HydrostaticFreeSurfaceModel(; grid, free_surface, tracers=(:T, :S, :e))
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-
+@info "Defining simulation"
 simulation = Simulation(model; Δt=0.01, stop_iteration=110)
 
 @info "Defining messenger"
 
 wall_time = Ref(time_ns())
 
-callback_interval = IterationInterval(5)
+callback_interval = TimeInterval(2)
 
 function progress(sim)
     u, v, w = sim.model.velocities
@@ -66,8 +69,6 @@ end
 
 add_callback!(simulation, progress, callback_interval)
 
-checkpoint_intervals = TimeInterval(365days)
-
 #### SURFACE
 
 @info "Defining surface outputs"
@@ -75,109 +76,36 @@ checkpoint_intervals = TimeInterval(365days)
 tracers = model.tracers
 velocities = model.velocities
 
-outputs = tracers
-
-outputs2 = velocities
-#=
-#### TRACERS ####
-
-volmask = CenterField(grid)
-set!(volmask, 1)
-wmask = ZFaceField(grid)
-
-@info "Defining condition masks"
-
-Atlantic_mask = basin_mask(grid, "atlantic", volmask);
-IPac_mask = basin_mask(grid, "indo-pacific", volmask);
-glob_mask = Atlantic_mask .|| IPac_mask;
-
-tracer_volmask = [Ax, Δz, volmask]
-masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
-         repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
-         repeat(IPac_mask, 1, 1, size(volmask)[3])]
-masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
-         repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
-         repeat(IPac_mask, 1, 1, size(wmask)[3])]
-
-masks = [
-            [masks_centers[1], masks_wfaces[1]],  # Global
-            [masks_centers[2], masks_wfaces[2]],  # Atlantic
-            [masks_centers[3], masks_wfaces[3]]   # IPac
-        ]
-        
-@info "Tracers"
-
-suffixes = ["_global_", "_atl_", "_ipac_"]
-tracer_names = Symbol[]
-tracer_outputs = Reduction[]
-
-for j in 1:3
-    if j == 1
-        @show j
-        @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
-        # @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
-        # @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
-    end
-end
-
-@info "Merging tracer tuples"
-
-tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
-
-#### VELOCITIES ####
-@info "Velocities"
-
-transport_volmask_operators = [Ax, Ay, Az]
-transport_names = Symbol[]
-transport_outputs = ReducedField[]
-for j in 1:3
-    if j == 1
-        @show j
-        @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-        # @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-        # @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
-    end
-end
-
-@info "Merging velocity tuples"
-
-transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
+outputs = merge(tracers, velocities)
 
 @info "Defining output writers"
 
-@time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
-                                                          dir = output_path,
-                                                          schedule = output_intervals,
-                                                          filename = "ocean_tracer_content_test_iteration" * string(iteration),
-                                                          overwrite_existing = true)
-
-@time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
-                                                          dir = output_path,
-                                                          schedule = output_intervals,
-                                                          filename = "mass_transport_test_iteration" * string(iteration),
-                                                          overwrite_existing = true)
-
-=#
 output_intervals = TimeInterval(0.1)
 
 iteration = 0
 
-@time simulation.output_writers[:surface] = JLD2Writer(model, outputs;
+@time simulation.output_writers[:surfacetracers] = JLD2Writer(model, tracers;
                                                  dir = output_path,
-                                                 schedule = output_intervals,
-                                                 filename = "global_surface_fields_test_ocngns_iteration" * string(iteration),
+                                                 schedule = TimeInterval(0.1),#output_intervals,
+                                                 filename = "global_surface_fields_test_tracersocngns_iteration" * string(Oceananigans.iteration(simulation)),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-@time simulation.output_writers[:surface2] = JLD2Writer(model, outputs2;
+@time simulation.output_writers[:surfacevels] = JLD2Writer(model, velocities;
                                                  dir = output_path,
-                                                 schedule = output_intervals,
-                                                 filename = "global_surface_fields_test2_ocngns_iteration" * string(iteration),
+                                                 schedule = TimeInterval(0.1),#output_intervals,
+                                                 filename = "global_surface_fields_test_velocitiesocngns_iteration" * string(Oceananigans.iteration(simulation)),
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
-                                                
+
+@info "Running simulation"
+
+run!(simulation)
+
+simulation.stop_iteration = 350
+
 run!(simulation)
