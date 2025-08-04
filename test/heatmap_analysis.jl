@@ -26,9 +26,10 @@ Tgrid = CenterField(grid)
 
 function temp_lon_spherical(λ, φ, z)
     #This function should integrate to zero
-    return sin(λ) + cos(φ)
+    return sin(λ) + sin(φ)
 end
 
 set!(Tgrid, temp_lon_spherical)
+
 Tgrid_int = compute!(Integral(Tgrid))
 @show Field(Tgrid_int)[1,1,1]
