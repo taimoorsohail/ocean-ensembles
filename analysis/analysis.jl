@@ -9,16 +9,15 @@ using JLD2
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-OTC_file = "ocean_tracer_content_RYF1deg.jld2"
-masstrans_file = "mass_transport_RYF1deg.jld2"
-suffix = "_skintemp"
+OTC_file = "ocean_tracer_content_onedeg_iteration0_rank0.jld2"
+masstrans_file = "mass_transport_onedeg_iteration0_rank0.jld2"
 
 variables_basins = ["_global_", "_atl_", "_ipac_"]
 variables_diags = ["zonal", "depth", "tot"]
 variables_tracers = ["T", "S", "dV"]
 variables_velocities =  ["u", "v", "w"]
 variables_vel_volumes = ["dV_u", "dV_v", "dV_w"]
-
+suffix = ""
 tracercontent_vars = vec([tracer * basin * diag for tracer in variables_tracers,
                          basin in variables_basins,
                          diag in variables_diags])

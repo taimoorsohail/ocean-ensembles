@@ -1,23 +1,23 @@
 #!/bin/bash
 #PBS -P v46
 #PBS -q gpuvolta
-#PBS -l walltime=6:00:00
+#PBS -l walltime=12:00:00
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
 #PBS -l ncpus=36 
-#PBS -l ngpus=3 
+#PBS -l ngpus=3
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_RYFsxthdg
+#PBS -N GPU_RYF3dg
 
 # Output logs
-#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF3dg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF3dg.e
 
 # === Setup resubmission ===
-script_name='16deg_GPU_submit.sh'
+script_name='3deg_GPU_submit.sh'
 
 # Set default values of count and max
 if [ -z $count ]; then
@@ -32,9 +32,9 @@ fi
 echo "Run $count of $max"
 
 mpirun -n 3 julia --project \
-  ../RYF_sxthdeg.jl --arch GPU \
-  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg_$count.stdout \
-  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYFsxthdg_$count.stderr
+  ../RYF_3deg.jl --arch GPU \
+  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF3dg_$count.stdout \
+  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF3dg_$count.stderr
 
 
 ((count++))

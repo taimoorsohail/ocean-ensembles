@@ -72,35 +72,35 @@ function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Ocea
 
     if basin in ["indian", "Indian"]
         polygon = Indpolygon
-        mask = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+        mask = CUDA.@allowscalar (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
     elseif basin in ["pacific", "Pacific"]
         polygon = Pacpolygon
-        mask = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+        mask = CUDA.@allowscalar (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
     elseif basin in ["atlantic", "Atlantic"]
         polygon = Atleastpolygon
-        mask_1 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+        mask_1 = CUDA.@allowscalar (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
         polygon = Atlwestpolygon
-        mask_2 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+        mask_2 = CUDA.@allowscalar (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
         polygon = Atlarcticpolygon
-        mask_3 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+        mask_3 = CUDA.@allowscalar (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
         mask = mask_1 .+ mask_3 .+ mask_2
 
     elseif basin in ["indo-pacific", "Indo-pacific", "Indo-Pacific"]
         polygon = Indpolygon
-        mask_1 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+        mask_1 = CUDA.@allowscalar (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
         polygon = Pacpolygon
-        mask_2 = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+        mask_2 = CUDA.@allowscalar (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
 
         mask = mask_1 .+ mask_2
     elseif isempty(basin)
         polygon = Globalpolygon
-        mask = (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
+        mask = CUDA.@allowscalar (reshape([inpolygon(p, polygon; in=true, on=false, out=false) for p in points], size(lats)))
     else
         throw("Basin unknown, must be one of Indian, Atlantic, Pacific, or Indo-Pacific")
     end
