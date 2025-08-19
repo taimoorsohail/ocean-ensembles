@@ -57,6 +57,3 @@ end
     @test size(dropdims(view(w, :, :, 1),3)) == size(Atlantic_mask_ccf)
 end
 
-@testset "my mpi output"
-    include("test_dsdf...")
-end
