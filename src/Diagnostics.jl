@@ -174,21 +174,22 @@ module Diagnostics
     end
 
     """
-        ocean_tracer_content!(names, ∫outputs; outputs, operator, dims, condition, suffix::AbstractString)
+        ocean_tracer_content!(names, ∫outputs; dst_field::Field, weights::SparseMatrixCSC, outputs, operator, dims, condition, suffix::AbstractString)
     Compute the integral of the tracers in `outputs` using the specified `operator` and over the specified `dims`.
     The `condition` can be used to specify a mask for the integral.
     The `suffix` is appended to the names of the output fields.
     """
 
-    function ocean_tracer_content!(names, ∫outputs; outputs, operator, dims, condition, suffix::AbstractString)
+    function ocean_tracer_content!(names, ∫outputs; dst_field::Field, weights::SparseMatrixCSC, outputs, operator, dims, condition, suffix::AbstractString)
         for key in keys(outputs)
             f = outputs[key]
-            ∫f = Integral(f * operator; dims, condition)
+            f_dst = regrid_tracers!(f, dst_field, weights)
+            ∫f = Integral(f_dst * operator; dims, condition)
             push!(∫outputs, ∫f)
             push!(names, Symbol(key, suffix))
         end
 
-        onefield = CenterField(first(outputs).grid)
+        onefield = CenterField(dst_field.grid)
         set!(onefield, 1)
 
         ∫dV = Integral(onefield * operator; dims, condition)
