@@ -146,10 +146,9 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @info "Defining restoring rate"
 
-restoring_rate  = 1 / 10days
-z_below_surface = z_faces[end-1]
+restoring_rate  = 1 / 3days
 
-mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(z_below_surface, 0))
+mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(-15, 0))
 
 FT = DatasetRestoring(temperature, grid; mask, rate=restoring_rate)
 FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate)
@@ -347,32 +346,32 @@ iteration_number = string(Oceananigans.iteration(simulation))
 
 @time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
-                                                          schedule = output_intervals,
+                                                          schedule = TimeInterval(1days),
                                                           filename = "ocean_tracer_content_sxthdeg_iteration" * iteration_number,
                                                           overwrite_existing = true)
 
 @time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
-                                                          schedule = output_intervals,
+                                                          schedule = TimeInterval(1days),
                                                           filename = "mass_transport_sxthdeg_iteration" * iteration_number,
                                                           overwrite_existing = true)
 
 @time simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
                                                  dir = output_path,
-                                                 schedule = output_intervals,
+                                                 schedule = TimeInterval(1days),
                                                  filename = "global_surface_fields_sxthdeg_iteration" * iteration_number,
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
                                                  array_type = Array{Float32})
 
-# fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
+fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
-# simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
-#                                                 dir = output_path,
-#                                                 schedule = output_intervals,
-#                                                 filename = "fluxes_sxthdeg_iteration" * string(iteration),
-#                                                 overwrite_existing = true)
+simulation.output_writers[:fluxes] = JLD2Writer(ocean.model, fluxes;
+                                                dir = output_path,
+                                                schedule = TimeInterval(1days),
+                                                filename = "fluxes_sxthdeg_iteration" * iteration_number,
+                                                overwrite_existing = true)
 
 @info "Saving restart"
 

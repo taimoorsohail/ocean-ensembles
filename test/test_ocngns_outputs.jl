@@ -82,12 +82,10 @@ outputs = merge(tracers, velocities)
 
 output_intervals = TimeInterval(0.1)
 
-iteration = 0
-
 @time simulation.output_writers[:surfacetracers] = JLD2Writer(model, tracers;
                                                  dir = output_path,
-                                                 schedule = TimeInterval(0.1),#output_intervals,
-                                                 filename = "global_surface_fields_test_tracersocngns_iteration" * string(Oceananigans.iteration(simulation)),
+                                                 schedule = deepcopy(output_intervals),
+                                                 filename = "global_surface_fields_test_tracersocngns",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,
@@ -95,8 +93,8 @@ iteration = 0
 
 @time simulation.output_writers[:surfacevels] = JLD2Writer(model, velocities;
                                                  dir = output_path,
-                                                 schedule = TimeInterval(0.1),#output_intervals,
-                                                 filename = "global_surface_fields_test_velocitiesocngns_iteration" * string(Oceananigans.iteration(simulation)),
+                                                 schedule = deepcopy(output_intervals),
+                                                 filename = "global_surface_fields_test_velocitiesocngns",
                                                  indices = (:, :, grid.Nz),
                                                  with_halos = false,
                                                  overwrite_existing = true,

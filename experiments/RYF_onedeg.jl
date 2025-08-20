@@ -62,10 +62,10 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
 
     # Get the file with the maximum number
     if checkpoint_type == "last"
-        clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+        clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
     elseif checkpoint_type == "first"
-        clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
-    end        
+        clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
+    end
 
     iteration = deepcopy(clock_vars["clock"].iteration)
     time = deepcopy(clock_vars["clock"].time)
@@ -109,7 +109,7 @@ Nz = Integer(75)
 
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-r_faces = ExponentialCoordinate(Nz, depth, 0)
+r_faces = ExponentialCoordinate(Nz, depth, 0, scale = 0.25*-depth)
 @show r_faces(Nz)
 r_faces = Oceananigans.Grids.MutableVerticalDiscretization(r_faces)
 
@@ -128,7 +128,7 @@ ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
 ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
-                                  minimum_depth = 10,
+                                  minimum_depth = 15,
                                   interpolation_passes = 10, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
@@ -143,8 +143,8 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 # @info "Defining restoring rate"
 
-restoring_rate  = 1 / 10days
-mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(-10, 0))
+restoring_rate  = 1 / 3days
+mask = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(-15, 0))
 
 FT = DatasetRestoring(temperature, grid; mask, rate=restoring_rate)
 FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate)
@@ -196,7 +196,7 @@ set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(25))
+atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(25), include_rivers_and_icebergs=true)
 
 # ### Coupled simulation
 
@@ -210,7 +210,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(25))
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=2minutes, stop_time=20days)
+simulation = Simulation(coupled_model; Δt=6minutes, stop_time=60days)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -267,7 +267,6 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-# output_intervals = TimeInterval(50minutes)
 checkpoint_intervals = TimeInterval(73days)
 
 #### SURFACE
@@ -394,7 +393,7 @@ iteration_number = string(Oceananigans.iteration(simulation))
 function save_restart(sim)
     @info @sprintf("Saving checkpoint file")
 
-    jldsave(output_path * "checkpoint_onedeg_iteration" * string(sim.model.clock.iteration) * "_rank" * string(arch.local_rank) * ".jld2";
+    jldsave(output_path * "checkpoint_onedeg_iteration" * string(sim.model.clock.iteration) * ".jld2";
     u = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.u)),
     v = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.v)),
     w = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.w)),
@@ -437,7 +436,7 @@ function save_restart(sim)
     # Loop through and remove all older files for this rank
     for number in sorted_restart_numbers
         if number ∉ keep
-            filename = output_path * "checkpoint_onedeg_iteration$(number)_rank$(arch.local_rank).jld2"
+            filename = output_path * "checkpoint_onedeg_iteration$(number).jld2"
             if isfile(filename)
                 @info "Removing old restart file: $filename"
                 rm(filename; force = true)
@@ -451,10 +450,10 @@ add_callback!(simulation, save_restart, checkpoint_intervals)
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     if checkpoint_type == "last"
         @info "Restarting from last checkpoint at iteration " * string(maximum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_onedeg_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+        fields_loaded = jldopen(output_path * "checkpoint_onedeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
     elseif checkpoint_type == "first"
         @info "Restarting from first checkpoint at iteration " * string(minimum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
+        fields_loaded = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
     end
 
     T_field = fields_loaded["T"]
@@ -535,7 +534,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
         @info "Restarting from iteration " * string(minimum(restart_numbers))
     end
 
-    simulation.Δt = 30minutes 
+    simulation.Δt = 12minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -544,7 +543,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 30minutes 
+    simulation.Δt = 12minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
