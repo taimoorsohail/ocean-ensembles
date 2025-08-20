@@ -6,45 +6,52 @@ module Diagnostics
     using PyCall
     using SparseArrays
 
-    export ocean_tracer_content!, volume_transport!, regrid_tracers!
+    export ocean_tracer_content!, volume_transport!, regrid_tracers!, regridder_weights!
 
     """
-        regrid_tracers!(source_field, destination_grid; method = "conservative", output_weights = false)
-    Regrid the `source_field` onto the `destination_grid` using the specified method.
-    The `method` can be "conservative" or "bilinear". If `output_weights` is set to true, the function will return the regridding weights as well.
+        regridder_weights!(source_field, destination_field; method = "conservative")
+    Regrid the `source_field` onto the `destination_field` using the specified method.
+    xESMF exposes five different regridding algorithms from the ESMF library, specified with the `method` keyword argument:
+
+    bilinear: ESMF.RegridMethod.BILINEAR
+    conservative: ESMF.RegridMethod.CONSERVE
+    conservative_normed: ESMF.RegridMethod.CONSERVE
+    patch: ESMF.RegridMethod.PATCH
+    nearest_s2d: ESMF.RegridMethod.NEAREST_STOD
+    nearest_d2s: ESMF.RegridMethod.NEAREST_DTOS
+    where conservative_normed is just the conservative method with the normalization set to ESMF.NormType.FRACAREA instead of the default norm_type=ESMF.NormType.DSTAREA.
+    For more information, see the xESMF documentation: https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
     """
+
     const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
-    const TripolarOrLatLonGrid = Union{SomeTripolarGrid, LatitudeLongitudeGrid}
+    const SomeLatitudeLongitudeGrid = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
+    const TripolarOrLatLonGrid = Union{SomeTripolarGrid, SomeLatitudeLongitudeGrid}
 
-    function regrid_tracers!(
+    function regridder_weights!(
     source_field::Field, 
-    destination_grid::TripolarOrLatLonGrid; 
-    method::String = "conservative", 
-    output_weights::Bool = false
-    )
+    destination_field::Field; 
+    method::String = "conservative")
 
         # Create source and destination fields
 
-        dst = Field{Center, Center, Center}(destination_grid)
-        src = source_field
-
-        @assert dst.grid.z.cᵃᵃᶜ[1:dst.grid.Nz] == src.grid.z.cᵃᵃᶜ[1:src.grid.Nz] "Source and destination grids must have exactly the same vertical grid (z)."
+        dst = deepcopy(destination_field)
+        src = deepcopy(source_field)
 
         # Extract Centers
-        if isa(source_field.grid, TripolarGrid)
+        if isa(source_field.grid, SomeTripolarGrid)
             src_lats = src.grid.φᶜᶜᵃ[1:src.grid.Nx, 1:src.grid.Ny]
             src_lons = src.grid.λᶜᶜᵃ[1:src.grid.Nx, 1:src.grid.Ny]
-        elseif isa(source_field.grid, LatitudeLongitudeGrid)
+        elseif isa(source_field.grid, SomeLatitudeLongitudeGrid)
             src_lats = src.grid.φᵃᶜᵃ[1:src.grid.Ny]
             src_lons = src.grid.λᶜᵃᵃ[1:src.grid.Nx]
         else
             error("Unsupported grid type for source grid")
         end
 
-        if isa(destination_grid, TripolarGrid)
+        if isa(destination_field.grid, SomeTripolarGrid)
             dst_lats = dst.grid.φᶜᶜᵃ[1:dst.grid.Nx, 1:dst.grid.Ny]
             dst_lons = dst.grid.λᶜᶜᵃ[1:dst.grid.Nx, 1:dst.grid.Ny]
-        elseif isa(destination_grid, LatitudeLongitudeGrid)
+        elseif isa(destination_field.grid, SomeLatitudeLongitudeGrid)
             dst_lats = dst.grid.φᵃᶜᵃ[1:dst.grid.Ny]
             dst_lons = dst.grid.λᶜᵃᵃ[1:dst.grid.Nx]
         else
@@ -52,20 +59,20 @@ module Diagnostics
         end
 
         # Extract corners
-        if isa(source_field.grid, TripolarGrid)
+        if isa(source_field.grid, SomeTripolarGrid)
             src_lats_b = src.grid.φᶠᶠᵃ[1:src.grid.Nx+1, 1:src.grid.Ny+1]
             src_lons_b = src.grid.λᶠᶠᵃ[1:src.grid.Nx+1, 1:src.grid.Ny+1]
-        elseif isa(source_field.grid, LatitudeLongitudeGrid)
+        elseif isa(source_field.grid, SomeLatitudeLongitudeGrid)
             src_lats_b = src.grid.φᵃᶠᵃ[1:src.grid.Ny+1]
             src_lons_b = src.grid.λᶠᵃᵃ[1:src.grid.Nx+1]
         else
             error("Unsupported grid type for source grid")
         end
 
-        if isa(destination_grid, TripolarGrid)
+        if isa(destination_field.grid, SomeTripolarGrid)
             dst_lats_b = dst.grid.φᶠᶠᵃ[1:dst.grid.Nx+1, 1:dst.grid.Ny+1]
             dst_lons_b = dst.grid.λᶠᶠᵃ[1:dst.grid.Nx+1, 1:dst.grid.Ny+1]
-        elseif isa(destination_grid, LatitudeLongitudeGrid)
+        elseif isa(destination_field.grid, SomeLatitudeLongitudeGrid)
             dst_lats_b = dst.grid.φᵃᶠᵃ[1:dst.grid.Ny+1]
             dst_lons_b = dst.grid.λᶠᵃᵃ[1:dst.grid.Nx+1]
         else
@@ -87,7 +94,7 @@ module Diagnostics
         lon_dst_b_np = OceanEnsembles.get_np().array(dst_lons_b)
 
         # Create xarray DataArrays for source and destination grids
-        dst_data = Field{Center, Center, Nothing}(destination_grid)
+        dst_data = Field{Center, Center, Nothing}(destination_field.grid)
         src_data = Field{Center, Center, Nothing}(source_field.grid)
 
         src_np = OceanEnsembles.get_np().squeeze(OceanEnsembles.get_np().array(collect(interior(src_data))))
@@ -139,6 +146,18 @@ module Diagnostics
         shape = Tuple(Int.(coo[:shape]))
         W = sparse(rows, cols, vals, shape[1], shape[2])
 
+    return W
+    end
+
+    """
+        regrid_tracers!(src::Field, dst::Field, W::SparseMatrixCSC)
+    Regrid the `src` field onto the `dst` field using the provided weights `W`.
+    The function assumes that the vertical grid (z) of both fields is the same.
+    """
+    function regrid_tracers!(src::Field, dst::Field, W::SparseMatrixCSC)
+
+        @assert dst.grid.z.cᵃᵃᶜ[1:dst.grid.Nz] == src.grid.z.cᵃᵃᶜ[1:src.grid.Nz] "Source and destination grids must have exactly the same vertical grid (z)."
+
         # Perform regridding
         for k in 1:dst.grid.Nz
             # Flatten the source field for regridding
@@ -151,22 +170,26 @@ module Diagnostics
             interior(dst)[:,:,k] .= dst_vec
         end
 
-        if output_weights == true
-            return dst, W
-        else
-            return dst
-        end
+        return deepcopy(dst)
     end
 
-    function ocean_tracer_content!(names, ∫outputs; outputs, operator, dims, condition, suffix::AbstractString)
+    """
+        ocean_tracer_content!(names, ∫outputs; dst_field::Field, weights::SparseMatrixCSC, outputs, operator, dims, condition, suffix::AbstractString)
+    Compute the integral of the tracers in `outputs` using the specified `operator` and over the specified `dims`.
+    The `condition` can be used to specify a mask for the integral.
+    The `suffix` is appended to the names of the output fields.
+    """
+
+    function ocean_tracer_content!(names, ∫outputs; dst_field::Field, weights::SparseMatrixCSC, outputs, operator, dims, condition, suffix::AbstractString)
         for key in keys(outputs)
             f = outputs[key]
-            ∫f = Integral(f * operator; dims, condition)
+            f_dst = regrid_tracers!(f, dst_field, weights)
+            ∫f = Integral(f_dst * operator; dims, condition)
             push!(∫outputs, ∫f)
             push!(names, Symbol(key, suffix))
         end
 
-        onefield = CenterField(first(outputs).grid)
+        onefield = CenterField(dst_field.grid)
         set!(onefield, 1)
 
         ∫dV = Integral(onefield * operator; dims, condition)
@@ -175,6 +198,13 @@ module Diagnostics
 
         return names, ∫outputs
     end
+
+    """
+        volume_transport!(names, ∫outputs; outputs, operators, dims, condition, suffix::AbstractString)
+    Compute the volume transport of the velocities in `outputs` using the specified `operators` and over the specified `dims`.
+    The `condition` can be used to specify a mask for the transport.
+    The `suffix` is appended to the names of the output fields.
+    """ 
 
     function volume_transport!(names, ∫outputs; outputs, operators, dims, condition, suffix::AbstractString)
         if length(outputs) == length(operators)

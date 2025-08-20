@@ -132,7 +132,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
                                   interpolation_passes = 10, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
-                                  
+
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
@@ -280,14 +280,39 @@ outputs = merge(tracers, velocities)
 
 #### TRACERS ####
 
-volmask = CenterField(grid)
+@info "Defining destination underlying grid"
+underlying_destination_grid = LatitudeLongitudeGrid(arch;
+                             size = (Nx, Ny, Nz),
+                             halo = (7, 7, 7),
+                             z = r_faces,
+                             latitude  = (-80, 90),
+                             longitude = (0, 360))
+
+@info "Interpolating bottom bathymetry"
+
+@time bottom_height = regrid_bathymetry(underlying_destination_grid, ETOPOmetadata;
+                                  minimum_depth = 10,
+                                  interpolation_passes = 10, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+				                  major_basins = 2)
+# view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
+                                  
+@info "Defining destination grid"
+
+@time destination_grid = ImmersedBoundaryGrid(underlying_destination_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+
+destination_field = Field{Center, Center, Center}(destination_grid)
+source_field = Field{Center, Center, Center}(grid)
+
+W = regridder_weights!(source_field, destination_field; method = "conservative")
+
+volmask = CenterField(destination_grid)
 set!(volmask, 1)
-wmask = ZFaceField(grid)
+wmask = ZFaceField(destination_grid)
 
 @info "Defining condition masks"
 
-Atlantic_mask = basin_mask(grid, "atlantic", volmask);
-IPac_mask = basin_mask(grid, "indo-pacific", volmask);
+Atlantic_mask = basin_mask(destination_grid, "atlantic", volmask);
+IPac_mask = basin_mask(destination_grid, "indo-pacific", volmask);
 glob_mask = Atlantic_mask .|| IPac_mask;
 
 tracer_volmask = [Ax, Δz, volmask]
@@ -308,12 +333,13 @@ suffixes = ["_global_", "_atl_", "_ipac_"]
 tracer_names = Symbol[]
 tracer_outputs = Reduction[]
 
+
 @info "Tracers"
 
 for j in 1:3
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W, outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W, outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+    @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W, outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
 end
 
 @info "Merging tracer tuples"
