@@ -10,6 +10,7 @@ module Diagnostics
 
     """
         regridder_weights!(source_field, destination_field; method = "conservative")
+    
     Regrid the `source_field` onto the `destination_field` using the specified method.
     xESMF exposes five different regridding algorithms from the ESMF library, specified with the `method` keyword argument:
 
@@ -19,6 +20,7 @@ module Diagnostics
     patch: ESMF.RegridMethod.PATCH
     nearest_s2d: ESMF.RegridMethod.NEAREST_STOD
     nearest_d2s: ESMF.RegridMethod.NEAREST_DTOS
+
     where conservative_normed is just the conservative method with the normalization set to ESMF.NormType.FRACAREA instead of the default norm_type=ESMF.NormType.DSTAREA.
     For more information, see the xESMF documentation: https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
     """
@@ -26,7 +28,7 @@ module Diagnostics
     const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
     const SomeLatitudeLongitudeGrid = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
     const TripolarOrLatLonGrid = Union{SomeTripolarGrid, SomeLatitudeLongitudeGrid}
-
+    
     function regridder_weights!(
     source_field::Field, 
     destination_field::Field; 
