@@ -1,8 +1,8 @@
-# using MPI
+using MPI
 using CUDA
 
-# MPI.Init()
-# atexit(MPI.Finalize)  
+MPI.Init()
+atexit(MPI.Finalize)  
 
 using ClimaOcean
 using Oceananigans
@@ -26,7 +26,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 target_time = 365days*25 # 25 years
-checkpoint_type = "none" # could be "last" or "first" or "none"
+checkpoint_type = "none" # "none", "last", "first"
 
 ## Argument is provided by the submission script!
 
@@ -110,7 +110,9 @@ Nz = Integer(75)
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
 r_faces = ExponentialCoordinate(Nz, depth, 0, scale = 0.25*-depth)
-@show r_faces(Nz)
+
+@info "Top grid cell is " * string(abs(round(r_faces(Nz)))) * "m thick"
+
 r_faces = Oceananigans.Grids.MutableVerticalDiscretization(r_faces)
 
 @info "Defining tripolar grid"
@@ -129,7 +131,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-                                  interpolation_passes = 10, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
@@ -267,18 +269,9 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-checkpoint_intervals = TimeInterval(73days)
+checkpoint_intervals = TimeInterval(365days)
 
-#### SURFACE
-
-@info "Defining surface outputs"
-
-tracers = ocean.model.tracers
-velocities = ocean.model.velocities
-
-outputs = merge(tracers, velocities)
-
-#### TRACERS ####
+#### REGRIDDING ####
 
 @info "Defining destination underlying grid"
 underlying_destination_grid = LatitudeLongitudeGrid(arch;
@@ -291,8 +284,8 @@ underlying_destination_grid = LatitudeLongitudeGrid(arch;
 @info "Interpolating bottom bathymetry"
 
 @time bottom_height = regrid_bathymetry(underlying_destination_grid, ETOPOmetadata;
-                                  minimum_depth = 10,
-                                  interpolation_passes = 10, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  minimum_depth = 15,
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
                                   
@@ -303,48 +296,131 @@ underlying_destination_grid = LatitudeLongitudeGrid(arch;
 destination_field = Field{Center, Center, Center}(destination_grid)
 source_field = Field{Center, Center, Center}(grid)
 
-W = regridder_weights!(source_field, destination_field; method = "conservative")
+@info "Defining regridder weights"
+W_bilin = regridder_weights!(source_field, destination_field; method = "bilinear")
+W_cons = regridder_weights!(source_field, destination_field; method = "conservative")
 
-volmask = CenterField(destination_grid)
-set!(volmask, 1)
-wmask = ZFaceField(destination_grid)
+@info "Defining outputs - bilinearly interpolated"
 
-@info "Defining condition masks"
+tracers = ocean.model.tracers
+velocities = ocean.model.velocities
 
-Atlantic_mask = basin_mask(destination_grid, "atlantic", volmask);
-IPac_mask = basin_mask(destination_grid, "indo-pacific", volmask);
-glob_mask = Atlantic_mask .|| IPac_mask;
+outputs = merge(tracers, velocities)
+output_names_bilin = Symbol[]
+outputs_bilin = Field[]
+output_names_cons = Symbol[]
+outputs_cons = Field[]
 
-tracer_volmask = [Ax, Δz, volmask]
-masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
-         repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
-         repeat(IPac_mask, 1, 1, size(volmask)[3])]
-masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
-         repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
-         repeat(IPac_mask, 1, 1, size(wmask)[3])]
+for key in keys(outputs)
+    @info "Regridding output: " * string(key)
+    f = outputs[key]
+    f_dst_bilin = regrid_tracers!(f, destination_field, W_bilin)                       
+    push!(outputs_bilin, f_dst_bilin)
+    push!(output_names_bilin, Symbol(key, "_bilinear"))
+    f_dst_cons = regrid_tracers!(f, destination_field, W_cons)                       
+    push!(outputs_cons, f_dst_cons)
+    push!(output_names_cons, Symbol(key, "_conservative"))
+end
 
-masks = [
-            [masks_centers[1], masks_wfaces[1]],  # Global
-            [masks_centers[2], masks_wfaces[2]],  # Atlantic
-            [masks_centers[3], masks_wfaces[3]]   # IPac
-        ]
+#### VERTICAL INTEGRALS ####
+@info "Defining vertical integral outputs"
 
-suffixes = ["_global_", "_atl_", "_ipac_"]
+vertical_integral_conservative = Symbol[]
+vertical_integral_conservative_outputs = Field[]
+
+for key in keys(conservative_tuple)
+    f = conservative_tuple[key]
+    f_int = CumulativeIntegral(f, dims = 3)
+    push!(vertical_integral_conservative_outputs, f_int)
+    push!(vertical_integral_conservative, Symbol(key, "_cumintegral"))
+end
+
+bilinear_tuple = NamedTuple{Tuple(output_names_bilin)}(Tuple(outputs_bilin))
+conservative_tuple = NamedTuple{Tuple(output_names_cons)}(Tuple(outputs_cons))
+vertical_integral_tuple = NamedTuple{Tuple(vertical_integral_conservative)}(Tuple(vertical_integral_conservative_outputs))
+
+#### OUTPUTS ####
+iteration_number = string(Oceananigans.iteration(simulation))
+
+@info "Defining slice outputs"
+
+depths = [0,-100, -500, -1000, -2000]
+
+symbols_slice = Symbol[]  # empty vector to store symbols
+symbols_cumint = Symbol[]  # empty vector to store symbols
+
+for (ind, depth) in enumerate(depths)
+    pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
+    push!(symbols_slice, Symbol("plane_$(abs(round(pln, digits=1)))m"))
+    push!(symbols_cumint, Symbol("integrated_$(abs(round(pln, digits=1)))m"))
+
+    @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, bilinear_tuple;
+                                                dir = output_path,
+                                                schedule = TimeInterval(1days),
+                                                filename = "global_*" * string(round(pln)) * "m_fields_onedeg_iteration" * iteration_number,
+                                                indices = (:, :, ind_pln),
+                                                with_halos = false,
+                                                overwrite_existing = true,
+                                                array_type = Array{Float32})
+
+    @time simulation.output_writers[symbols_cumint[ind]] = JLD2Writer(ocean.model, vertical_integral_tuple;
+                                                dir = output_path,
+                                                schedule = TimeInterval(1days),
+                                                filename = "global_*" * string(round(pln)) * "m_integral_onedeg_iteration" * iteration_number,
+                                                indices = (:, :, ind_pln),
+                                                with_halos = false,
+                                                overwrite_existing = true,
+                                                array_type = Array{Float32})
+end
+
+
+
+#=
+#### TRACERS ####
+
+@info "Defining tracer outputs - conservatively regridded"
+
+# volmask = CenterField(destination_grid)
+# set!(volmask, 1)
+# wmask = ZFaceField(destination_grid)
+
+# @info "Defining condition masks"
+
+# Atlantic_mask = basin_mask(destination_grid, "atlantic", volmask);
+# IPac_mask = basin_mask(destination_grid, "indo-pacific", volmask);
+# glob_mask = Atlantic_mask .|| IPac_mask;
+
+# tracer_volmask = [Ax, Δz, volmask]
+# masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
+#          repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
+#          repeat(IPac_mask, 1, 1, size(volmask)[3])]
+# masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
+#          repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
+#          repeat(IPac_mask, 1, 1, size(wmask)[3])]
+
+# masks = [
+#             [masks_centers[1], masks_wfaces[1]],  # Global
+#             [masks_centers[2], masks_wfaces[2]],  # Atlantic
+#             [masks_centers[3], masks_wfaces[3]]   # IPac
+#         ]
+
+# suffixes = ["_global_", "_atl_", "_ipac_"]
 tracer_names = Symbol[]
 tracer_outputs = Reduction[]
 
-
 @info "Tracers"
+@time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, dims = (3));
 
-for j in 1:3
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W, outputs=tracers, operator = tracer_volmask[1], dims = (1), condition = masks[j][1], suffix = suffixes[j]*"zonal");
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W, outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
-    @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W, outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
-end
+tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
+
+
+# for j in 1:3
+#     # @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W_cons, outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+#     # @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W_cons, outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
+# end
 
 @info "Merging tracer tuples"
 
-tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
 
 #### VELOCITIES ####
 @info "Velocities"
@@ -364,7 +440,6 @@ transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
 
 @info "Defining output writers"
 
-iteration_number = string(Oceananigans.iteration(simulation))
 
 @time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
                                                           dir = output_path,
@@ -373,20 +448,23 @@ iteration_number = string(Oceananigans.iteration(simulation))
                                                           overwrite_existing = true)
 
 
-@time simulation.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
-                                                 dir = output_path,
-                                                 schedule = TimeInterval(1days),
-                                                 filename = "global_surface_fields_onedeg_iteration" * iteration_number,
-                                                 indices = (:, :, grid.Nz),
-                                                 with_halos = false,
-                                                 overwrite_existing = true,
-                                                 array_type = Array{Float32})
 
 @time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
                                                           dir = output_path,
                                                           schedule = TimeInterval(1days),
                                                           filename = "ocean_tracer_content_onedeg_iteration" * iteration_number,
                                                           overwrite_existing = true)
+
+=#
+if checkpoint_type != "none"
+    @info "Removing all checkpoints"
+    for f in restartfiles
+        if isfile(f)
+            @info "Removing old restart file: $f"
+            rm(f; force = true)
+        end
+    end
+end
 
 @info "Saving restart"
 

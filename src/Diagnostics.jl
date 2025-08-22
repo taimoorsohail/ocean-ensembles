@@ -157,7 +157,7 @@ module Diagnostics
     function regrid_tracers!(src::Field, dst::Field, W::SparseMatrixCSC)
 
         @assert dst.grid.z.cᵃᵃᶜ[1:dst.grid.Nz] == src.grid.z.cᵃᵃᶜ[1:src.grid.Nz] "Source and destination grids must have exactly the same vertical grid (z)."
-
+        
         # Perform regridding
         for k in 1:dst.grid.Nz
             # Flatten the source field for regridding
@@ -180,17 +180,30 @@ module Diagnostics
     The `suffix` is appended to the names of the output fields.
     """
 
-    function ocean_tracer_content!(names, ∫outputs; dst_field::Field, weights::SparseMatrixCSC, outputs, operator, dims, condition, suffix::AbstractString)
+    function ocean_tracer_content!(names, ∫outputs; dst_field::Field = nothing, weights::SparseMatrixCSC = nothing, outputs, operator = nothing, dims, condition = nothing, suffix::AbstractString = "")
+        if dst_field != nothing
+            onefield = CenterField(dst_field.grid)
+        else
+            onefield = CenterField(f.grid)
+        end
+
+        set!(onefield, 1)
+
+        if operator == nothing
+            operator = onefield
+        end
+
         for key in keys(outputs)
             f = outputs[key]
-            f_dst = regrid_tracers!(f, dst_field, weights)
-            ∫f = Integral(f_dst * operator; dims, condition)
+            if dst_field != nothing
+                f_dst = regrid_tracers!(f, dst_field, weights)
+                ∫f = Integral(f_dst * operator; dims, condition)
+            else
+                ∫f = Integral(f * operator; dims, condition)
+            end
             push!(∫outputs, ∫f)
             push!(names, Symbol(key, suffix))
         end
-
-        onefield = CenterField(dst_field.grid)
-        set!(onefield, 1)
 
         ∫dV = Integral(onefield * operator; dims, condition)
         push!(∫outputs, ∫dV)
