@@ -37,7 +37,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_source_grid, ETOPOmetadata;
                                   minimum_depth = 10,
-                                  interpolation_passes = 10, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
                                   
@@ -58,7 +58,7 @@ underlying_destination_grid = LatitudeLongitudeGrid(arch;
 
 @time bottom_height = regrid_bathymetry(underlying_destination_grid, ETOPOmetadata;
                                   minimum_depth = 10,
-                                  interpolation_passes = 10, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
                                   
@@ -83,12 +83,8 @@ dataset = EN4Monthly() # Other options include ECCO2Monthly(), ECCO4Monthly() or
 temperature = Metadata(:temperature; dates, dataset = dataset, dir=data_path)
 salinity    = Metadata(:salinity;    dates, dataset = dataset, dir=data_path)
 
-t = FieldTimeSeries(temperature)   
-s = FieldTimeSeries(salinity)
-
-Tarr = t[1][:,:,42]
 @info "Setting source field with temperature data"
-set!(source_field, Tarr)
+set!(source_field, first(temperature))
 
 # Test the regridding functions
 @time W_cons = regridder_weights!(source_field, destination_field; method = "conservative")
@@ -104,7 +100,7 @@ ax3 = Axis(fig1[1, 5], title="Destination Field - Conservative", xlabel="Longitu
 ax4 = Axis(fig1[2, 1], title="Regridding Weights - Bilinear", xlabel="Longitude", ylabel="Latitude")
 ax5 = Axis(fig1[2, 3], title="Destination Field - Bilinear", xlabel="Longitude", ylabel="Latitude")
 
-z_ind = 1
+z_ind = Nz
 
 heatmap!(ax1, collect(interior(source_field))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(source_field), maximum(source_field)))
 Colorbar(fig1[1,2], label = "Tracer", vertical=true, colorrange=(minimum(source_field), maximum(source_field)))
