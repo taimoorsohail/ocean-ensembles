@@ -316,7 +316,7 @@ checkpoint_intervals = TimeInterval(365days)
 
 # @info "Defining regridder weights"
 # W_bilin = @allowscalar regridder_weights(source_field, destination_field; method = "bilinear")
-W_cons = @allowscalar regridder_weights(source_field, destination_field; method = "conservative")
+# W_cons = @allowscalar regridder_weights(source_field, destination_field; method = "conservative")
 
 # @info "Defining outputs - bilinearly interpolated"
 
@@ -489,7 +489,7 @@ transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
                                                           filename = "ocean_tracer_content_onedeg_iteration" * iteration_number,
                                                           overwrite_existing = true)
 
-=#
+#### CHECKPOINTING ####
 if checkpoint_type != "none"
     @info "Removing all checkpoints"
     for f in restartfiles
@@ -557,11 +557,12 @@ function save_restart(sim)
     end
 end
 
-# add_callback!(simulation, save_restart, checkpoint_intervals)
+add_callback!(simulation, save_restart, checkpoint_intervals)
+=#
 
 run!(simulation)
 
-simulation.Δt = 12minutes 
+simulation.Δt = 60minutes 
 simulation.stop_time = target_time
 
 run!(simulation)

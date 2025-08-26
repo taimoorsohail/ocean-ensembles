@@ -99,12 +99,12 @@ f(x,y,z) = sin(y)^2+cos(x)^2 # Example function to set the source field
 set!(source_field, f)
 
 @info "Defining regridder weights"
-@time W_cons = @allowscalar regridder_weights(source_field, destination_field; method = "conservative")
+@time W = @allowscalar regridder_weights(source_field, destination_field; method = "conservative")
 
-src_flat = vec((collect(interior(source_field))[:,:,1]))  # shape (ncell, 1)
+src_flat = vec(permutedims(collect(interior(source_field))[:,:,1]))  # shape (ncell, 1)
 
 # Regrid the source field to the destination grid
-dst_vec = reshape(permutedims(W_cons) * src_flat, destination_field.grid.Nx, destination_field.grid.Ny)
+dst_vec = reshape((W) * src_flat, destination_field.grid.Nx, destination_field.grid.Ny)
 
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
