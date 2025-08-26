@@ -116,8 +116,8 @@ fig1 = Figure(size = (1600, 800))
 ax1 = Axis(fig1[1, 1], title="Source Field", xlabel="i", ylabel="j")
 ax2 = Axis(fig1[1, 3], title="Regridding Weights - Conservative", xlabel="i", ylabel="j")
 ax3 = Axis(fig1[1, 5], title="Destination Field - Conservative", xlabel="Longitude", ylabel="Latitude")
-ax4 = Axis(fig1[2, 1], title="Regridding Weights - Bilinear", xlabel="Longitude", ylabel="Latitude")
-ax5 = Axis(fig1[2, 3], title="Destination Field - Bilinear", xlabel="Longitude", ylabel="Latitude")
+# ax4 = Axis(fig1[2, 1], title="Regridding Weights - Bilinear", xlabel="Longitude", ylabel="Latitude")
+# ax5 = Axis(fig1[2, 3], title="Destination Field - Bilinear", xlabel="Longitude", ylabel="Latitude")
 
 z_ind = 1
 

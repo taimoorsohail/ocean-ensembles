@@ -148,8 +148,6 @@ module Diagnostics
 
         shape = Tuple(Int.(coo[:shape]))
         W = sparse(rows, cols, vals, shape[1], shape[2])
-        # perm = vec(reshape(1:(source_field.grid.Nx * source_field.grid.Ny), source_field.grid.Ny, source_field.grid.Nx))  # column-major order
-        # W_fixed = W[:, perm]
         return W
     end
 
