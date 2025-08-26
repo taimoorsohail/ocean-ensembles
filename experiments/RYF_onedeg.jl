@@ -1,5 +1,6 @@
 using MPI
 using CUDA
+using CUDA: @allowscalar
 
 MPI.Init()
 atexit(MPI.Finalize)  
@@ -314,8 +315,8 @@ checkpoint_intervals = TimeInterval(365days)
 # source_field = Field{Center, Center, Center}(grid)
 
 # @info "Defining regridder weights"
-# W_bilin = regridder_weights(source_field, destination_field; method = "bilinear")
-# W_cons = regridder_weights(source_field, destination_field; method = "conservative")
+# W_bilin = @allowscalar regridder_weights(source_field, destination_field; method = "bilinear")
+W_cons = @allowscalar regridder_weights(source_field, destination_field; method = "conservative")
 
 # @info "Defining outputs - bilinearly interpolated"
 
@@ -556,7 +557,7 @@ function save_restart(sim)
     end
 end
 
-add_callback!(simulation, save_restart, checkpoint_intervals)
+# add_callback!(simulation, save_restart, checkpoint_intervals)
 
 run!(simulation)
 

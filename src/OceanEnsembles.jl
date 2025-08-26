@@ -13,9 +13,7 @@ function _ensure_python_packages()
         try
             pyimport(pkg)
         catch
-            println("Installing Python package: $pkg")
-            Conda.add(pkg)
-            pyimport(pkg)
+            throw("Error: Python package $pkg not found!")
         end
     end
 end
