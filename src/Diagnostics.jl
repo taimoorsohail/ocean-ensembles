@@ -6,7 +6,7 @@ module Diagnostics
     using PyCall
     using SparseArrays
 
-    export ocean_tracer_content!, volume_transport!, regrid_tracers!, regridder_weights!
+    export ocean_tracer_content!, volume_transport!, regrid_tracers!, regridder_weights
 
     """
         regridder_weights!(source_field, destination_field; method = "conservative")
@@ -29,7 +29,7 @@ module Diagnostics
     const SomeLatitudeLongitudeGrid = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
     const TripolarOrLatLonGrid = Union{SomeTripolarGrid, SomeLatitudeLongitudeGrid}
     
-    function regridder_weights!(
+    function regridder_weights(
     source_field::Field, 
     destination_field::Field; 
     method::String = "conservative")
@@ -138,6 +138,7 @@ module Diagnostics
         regridder = OceanEnsembles.get_xesmf().Regridder(src_ds, dst_ds, method)
 
         # Move back to Julia
+        @info "Moving array back to Julia"
         # Convert the regridder weights to a Julia sparse matrix
         coo = regridder.weights.data
         coords = coo[:coords]
@@ -156,7 +157,7 @@ module Diagnostics
     Regrid the `src` field onto the `dst` field using the provided weights `W`.
     The function assumes that the vertical grid (z) of both fields is the same.
     """
-    function regrid_tracers!(src::Field, dst::Field, W::SparseMatrixCSC)
+    function regrid_tracers(src::Field, dst::Field, W::SparseMatrixCSC)
 
         @assert dst.grid.z.cᵃᵃᶜ[1:dst.grid.Nz] == src.grid.z.cᵃᵃᶜ[1:src.grid.Nz] "Source and destination grids must have exactly the same vertical grid (z)."
         

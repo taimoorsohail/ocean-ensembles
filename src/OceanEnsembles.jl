@@ -1,6 +1,6 @@
 module OceanEnsembles
 
-export basin_mask, ocean_tracer_content!, volume_transport!, regrid_tracers!, regridder_weights!,
+export basin_mask, ocean_tracer_content!, volume_transport!, regrid_tracers!, regridder_weights,
        combine_ranks, identify_combination_targets
 
 using ClimaOcean, Oceananigans, Glob
@@ -15,6 +15,7 @@ function _ensure_python_packages()
         catch
             println("Installing Python package: $pkg")
             Conda.add(pkg)
+            pyimport(pkg)
         end
     end
 end
