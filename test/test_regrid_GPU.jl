@@ -101,10 +101,7 @@ set!(source_field, f)
 @info "Defining regridder weights"
 @time W = @allowscalar regridder_weights(source_field, destination_field; method = "conservative")
 
-@time LinearAlgebra.mul!(vec(interior(destination_field, :, :, 1)), W, vec(interior(source_field, :, :, 1)))
-# @time dst_new = reshape(W * vec(interior(source_field, :, :, 1)), destination_field.grid.Nx, destination_field.grid.Ny)
-# Regrid the source field to the destination grid
-# dst_vec = reshape((W) * src_flat, destination_field.grid.Nx, destination_field.grid.Ny)
+@time regrid_tracers!(destination_field, W, source_field)
 
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
@@ -115,25 +112,28 @@ using CairoMakie
 fig1 = Figure(size = (1600, 800))
 ax1 = Axis(fig1[1, 1], title="Source Field", xlabel="i", ylabel="j")
 ax2 = Axis(fig1[1, 3], title="Regridding Weights - Conservative", xlabel="i", ylabel="j")
-ax3 = Axis(fig1[1, 5], title="Destination Field - Conservative", xlabel="Longitude", ylabel="Latitude")
-# ax4 = Axis(fig1[2, 1], title="Regridding Weights - Bilinear", xlabel="Longitude", ylabel="Latitude")
+ax3 = Axis(fig1[1, 5], title="Destination Field - Conservative1", xlabel="Longitude", ylabel="Latitude")
+ax4 = Axis(fig1[2, 1], title="Destination Field - Conservative2", xlabel="Longitude", ylabel="Latitude")
 # ax5 = Axis(fig1[2, 3], title="Destination Field - Bilinear", xlabel="Longitude", ylabel="Latitude")
 
 z_ind = 1
 
-heatmap!(ax1, collect(interior(source_field))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(source_field), maximum(source_field)))
+heatmap!(ax1, interior(source_field, :, :, z_ind), colormap=:viridis, colorrange=(minimum(source_field), maximum(source_field)))
 Colorbar(fig1[1,2], label = "Tracer", vertical=true, colorrange=(minimum(source_field), maximum(source_field)))
 heatmap!(ax2, reshape(sum(W, dims = 2), Nx, Ny), colormap=:viridis, colorrange=(minimum(sum(W, dims = 2)), maximum(sum(W, dims = 2))))
 Colorbar(fig1[1,4], label = "Weight", vertical=true, colorrange=(minimum(sum(W, dims = 2)), maximum(sum(W, dims = 2))))
-heatmap!(ax3, interior(destination_field, :, :, 1), colormap=:viridis, colorrange=(minimum(interior(destination_field, :, :, 1)), maximum(interior(destination_field, :, :, 1))))
-Colorbar(fig1[1,6], label = "Tracer", vertical=true, colorrange=(minimum(interior(destination_field, :, :, 1)), maximum(interior(destination_field, :, :, 1))))
+heatmap!(ax3, interior(destination_field, :, :, z_ind), colormap=:viridis, colorrange=(minimum(interior(destination_field, :, :, z_ind)), maximum(interior(destination_field, :, :, z_ind))))
+Colorbar(fig1[1,6], label = "Tracer", vertical=true, colorrange=(minimum(interior(destination_field, :, :, z_ind)), maximum(interior(destination_field, :, :, z_ind))))
+heatmap!(ax4, dst, colormap=:viridis, colorrange=(minimum(dst), maximum(dst)))
+Colorbar(fig1[2,2], label = "Tracer", vertical=true, colorrange=(minimum(dst), maximum(dst)))
+
 # heatmap!(ax4, reshape(sum(W_bilin, dims = 2), Nx, Ny), colormap=:viridis, colorrange=(minimum(sum(W_bilin, dims = 2)), maximum(sum(W_bilin, dims = 2))))
 # Colorbar(fig1[2,2], label = "Weight", vertical=true, colorrange=(minimum(sum(W_bilin, dims = 2)), maximum(sum(W_bilin, dims = 2))))
 # heatmap!(ax5, collect(interior(dst_bilin))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(dst_bilin), maximum(dst_bilin)))
 # Colorbar(fig1[2,4], label = "Tracer", vertical=true, colorrange=(minimum(dst_bilin), maximum(dst_bilin)))
 
 save(joinpath(figdir, "regrid_test_figure.png"), fig1, px_per_unit=3)
-close(fig)
+display(fig1)
 
 #=
 """
