@@ -5,6 +5,7 @@ module Diagnostics
     using Oceananigans.Fields: location, ReducedField
     using PyCall
     using SparseArrays
+    using LinearAlgebra
 
     export ocean_tracer_content!, volume_transport!, regrid_tracers!, regridder_weights
 
@@ -147,7 +148,11 @@ module Diagnostics
 
         shape = Tuple(Int.(coo[:shape]))
         W = sparse(rows, cols, vals, shape[1], shape[2])
-        return W
+
+        perm_row_to_col = vec((permutedims(reshape(1:(src.grid.Ny*src.grid.Nx), src.grid.Ny, src.grid.Nx))))
+        W_corrected = W[:, perm_row_to_col]
+
+        return W_corrected
     end
 
     """
@@ -155,23 +160,23 @@ module Diagnostics
     Regrid the `src` field onto the `dst` field using the provided weights `W`.
     The function assumes that the vertical grid (z) of both fields is the same.
     """
-    function regrid_tracers(src::Field, dst::Field, W::SparseMatrixCSC)
+    function regrid_tracers!(dst::Field, W::SparseMatrixCSC, src::Field)
 
         @assert dst.grid.z.cᵃᵃᶜ[1:dst.grid.Nz] == src.grid.z.cᵃᵃᶜ[1:src.grid.Nz] "Source and destination grids must have exactly the same vertical grid (z)."
         
         # Perform regridding
         for k in 1:dst.grid.Nz
             # Flatten the source field for regridding
-            src_flat = vec(permutedims(collect(interior(src))[:,:,k]))  # shape (ncell, 1)
+            # src_flat = vec(collect(interior(src))[:,:,k])  # shape (ncell, 1)
 
             # Regrid the source field to the destination grid
-            dst_vec = reshape(W * src_flat, dst.grid.Nx, dst.grid.Ny)
+            LinearAlgebra.mul!(vec(interior(dst, :, :, 1)), W, vec(interior(src, :, :, 1)))            
+            # dst_vec = reshape(W * src_flat, dst.grid.Nx, dst.grid.Ny)
 
-            # Fill the destination field with the regridded values
-            interior(dst)[:,:,k] .= dst_vec
+            # # Fill the destination field with the regridded values
+            # interior(dst)[:,:,k] .= dst_vec
         end
-
-        return deepcopy(dst)
+        return nothing
     end
 
     """
