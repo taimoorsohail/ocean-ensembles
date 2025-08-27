@@ -138,7 +138,6 @@ module Diagnostics
         regridder = OceanEnsembles.get_xesmf().Regridder(src_ds, dst_ds, method)
 
         # Move back to Julia
-        @info "Moving array back to Julia"
         # Convert the regridder weights to a Julia sparse matrix
         coo = regridder.weights.data
         coords = coo[:coords]

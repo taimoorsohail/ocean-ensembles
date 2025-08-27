@@ -154,11 +154,11 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 # @info "Defining restoring rate"
 
-restoring_rate  = 1 / 3days
+restoring_rate  = 1 / 18days
 @inline mask(x, y, z, t) = z ≥ z_surf - 1
 
 # FT = DatasetRestoring(temperature, grid; mask, rate=restoring_rate)
-FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate)
+FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate, time_indices_in_memory = 10)
 forcing = (; S=FS)
 
 # ### Closures
@@ -183,7 +183,7 @@ free_surface = SplitExplicitFreeSurface(grid; cfl=0.8, fixed_Δt=45minutes)
 momentum_advection = WENOVectorInvariant(order = 5)
 tracer_advection   = WENO(order = 5)
 
-@time ocean = ocean_simulation(grid;
+@time ocean = ocean_simulation(grid; Δt=1minutes,
                          momentum_advection,
                          tracer_advection,
                          timestepper = :SplitRungeKutta3,
@@ -216,7 +216,7 @@ set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), 
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(25), include_rivers_and_icebergs=true)
+atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), include_rivers_and_icebergs=true)
 
 # ### Coupled simulation
 
@@ -562,7 +562,7 @@ add_callback!(simulation, save_restart, checkpoint_intervals)
 
 run!(simulation)
 
-simulation.Δt = 60minutes 
+simulation.Δt = 40minutes 
 simulation.stop_time = target_time
 
 run!(simulation)

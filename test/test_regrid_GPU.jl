@@ -34,7 +34,7 @@ data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 
 ## Argument is provided by the submission script!
 
-arch = GPU()
+arch = CPU()
 
 #total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 
@@ -101,10 +101,13 @@ set!(source_field, f)
 @info "Defining regridder weights"
 @time W = @allowscalar regridder_weights(source_field, destination_field; method = "conservative")
 
-src_flat = vec(permutedims(collect(interior(source_field))[:,:,1]))  # shape (ncell, 1)
+src_flat = vec((collect(interior(source_field))[:,:,1]))  # shape (ncell, 1)
+
+perm_row_to_col = vec((reshape(1:(Nx*Ny), Nx, Ny)))
+W_corrected = W[:, invperm(perm_row_to_col)]
 
 # Regrid the source field to the destination grid
-dst_vec = reshape((W) * src_flat, destination_field.grid.Nx, destination_field.grid.Ny)
+dst_vec = reshape((W_corrected) * src_flat, destination_field.grid.Nx, destination_field.grid.Ny)
 
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
@@ -123,8 +126,8 @@ z_ind = 1
 
 heatmap!(ax1, collect(interior(source_field))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(source_field), maximum(source_field)))
 Colorbar(fig1[1,2], label = "Tracer", vertical=true, colorrange=(minimum(source_field), maximum(source_field)))
-heatmap!(ax2, reshape(sum(W_cons, dims = 2), Nx, Ny), colormap=:viridis, colorrange=(minimum(sum(W_cons, dims = 2)), maximum(sum(W_cons, dims = 2))))
-Colorbar(fig1[1,4], label = "Weight", vertical=true, colorrange=(minimum(sum(W_cons, dims = 2)), maximum(sum(W_cons, dims = 2))))
+heatmap!(ax2, reshape(sum(W_corrected, dims = 2), Nx, Ny), colormap=:viridis, colorrange=(minimum(sum(W_corrected, dims = 2)), maximum(sum(W_corrected, dims = 2))))
+Colorbar(fig1[1,4], label = "Weight", vertical=true, colorrange=(minimum(sum(W_corrected, dims = 2)), maximum(sum(W_corrected, dims = 2))))
 heatmap!(ax3, (dst_vec), colormap=:viridis, colorrange=(minimum(dst_vec), maximum(dst_vec)))
 Colorbar(fig1[1,6], label = "Tracer", vertical=true, colorrange=(minimum(dst_vec), maximum(dst_vec)))
 # heatmap!(ax4, reshape(sum(W_bilin, dims = 2), Nx, Ny), colormap=:viridis, colorrange=(minimum(sum(W_bilin, dims = 2)), maximum(sum(W_bilin, dims = 2))))
