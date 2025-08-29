@@ -16,6 +16,7 @@ using CUDA
 import Oceananigans.OutputWriters: checkpointer_address
 
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
 arch = GPU()
 
@@ -46,10 +47,10 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVertic
 momentum_advection = WENOVectorInvariant(order=5)
 tracer_advection   = WENO(order=5)
 
-free_surface = SplitExplicitFreeSurface(grid; cfl=0.8, fixed_Δt=45minutes)
+free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=45minutes)
 
 eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
-catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  
+catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4), eddy_closure)
 
 dataset = EN4Monthly()
@@ -65,7 +66,6 @@ ocean = ocean_simulation(grid; Δt=1minutes,
                          tracer_advection,
                          timestepper = :SplitRungeKutta3,
                          free_surface,
-                         forcing = (; S = FS),
                          closure)
 
 dataset = EN4Monthly()
@@ -103,7 +103,7 @@ radiation  = Radiation()
 #####
 
 omip = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
-omip = Simulation(omip, Δt=30minutes, stop_time=60days) 
+omip = Simulation(omip, Δt=20minutes, stop_time=60days) 
 
 # # Figure out the outputs....
 # checkpointer_address(::SeaIceModel) = "SeaIceModel"
@@ -149,11 +149,70 @@ function progress(sim)
 end
 
 # And add it as a callback to the simulation.
-add_callback!(omip, progress, IterationInterval(1))
+add_callback!(omip, progress, TimeInterval(1days))
+
+#### OUTPUTS ####
+
+tracers = ocean.model.tracers
+velocities = ocean.model.velocities
+
+outputs = merge(tracers, velocities)
+
+tot_integral = Symbol[]
+tot_integral_outputs = Reduction[]
+avg = Symbol[]
+avg_outputs = Reduction[]
+
+for key in keys(outputs)
+    f = outputs[key]
+    f_tot = Integral(f, dims = (1,2,3))
+    f_avg = Average(f, dims = (1,2,3))
+    push!(tot_integral_outputs, f_tot)
+    push!(tot_integral, Symbol(key, "_totintegral"))
+    push!(avg_outputs, f_avg)
+    push!(avg, Symbol(key, "_avg"))
+end
+
+cumulative_tuple = NamedTuple{Tuple(tot_integral)}(Tuple(tot_integral_outputs))
+average_tuple = NamedTuple{Tuple(avg)}(Tuple(avg_outputs))
+
+global_outputs = merge(cumulative_tuple, average_tuple)
+
+iteration_number = string(Oceananigans.iteration(omip))
+
+@info "Defining slice outputs"
+
+depths = [0,-100, -500, -1000, -2000]
+
+symbols_slice = Symbol[]  # empty vector to store symbols
+symbols_cumint = Symbol[]  # empty vector to store symbols
+
+for (ind, depth) in enumerate(depths)
+    pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
+    slice_level = abs(z_faces(ind_pln))
+    push!(symbols_slice, Symbol("plane_$(abs(round(slice_level, digits=1)))m"))
+    push!(symbols_cumint, Symbol("integrated_$(abs(round(slice_level, digits=1)))m"))
+
+    @time omip.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
+                                                dir = output_path,
+                                                schedule = TimeInterval(1days),
+                                                filename = "global_" * string(round(slice_level)) * "m_fields_onedeg_omip_iteration" * iteration_number,
+                                                indices = (:, :, ind_pln),
+                                                with_halos = false,
+                                                overwrite_existing = true,
+                                                array_type = Array{Float32})
+
+end
+
+@time omip.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
+                                            dir = output_path,
+                                            schedule = TimeInterval(1days),
+                                            filename = "global_tot_integrals_onedeg_omip_iteration" * iteration_number,
+                                            overwrite_existing = true)
 
 run!(omip)
 
-omip.Δt = 40minutes
+omip.Δt = 30minutes
 omip.stop_time = 58 * 365days
 
 run!(omip)

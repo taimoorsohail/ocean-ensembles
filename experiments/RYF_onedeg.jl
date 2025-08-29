@@ -35,7 +35,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 target_time = 365days*25 # 25 years
-checkpoint_type = "none" # "none", "last", "first"
+checkpoint_type = "last" # "none", "last", "first"
 
 ## Argument is provided by the submission script!
 
@@ -140,7 +140,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
@@ -148,17 +148,16 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
-# ### Restoring
-#
+### Restoring
+
 # We include surface salinity restoring to a predetermined dataset.
 
-# @info "Defining restoring rate"
+@info "Defining restoring rate"
 
 restoring_rate  = 1 / 18days
 @inline mask(x, y, z, t) = z ≥ z_surf - 1
 
-# FT = DatasetRestoring(temperature, grid; mask, rate=restoring_rate)
-FS = DatasetRestoring(salinity,    grid; mask, rate=restoring_rate, time_indices_in_memory = 10)
+FS = DatasetRestoring(salinity, grid; mask, rate=restoring_rate, time_indices_in_memory = 10)
 forcing = (; S=FS)
 
 # ### Closures
@@ -179,7 +178,7 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4), eddy_clos
 
 @info "Defining free surface"
 
-free_surface = SplitExplicitFreeSurface(grid; cfl=0.8, fixed_Δt=45minutes)
+free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=45minutes)
 momentum_advection = WENOVectorInvariant(order = 5)
 tracer_advection   = WENO(order = 5)
 
@@ -230,12 +229,14 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=30minutes, stop_time=60days)
+simulation = Simulation(coupled_model; Δt=20minutes, stop_time=60days)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     simulation.model.ocean.model.clock.iteration = iteration
     simulation.model.ocean.model.clock.time = time
+    simulation.model.sea_ice.model.clock.iteration = iteration
+    simulation.model.sea_ice.model.clock.time = time
     simulation.model.atmosphere.clock.iteration = iteration
     simulation.model.atmosphere.clock.time = time
     simulation.model.clock.iteration = iteration
@@ -243,6 +244,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     time_step!(atmosphere, 0)
     simulation.model.atmosphere.clock.iteration -= 1
     simulation.model.ocean.model.clock.last_Δt = last_Δt
+    simulation.model.sea_ice.model.clock.last_Δt = last_Δt
 end
 
 # ### A progress messenger
@@ -287,7 +289,7 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-checkpoint_intervals = TimeInterval(365days)
+checkpoint_intervals = TimeInterval(73days)
 
 # #### REGRIDDING ####
 
@@ -409,10 +411,10 @@ checkpoint_intervals = TimeInterval(365days)
 #                                             overwrite_existing = true)
 
 
-#=
+
 #### TRACERS ####
 
-@info "Defining tracer outputs - conservatively regridded"
+# @info "Defining tracer outputs - conservatively regridded"
 
 # volmask = CenterField(destination_grid)
 # set!(volmask, 1)
@@ -439,66 +441,124 @@ checkpoint_intervals = TimeInterval(365days)
 #         ]
 
 # suffixes = ["_global_", "_atl_", "_ipac_"]
-tracer_names = Symbol[]
-tracer_outputs = Reduction[]
+# tracer_names = Symbol[]
+# tracer_outputs = Reduction[]
 
-@info "Tracers"
-@time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, dims = (3));
+# @info "Tracers"
+# @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, dims = (3));
 
-tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
+# tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
 
 
+# # for j in 1:3
+# #     # @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W_cons, outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
+# #     # @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W_cons, outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
+# # end
+
+# @info "Merging tracer tuples"
+
+
+# #### VELOCITIES ####
+# @info "Velocities"
+
+# transport_volmask_operators = [Ax, Ay, Az]
+# transport_names = Symbol[]
+# transport_outputs = ReducedField[]
 # for j in 1:3
-#     # @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W_cons, outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
-#     # @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W_cons, outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
+#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
+#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
+#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
 # end
 
-@info "Merging tracer tuples"
+# @info "Merging velocity tuples"
+
+# transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
+
+# @info "Defining output writers"
 
 
-#### VELOCITIES ####
-@info "Velocities"
+# @time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
+#                                                           dir = output_path,
+#                                                           schedule = TimeInterval(1days),
+#                                                           filename = "mass_transport_onedeg_iteration" * iteration_number,
+#                                                           overwrite_existing = true)
 
-transport_volmask_operators = [Ax, Ay, Az]
-transport_names = Symbol[]
-transport_outputs = ReducedField[]
-for j in 1:3
-    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-    @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
+
+
+# @time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
+#                                                           dir = output_path,
+#                                                           schedule = TimeInterval(1days),
+#                                                           filename = "ocean_tracer_content_onedeg_iteration" * iteration_number,
+#                                                           overwrite_existing = true)
+
+tracers = ocean.model.tracers
+velocities = ocean.model.velocities
+
+outputs = merge(tracers, velocities)
+
+tot_integral = Symbol[]
+tot_integral_outputs = Reduction[]
+avg = Symbol[]
+avg_outputs = Reduction[]
+
+for key in keys(outputs)
+    f = outputs[key]
+    f_tot = Integral(f, dims = (1,2,3))
+    f_avg = Average(f, dims = (1,2,3))
+    push!(tot_integral_outputs, f_tot)
+    push!(tot_integral, Symbol(key, "_totintegral"))
+    push!(avg_outputs, f_avg)
+    push!(avg, Symbol(key, "_avg"))
 end
 
-@info "Merging velocity tuples"
+cumulative_tuple = NamedTuple{Tuple(tot_integral)}(Tuple(tot_integral_outputs))
+average_tuple = NamedTuple{Tuple(avg)}(Tuple(avg_outputs))
 
-transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
+global_outputs = merge(cumulative_tuple, average_tuple)
 
-@info "Defining output writers"
+iteration_number = string(Oceananigans.iteration(simulation))
 
+@info "Defining slice outputs"
 
-@time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
-                                                          dir = output_path,
-                                                          schedule = TimeInterval(1days),
-                                                          filename = "mass_transport_onedeg_iteration" * iteration_number,
-                                                          overwrite_existing = true)
+depths = [0,-100, -500, -1000, -2000]
 
+symbols_slice = Symbol[]  # empty vector to store symbols
+symbols_cumint = Symbol[]  # empty vector to store symbols
 
+for (ind, depth) in enumerate(depths)
+    pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
+    slice_level = abs(z_faces(ind_pln))
+    push!(symbols_slice, Symbol("plane_$(abs(round(slice_level, digits=1)))m"))
+    push!(symbols_cumint, Symbol("integrated_$(abs(round(slice_level, digits=1)))m"))
 
-@time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
-                                                          dir = output_path,
-                                                          schedule = TimeInterval(1days),
-                                                          filename = "ocean_tracer_content_onedeg_iteration" * iteration_number,
-                                                          overwrite_existing = true)
+    @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
+                                                dir = output_path,
+                                                schedule = TimeInterval(1days),
+                                                filename = "global_" * string(round(slice_level)) * "m_fields_onedeg_RYF_iteration" * iteration_number,
+                                                indices = (:, :, ind_pln),
+                                                with_halos = false,
+                                                overwrite_existing = true,
+                                                array_type = Array{Float32})
+
+end
+
+@time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
+                                            dir = output_path,
+                                            schedule = TimeInterval(1days),
+                                            filename = "global_tot_integrals_onedeg_RYF_iteration" * iteration_number,
+                                            overwrite_existing = true)
+
 
 #### CHECKPOINTING ####
-if checkpoint_type != "none"
-    @info "Removing all checkpoints"
-    for f in restartfiles
-        if isfile(f)
-            @info "Removing old restart file: $f"
-            rm(f; force = true)
-        end
-    end
-end
+# if checkpoint_type != "none"
+#     @info "Removing all checkpoints"
+#     for f in restartfiles
+#         if isfile(f)
+#             @info "Removing old restart file: $f"
+#             rm(f; force = true)
+#         end
+#     end
+# end
 
 @info "Saving restart"
 
@@ -512,20 +572,6 @@ function save_restart(sim)
     T = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.T)),
     S = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.S)),
     e = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.e)),
-    u_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.u)),
-    v_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.v)),
-    U_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.U)),
-    V_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.V)),
-    T_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.T)),
-    S_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.S)),
-    e_Gⁿ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.Gⁿ.e)),
-    u_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.u)),
-    v_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.v)),
-    U_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.U)),
-    V_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.V)),
-    T_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.T)),
-    S_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.S)),
-    e_G⁻ = on_architecture(CPU(), interior(sim.model.ocean.model.timestepper.G⁻.e)),
     clock = sim.model.ocean.model.clock)
 
     restartfiles = glob("checkpoint_onedeg_iteration*", output_path)
@@ -558,15 +604,8 @@ function save_restart(sim)
 end
 
 add_callback!(simulation, save_restart, checkpoint_intervals)
-=#
 
-run!(simulation)
 
-simulation.Δt = 40minutes 
-simulation.stop_time = target_time
-
-run!(simulation)
-#=
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     if checkpoint_type == "last"
         @info "Restarting from last checkpoint at iteration " * string(maximum(restart_numbers))
@@ -583,22 +622,6 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     v_field = fields_loaded["v"]
     w_field = fields_loaded["w"]
 
-    T_field_Gⁿ = fields_loaded["T_Gⁿ"]
-    S_field_Gⁿ = fields_loaded["S_Gⁿ"]
-    e_field_Gⁿ = fields_loaded["e_Gⁿ"]
-    u_field_Gⁿ = fields_loaded["u_Gⁿ"]
-    v_field_Gⁿ = fields_loaded["v_Gⁿ"]
-    U_field_Gⁿ = fields_loaded["U_Gⁿ"]
-    V_field_Gⁿ = fields_loaded["V_Gⁿ"]
-
-    T_field_G⁻ = fields_loaded["T_G⁻"]
-    S_field_G⁻ = fields_loaded["S_G⁻"]
-    e_field_G⁻ = fields_loaded["e_G⁻"]
-    u_field_G⁻ = fields_loaded["u_G⁻"]
-    v_field_G⁻ = fields_loaded["v_G⁻"]
-    U_field_G⁻ = fields_loaded["U_G⁻"]
-    V_field_G⁻ = fields_loaded["V_G⁻"]
-
     close(fields_loaded)
 
     set!(ocean.model, 
@@ -608,32 +631,6 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     v = (v_field),
     w = (w_field),
     e = (e_field))
-
-    set!(ocean.model.timestepper.Gⁿ, 
-    T = (T_field_Gⁿ),
-    S = (S_field_Gⁿ),
-    u = (u_field_Gⁿ),
-    v = (v_field_Gⁿ),
-    U = (U_field_Gⁿ),
-    V = (V_field_Gⁿ),
-    e = (e_field_Gⁿ))
-
-    set!(ocean.model.timestepper.G⁻, 
-    T = (T_field_G⁻),
-    S = (S_field_G⁻),
-    u = (u_field_G⁻),
-    v = (v_field_G⁻),       
-    U = (U_field_G⁻),
-    V = (V_field_G⁻),
-    e = (e_field_G⁻))         
-
-    for f in ocean.model.timestepper.Gⁿ
-        Oceananigans.ImmersedBoundaries.mask_immersed_field!(f)
-     end
-     
-     for f in ocean.model.timestepper.G⁻
-        Oceananigans.ImmersedBoundaries.mask_immersed_field!(f)
-     end
 
     u, v, w = ocean.model.velocities
     T, S, e = ocean.model.tracers
@@ -654,7 +651,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
         @info "Restarting from iteration " * string(minimum(restart_numbers))
     end
 
-    simulation.Δt = 12minutes 
+    simulation.Δt = 30minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -663,9 +660,8 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 12minutes 
+    simulation.Δt = 30minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
 end
-=#

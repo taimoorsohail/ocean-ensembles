@@ -1,6 +1,5 @@
 module Diagnostics
 
-    using OceanEnsembles
     using Oceananigans
     using Oceananigans.Fields: location, ReducedField
     using Oceananigans.Grids: AbstractGrid
@@ -31,6 +30,20 @@ module Diagnostics
     const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
     const SomeLatitudeLongitudeGrid = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
     const TripolarOrLatLonGrid = Union{SomeTripolarGrid, SomeLatitudeLongitudeGrid}
+
+    # Import and store as constants for submodules
+    function get_np()
+        return pyimport("numpy")
+    end
+
+    function get_xesmf()
+        return pyimport("xesmf")
+    end
+
+    function get_xr()
+        return pyimport("xarray")
+    end
+
 
     function two_dimensionalize(lat::AbstractVector, lon::AbstractVector) 
         Nx = length(lon)
@@ -65,8 +78,8 @@ module Diagnostics
     end
 
     function structured_coordinate_dataset(lat, lon, lat_b, lon_b)
-        numpy  = OceanEnsembles.get_np()
-        xarray = OceanEnsembles.get_xr()
+        numpy  = get_np()
+        xarray = get_xr()
 
         lat = numpy.array(lat)
         lon = numpy.array(lon)
@@ -227,8 +240,8 @@ module Diagnostics
         #         "lon" => (["lon"], lon_dst_np)    )),
         #     name="destination"
         # )
-
-        regridder = OceanEnsembles.get_xesmf().Regridder(src_ds, dst_ds, method)#, periodic=PyObject(true))
+        @info "I am Periodic now!"
+        regridder = get_xesmf().Regridder(src_ds, dst_ds, method, periodic=PyObject(true))
 
         # Move back to Julia
         # Convert the regridder weights to a Julia sparse matrix

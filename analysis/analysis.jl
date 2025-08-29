@@ -9,27 +9,18 @@ using JLD2
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-OTC_file = "ocean_tracer_content_onedeg_iteration0_rank0.jld2"
-masstrans_file = "mass_transport_onedeg_iteration0_rank0.jld2"
+# tot_file = "global_tot_integrals_onedeg_iteration0.jld2"
+# tot_file = "global_*33.0m_fields_onedeg_omip_iteration0.jld2"
+# tot_file = "global_*2.0m_fields_onedeg_omip_iteration0.jld2"
+# tot_file = "global_*22.0m_fields_onedeg_omip_iteration0.jld2"
+# tot_file = "global_*4.0m_fields_onedeg_omip_iteration0.jld2"
+tot_file = "global_*78.0m_fields_onedeg_omip_iteration0.jld2"
 
-variables_basins = ["_global_", "_atl_", "_ipac_"]
-variables_diags = ["zonal", "depth", "tot"]
-variables_tracers = ["T", "S", "dV"]
-variables_velocities =  ["u", "v", "w"]
-variables_vel_volumes = ["dV_u", "dV_v", "dV_w"]
-suffix = ""
-tracercontent_vars = vec([tracer * basin * diag for tracer in variables_tracers,
-                         basin in variables_basins,
-                         diag in variables_diags])
-
-transport_vars = vcat(
-    vec([velocity * basin * diag for velocity in variables_velocities,
-                                 basin in variables_basins,
-                                 diag in variables_diags]),
-    vec([volume * basin * diag for volume in variables_vel_volumes,
-                               basin in variables_basins,
-                               diag in variables_diags])
-)
+vars = [ "T",
+ "S",
+ "u",
+ "v",
+ "w"]
 
 function create_dict(vars, path)
     dicts = Dict()
@@ -48,149 +39,95 @@ function create_dict(vars, path)
     return dicts
 end
 
-@info "I am loading the otc" 
-OTC = create_dict(tracercontent_vars, output_path * OTC_file)
+@info "I am loading the surface" 
+slice = create_dict(vars, output_path * tot_file)
 
-@info "I am loading the mass transport" 
-masstrans = create_dict(transport_vars, output_path * masstrans_file)
+# Assume slice["T"] is your FieldTimeSeries
+T = slice["T"]
+S = slice["S"]
+u = slice["u"]
+v = slice["v"]
+w = slice["w"]
 
-# Define the order you want for tracers and basins
-tracers = ["T", "S", "dV"]
-velocities = ["u", "v", "w"]
-basins = ["global", "atl", "ipac"]
-minv = [-1,34,1e6]
-maxv = [31,38,1e18]
-end_time = lastindex(masstrans["u_ipac_zonal"].times)
+depth = T.grid.z.cᵃᵃᶜ[first(T.indices[3])]
 
-function OTC_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = "./", start_time = 1, end_time = 2, suffix= "")
-    fig = Figure(size = (1600, 800))
+# Observable for animation
+frame_idx = Observable(1)
+temp_data = @lift Array(dropdims(T[$frame_idx], dims=3))
+salt_data = @lift Array(dropdims(S[$frame_idx], dims=3))
+u_data = @lift Array(dropdims(u[$frame_idx], dims=3))
+v_data = @lift Array(dropdims(v[$frame_idx], dims=3))
+w_data = @lift Array(dropdims(w[$frame_idx], dims=3))
 
-    # Loop through and place plots accordingly
-    for (row, basin) in enumerate(basins)
-        for (col, tracer) in enumerate(tracers)
-            if occursin("T", tracer)
-                rho0 = 1025
-                cp = 4000
-                multiplier = rho0*cp
-            else
-                multiplier = 1
-            end
-            key_dv = "dV_$(basin)_$(space)"
-            key = "$(tracer)_$(basin)_$(space)"  # Compose the key
-            if space == "zonal"
-                ax = Axis(fig[row, 2col-1], title=String(key))
-            else
-                ax = Axis(fig[row, col], title=String(key))
-            end
+fig = Figure(size = (1200, 800))
+ax = Axis(fig[1, 1])
+hm = heatmap!(ax, temp_data; colormap=:thermal, colorrange=(-2,35))
+Colorbar(fig[1, 2], hm, label="Temperature (°C)")
+ax = Axis(fig[1, 3])
+hm = heatmap!(ax, salt_data; colormap=:haline, colorrange=(35,37))
+Colorbar(fig[1, 4], hm, label="Salinity (g/kg)")
+ax = Axis(fig[2, 1])
+hm = heatmap!(ax, u_data; colormap=:bwr, colorrange=(-.5,.5))
+Colorbar(fig[2, 2], hm, label="u (m/s)")
+ax = Axis(fig[2, 3])
+hm = heatmap!(ax, v_data; colormap=:bwr, colorrange=(-.5,.5))
+Colorbar(fig[2, 4], hm, label="v (m/s)")
+ax = Axis(fig[3, 1])
+hm = heatmap!(ax, w_data; colormap=:bwr, colorrange=(-.001,.001))
+Colorbar(fig[3, 2], hm, label="w (m/s)")
 
-            if start_time == "last"
-                time_slice = lastindex(var[key].times)
-            else
-                time_slice = start_time:end_time
-            end
-            
-            if diagnostic == "integrate"
-                data = view(var[key].*multiplier, :, :, 1, time_slice)
-            elseif diagnostic == "average"
-                data = view(var[key], :, :, 1, time_slice)./view(var[key_dv], :, :, 1, time_slice)
-            end
+suptitle_text = @lift("Time = $($frame_idx) days, Depth = $(abs(round(depth, digits=1))) m")
 
-            if space == "tot"
-                if diagnostic == "integrate"
-                    data = interior(var[key]).*multiplier
-                elseif diagnostic == "average"
-                    data = interior(var[key])./(var[key_dv])
-                end
-            end
+Label(fig[0, 1:4], suptitle_text, fontsize = 24, tellwidth = false, halign = :center)
 
-            if space == "zonal"
-                heatmap!(ax, view(data, 1, :, :), colormap=:viridis, colorrange = (minv[col], maxv[col]))
-                Colorbar(fig[row, 2col], label="Units", width=15)
-            elseif space == "depth"
-                lines!(ax, view(data, 1, 1, :))
-            elseif space == "tot"
-                lines!(ax, view(data, 1, 1, 1, :))
-            else
-                throw(ArgumentError("space must be one of zonal, depth or total"))
-            end
-
-        end
-    end
-
-    title = string("Global 1 degree ocean simulation after ",
-                            prettytime(times[time_slice[2]] - times[time_slice[1]]))
-
-    fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice[2]] - times[time_slice[1]]))", fontsize=24)
-
-    save(dir*"$(space)_$(diagnostic)_tracer_content" * suffix *".png", fig, px_per_unit=3)
-end 
-
-OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "depth", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "integrate", space = "tot", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "average", space = "zonal", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "average", space = "depth", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-OTC_visualisation(OTC, tracers, basins; minv, maxv, diagnostic = "average", space = "tot", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-
-function masstrans_visualisation(var, tracers, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = "./", start_time = 1, end_time = 2, suffix= "")
-    fig = Figure(size = (1600, 800))
-
-    # Loop through and place plots accordingly
-    for (row, basin) in enumerate(basins)
-        for (col, tracer) in enumerate(tracers)
-            key_dv = "dV_$(tracer)_$(basin)_$(space)"
-            key = "$(tracer)_$(basin)_$(space)"  # Compose the key
-            if space == "zonal"
-                ax = Axis(fig[row, 2col-1], title=String(key))
-            else
-                ax = Axis(fig[row, col], title=String(key))
-            end
-
-            if start_time == "last"
-                time_slice = lastindex(var[key].times)
-            else
-                time_slice = start_time:end_time
-            end
-            
-            if diagnostic == "integrate"
-                data = view(var[key], :, :, 1, time_slice)
-            elseif diagnostic == "average"
-                data = view(var[key], :, :, 1, time_slice)./view(var[key_dv], :, :, 1, time_slice)
-            end
-
-            if space == "tot"
-                if diagnostic == "integrate"
-                    data = interior(var[key])
-                elseif diagnostic == "average"
-                    data = interior(var[key])./(var[key_dv])
-                end
-            end
-
-            if space == "zonal"
-                heatmap!(ax, view(data, 1, :, :), colormap=:viridis, colorrange = (minv[col], maxv[col]))
-                Colorbar(fig[row, 2col], label="Units", width=15)
-            elseif space == "depth"
-                lines!(ax, view(data, 1, 1, :))
-            elseif space == "tot"
-                lines!(ax, view(data, 1, 1, 1, :))
-            else
-                throw(ArgumentError("space must be one of zonal, depth or total"))
-            end
-
-        end
-    end
-
-    title = string("Global 1 degree ocean simulation after ",
-                            prettytime(times[time_slice[2]] - times[time_slice[1]]))
-
-    fig[0, :] = Label(fig, "Global 1° ocean simulation after $(prettytime(times[time_slice[2]] - times[time_slice[1]]))", fontsize=24)
-
-    save(dir*"$(space)_$(diagnostic)_voltrans" * suffix * ".png", fig, px_per_unit=3)
+# Record animation
+record(fig, figdir * "slice_animation_$(abs(round(depth, digits=1))).mp4", 1:694; framerate = 20) do i
+    @info i
+    frame_idx[] = i
 end
 
-masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "integrate", space = "zonal", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "integrate", space = "depth", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "integrate", space = "tot", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "average", space = "zonal", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "average", space = "depth", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
-masstrans_visualisation(masstrans, velocities, basins; minv, maxv, diagnostic = "average", space = "tot", dir = figdir, start_time = end_time-75, end_time = end_time, suffix = suffix)
+#### STANDARD DEVIATION ####
+
+T_array = Array(dropdims(T.data, dims=3))
+S_array = Array(dropdims(S.data, dims=3))
+U_array = Array(dropdims(u.data, dims=3))
+V_array = Array(dropdims(v.data, dims=3))
+W_array = Array(dropdims(w.data, dims=3))
+
+T_std = dropdims(mapslices(std, T_array; dims=3), dims=3)
+S_std = dropdims(mapslices(std, S_array; dims=3), dims=3)
+U_std = dropdims(mapslices(std, U_array; dims=3), dims=3)
+V_std = dropdims(mapslices(std, V_array; dims=3), dims=3)
+W_std = dropdims(mapslices(std, W_array; dims=3), dims=3)
+
+fig = Figure(size = (1200, 800))
+ax = Axis(fig[1, 1])
+hm = heatmap!(ax, T_std; colormap=:thermal, colorrange=(0,.5))
+Colorbar(fig[1, 2], hm, label="Temperature (°C)")
+ax = Axis(fig[1, 3])
+hm = heatmap!(ax, S_std; colormap=:haline, colorrange=(0,0.05))
+Colorbar(fig[1, 4], hm, label="Salinity (°C)")
+ax = Axis(fig[2, 1])
+hm = heatmap!(ax, U_std; colormap=:viridis, colorrange=(0,.05))
+Colorbar(fig[2, 2], hm, label="u (m/s)")
+ax = Axis(fig[2, 3])
+hm = heatmap!(ax, V_std; colormap=:viridis, colorrange=(0,.05))
+Colorbar(fig[2, 4], hm, label="v (m/s)")
+ax = Axis(fig[3, 1])
+hm = heatmap!(ax, W_std; colormap=:viridis, colorrange=(0,.0005))
+Colorbar(fig[3, 2], hm, label="w (m/s)")
+
+suptitle_text = "STD, Depth = $(abs(round(depth, digits=1))) m"
+
+Label(fig[0, 1:4], suptitle_text, fontsize = 24, tellwidth = false, halign = :center)
+
+save(figdir * "slice_std_$(abs(round(depth, digits=1))).png", fig, px_per_unit=3)
+
+# # Dimensions
+# nx, ny, nt = size(T_array)
+
+# # Compute skewness
+# T_skew = [skewness(T_array[i,j,:]) for i in 1:nx, j in 1:ny]
+
+# # Compute kurtosis
+# T_kurt = [kurtosis(T_array[i,j,:]) for i in 1:nx, j in 1:ny]
