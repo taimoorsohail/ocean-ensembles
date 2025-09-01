@@ -34,8 +34,8 @@ data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-target_time = 365days*25 # 25 years
-checkpoint_type = "last" # "none", "last", "first"
+target_time = 365days*600 # 25 years
+checkpoint_type = "none" # "none", "last", "first"
 
 ## Argument is provided by the submission script!
 
@@ -229,7 +229,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=20minutes, stop_time=60days)
+simulation = Simulation(coupled_model; Δt=30minutes, stop_time=60days)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -495,14 +495,14 @@ velocities = ocean.model.velocities
 outputs = merge(tracers, velocities)
 
 tot_integral = Symbol[]
-tot_integral_outputs = Reduction[]
+tot_integral_outputs = Field[]
 avg = Symbol[]
-avg_outputs = Reduction[]
+avg_outputs = Field[]
 
 for key in keys(outputs)
     f = outputs[key]
-    f_tot = Integral(f, dims = (1,2,3))
-    f_avg = Average(f, dims = (1,2,3))
+    f_tot = Field(Integral(f, dims = (1,2,3)))
+    f_avg = Field(Average(f, dims = (1,2,3)))
     push!(tot_integral_outputs, f_tot)
     push!(tot_integral, Symbol(key, "_totintegral"))
     push!(avg_outputs, f_avg)
@@ -530,7 +530,7 @@ for (ind, depth) in enumerate(depths)
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
                                                 schedule = TimeInterval(1days),
-                                                filename = "global_" * string(round(slice_level)) * "m_fields_onedeg_RYF_iteration" * iteration_number,
+                                                filename = "global_" * string(Integer(round(slice_level))) * "m_fields_onedeg_RYF_iteration" * iteration_number,
                                                 indices = (:, :, ind_pln),
                                                 with_halos = false,
                                                 overwrite_existing = true,
@@ -538,11 +538,11 @@ for (ind, depth) in enumerate(depths)
 
 end
 
-# @time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
-#                                             dir = output_path,
-#                                             schedule = TimeInterval(1days),
-#                                             filename = "global_tot_integrals_onedeg_RYF_iteration" * iteration_number,
-#                                             overwrite_existing = true)
+@time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
+                                            dir = output_path,
+                                            schedule = TimeInterval(1days),
+                                            filename = "global_tot_integrals_onedeg_RYF_iteration" * iteration_number,
+                                            overwrite_existing = true)
 
 
 #### CHECKPOINTING ####
@@ -654,7 +654,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
         @info "Restarting from iteration " * string(minimum(restart_numbers))
     end
 
-    simulation.Δt = 30minutes 
+    simulation.Δt = 45minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -663,7 +663,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 30minutes 
+    simulation.Δt = 45minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
