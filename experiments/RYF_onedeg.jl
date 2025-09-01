@@ -140,7 +140,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
@@ -168,7 +168,7 @@ forcing = (; S=FS)
 @info "Defining closures"
 
 eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
-catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  
+catke_closure = RiBasedVerticalDiffusivity()#ClimaOcean.OceanSimulations.default_ocean_closure()  
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4), eddy_closure)
 
 # ### Ocean simulation
@@ -260,11 +260,10 @@ callback_interval = TimeInterval(1days)
 function progress(sim)
     η = sim.model.ocean.model.free_surface.η
     u, v, w = sim.model.ocean.model.velocities
-    T, S, e = sim.model.ocean.model.tracers
+    T, S = sim.model.ocean.model.tracers
 
     Trange = (maximum((T)), minimum((T)))
     Srange = (maximum((S)), minimum((S)))
-    erange = (maximum((e)), minimum((e)))
     ηrange = (maximum((η)), minimum((η)))
 
     umax = (maximum(abs, (u)),
@@ -277,11 +276,10 @@ function progress(sim)
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
     msg3 = @sprintf("extrema(T): (%.2f, %.2f) ᵒC, ", Trange...)
     msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
-    msg5 = @sprintf("extrema(e): (%.2f, %.2f) J, ", erange...)
     msg6 = @sprintf("extrema(η): (%.2f, %.2f) m, ", ηrange...)
     msg7 = @sprintf("wall time: %s \n", prettytime(step_time))
 
-    @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7
+    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7
     
     wall_time[] = time_ns()
 
@@ -523,13 +521,11 @@ iteration_number = string(Oceananigans.iteration(simulation))
 depths = [0,-100, -500, -1000, -2000]
 
 symbols_slice = Symbol[]  # empty vector to store symbols
-symbols_cumint = Symbol[]  # empty vector to store symbols
 
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
     slice_level = abs(z_faces(ind_pln))
     push!(symbols_slice, Symbol("plane_$(abs(round(slice_level, digits=1)))m"))
-    push!(symbols_cumint, Symbol("integrated_$(abs(round(slice_level, digits=1)))m"))
 
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
@@ -542,11 +538,11 @@ for (ind, depth) in enumerate(depths)
 
 end
 
-@time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
-                                            dir = output_path,
-                                            schedule = TimeInterval(1days),
-                                            filename = "global_tot_integrals_onedeg_RYF_iteration" * iteration_number,
-                                            overwrite_existing = true)
+# @time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
+#                                             dir = output_path,
+#                                             schedule = TimeInterval(1days),
+#                                             filename = "global_tot_integrals_onedeg_RYF_iteration" * iteration_number,
+#                                             overwrite_existing = true)
 
 
 #### CHECKPOINTING ####
@@ -571,7 +567,8 @@ function save_restart(sim)
     w = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.w)),
     T = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.T)),
     S = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.S)),
-    e = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.e)),
+    h = on_architecture(CPU(), interior(sim.model.sea_ice.model.ice_thickness)),
+    ℵ = on_architecture(CPU(), interior(sim.model.sea_ice.model.ice_concentration)),
     clock = sim.model.ocean.model.clock)
 
     restartfiles = glob("checkpoint_onedeg_iteration*", output_path)
@@ -621,6 +618,8 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     u_field = fields_loaded["u"]
     v_field = fields_loaded["v"]
     w_field = fields_loaded["w"]
+    h_field = fields_loaded["h"]
+    ℵ_field = fields_loaded["ℵ"]
 
     close(fields_loaded)
 
@@ -629,21 +628,25 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     S = (S_field),
     u = (u_field),
     v = (v_field),
-    w = (w_field),
-    e = (e_field))
+    w = (w_field))
+
+    set!(sea_ice.model, 
+    h = (h_field),
+    ℵ = (ℵ_field))
 
     u, v, w = ocean.model.velocities
-    T, S, e = ocean.model.tracers
+    T, S = ocean.model.tracers
+
+    h, ℵ = sea_ice.model.ice_properties
 
     Trange = (maximum((T)), minimum((T)))
     Srange = (maximum((S)), minimum((S)))
-    erange = (maximum((e)), minimum((e)))
 
     umax = (maximum(abs, (u)),
             maximum(abs, (v)),
             maximum(abs, (w)))
 
-    @info Trange, Srange, erange, umax
+    @info Trange, Srange, umax
     
     if checkpoint_type == "last"
         @info "Restarting from iteration " * string(maximum(restart_numbers))
