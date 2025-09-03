@@ -6,15 +6,14 @@ using JLD2
 # output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
 # figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-# tot_file = "global_tot_integrals_onedeg_iteration0.jld2"
-# tot_file = "global_*33.0m_fields_onedeg_omip_iteration0.jld2"
-# tot_file = "global_*2.0m_fields_onedeg_omip_iteration0.jld2"
-# tot_file = "global_*22.0m_fields_onedeg_omip_iteration0.jld2"
-# tot_file = "global_*4.0m_fields_onedeg_omip_iteration0.jld2"
-tot_file = "global_*78.0m_fields_onedeg_omip_iteration0.jld2"
+tot_files = ["global_3m_fields_onedeg_RYF_iteration0.jld2",
+            "global_104m_fields_onedeg_RYF_iteration0.jld2",
+            "global_507m_fields_onedeg_RYF_iteration0.jld2",
+            "global_1027m_fields_onedeg_RYF_iteration0.jld2",
+            "global_2038m_fields_onedeg_RYF_iteration0.jld2"]
 
 vars = [ "T",
  "S",
@@ -27,6 +26,7 @@ function create_dict(vars, path)
     for var in vars
         try
             # Surface
+            @info var
             dicts[var] = FieldTimeSeries(path, var)
         catch e
             if e isa KeyError
@@ -40,8 +40,11 @@ function create_dict(vars, path)
 end
 
 @info "I am loading the surface" 
-slice = create_dict(vars, output_path * tot_file)
-
+slices_depth = []
+for tot_file in tot_files
+    slice = create_dict(vars, output_path * tot_file)
+    push!(slices_depth, slice)
+end
 # Assume slice["T"] is your FieldTimeSeries
 T = slice["T"]
 S = slice["S"]

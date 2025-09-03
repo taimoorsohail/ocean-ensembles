@@ -22,7 +22,7 @@ using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
 using Oceananigans.Architectures: on_architecture
 
-# using OceanEnsembles
+using OceanEnsembles
 
 using CFTime
 using Dates
@@ -35,7 +35,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 target_time = 365days*600 # 25 years
-checkpoint_type = "none" # "none", "last", "first"
+checkpoint_type = "last" # "none", "last", "first"
 
 ## Argument is provided by the submission script!
 
@@ -76,18 +76,21 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
         clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
     end
 
-    iteration = deepcopy(clock_vars["clock"].iteration)
-    time = deepcopy(clock_vars["clock"].time)
-    last_Δt = deepcopy(clock_vars["clock"].last_Δt)   
+    iteration_checkpoint = deepcopy(clock_vars["clock"].iteration)
+    time_checkpoint = deepcopy(clock_vars["clock"].time)
+    last_Δt_checkpoint = deepcopy(clock_vars["clock"].last_Δt)   
 
-    @info "Moving simulation to " * string(iteration) * " iterations"
-    @info "Moving simulation to " * string(prettytime(time))
-    @info "Moving simulation last_dt to " * string(last_Δt)
+    @info "Moving simulation to " * string(iteration_checkpoint) * " iterations"
+    @info "Moving simulation to " * string(prettytime(time_checkpoint))
+    @info "Moving simulation last_dt to " * string(last_Δt_checkpoint)
 
     close(clock_vars)
+else
+    @info "No valid checkpoint found. Starting from scratch."
+    time_checkpoint = 0.0
 end
 
-if time == target_time
+if time_checkpoint == target_time
     error("Terminating simulation at target time.")
 end
 
@@ -168,7 +171,7 @@ forcing = (; S=FS)
 @info "Defining closures"
 
 eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
-catke_closure = RiBasedVerticalDiffusivity()#ClimaOcean.OceanSimulations.default_ocean_closure()  
+catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4), eddy_closure)
 
 # ### Ocean simulation
@@ -229,22 +232,22 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=30minutes, stop_time=60days)
+simulation = Simulation(coupled_model; Δt=20minutes, stop_time=60days)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
-    simulation.model.ocean.model.clock.iteration = iteration
-    simulation.model.ocean.model.clock.time = time
-    simulation.model.sea_ice.model.clock.iteration = iteration
-    simulation.model.sea_ice.model.clock.time = time
-    simulation.model.atmosphere.clock.iteration = iteration
-    simulation.model.atmosphere.clock.time = time
-    simulation.model.clock.iteration = iteration
-    simulation.model.clock.time = time
+    simulation.model.ocean.model.clock.iteration = iteration_checkpoint
+    simulation.model.ocean.model.clock.time = time_checkpoint
+    simulation.model.sea_ice.model.clock.iteration = iteration_checkpoint
+    simulation.model.sea_ice.model.clock.time = time_checkpoint
+    simulation.model.atmosphere.clock.iteration = iteration_checkpoint
+    simulation.model.atmosphere.clock.time = time_checkpoint
+    simulation.model.clock.iteration = iteration_checkpoint
+    simulation.model.clock.time = time_checkpoint
     time_step!(atmosphere, 0)
     simulation.model.atmosphere.clock.iteration -= 1
-    simulation.model.ocean.model.clock.last_Δt = last_Δt
-    simulation.model.sea_ice.model.clock.last_Δt = last_Δt
+    simulation.model.ocean.model.clock.last_Δt = last_Δt_checkpoint
+    simulation.model.sea_ice.model.clock.last_Δt = last_Δt_checkpoint
 end
 
 # ### A progress messenger
@@ -287,7 +290,7 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-checkpoint_intervals = TimeInterval(73days)
+checkpoint_intervals = TimeInterval(1days)
 
 # #### REGRIDDING ####
 
@@ -562,13 +565,22 @@ function save_restart(sim)
     @info @sprintf("Saving checkpoint file")
 
     jldsave(output_path * "checkpoint_onedeg_iteration" * string(sim.model.clock.iteration) * ".jld2";
-    u = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.u)),
-    v = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.v)),
-    w = on_architecture(CPU(), interior(sim.model.ocean.model.velocities.w)),
-    T = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.T)),
-    S = on_architecture(CPU(), interior(sim.model.ocean.model.tracers.S)),
-    h = on_architecture(CPU(), interior(sim.model.sea_ice.model.ice_thickness)),
-    ℵ = on_architecture(CPU(), interior(sim.model.sea_ice.model.ice_concentration)),
+    u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),
+    v = on_architecture(CPU(), (sim.model.ocean.model.velocities.v)),
+    w = on_architecture(CPU(), (sim.model.ocean.model.velocities.w)),
+    T = on_architecture(CPU(), (sim.model.ocean.model.tracers.T)),
+    S = on_architecture(CPU(), (sim.model.ocean.model.tracers.S)),
+
+    h = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thickness)),
+    ℵ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_concentration)),
+    σ₁₁ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₁)),
+    σ₂₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₂₂)),
+    σ₁₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₂)),
+    Tu = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.top_surface_temperature)),
+    Gʰ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.thermodynamic_tendency)),
+    u_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.u)),
+    v_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.v)),
+
     clock = sim.model.ocean.model.clock)
 
     restartfiles = glob("checkpoint_onedeg_iteration*", output_path)
@@ -614,12 +626,19 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
 
     T_field = fields_loaded["T"]
     S_field = fields_loaded["S"]
-    e_field = fields_loaded["e"]
     u_field = fields_loaded["u"]
     v_field = fields_loaded["v"]
     w_field = fields_loaded["w"]
+
     h_field = fields_loaded["h"]
     ℵ_field = fields_loaded["ℵ"]
+    σ₁₁_field =  fields_loaded["σ₁₁"]
+    σ₂₂_field =  fields_loaded["σ₂₂"]
+    σ₁₂_field =  fields_loaded["σ₁₂"]
+    Tu_field = fields_loaded["Tu"]
+    Gʰ_field = fields_loaded["Gʰ"]
+    u_ice_field = fields_loaded["u_ice"]
+    v_ice_field = fields_loaded["v_ice"]
 
     close(fields_loaded)
 
@@ -633,20 +652,14 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     set!(sea_ice.model, 
     h = (h_field),
     ℵ = (ℵ_field))
-
-    u, v, w = ocean.model.velocities
-    T, S = ocean.model.tracers
-
-    h, ℵ = sea_ice.model.ice_properties
-
-    Trange = (maximum((T)), minimum((T)))
-    Srange = (maximum((S)), minimum((S)))
-
-    umax = (maximum(abs, (u)),
-            maximum(abs, (v)),
-            maximum(abs, (w)))
-
-    @info Trange, Srange, umax
+    
+    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₁, σ₁₁_field)
+    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₂₂, σ₂₂_field)
+    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₂, σ₁₂_field)
+    set!(sea_ice.model.ice_thermodynamics.top_surface_temperature, Tu_field)
+    set!(sea_ice.model.ice_thermodynamics.thermodynamic_tendency, Gʰ_field)
+    set!(sea_ice.model.velocities.u, u_ice_field)
+    set!(sea_ice.model.velocities.v, v_ice_field)
     
     if checkpoint_type == "last"
         @info "Restarting from iteration " * string(maximum(restart_numbers))
@@ -654,7 +667,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
         @info "Restarting from iteration " * string(minimum(restart_numbers))
     end
 
-    simulation.Δt = 45minutes 
+    simulation.Δt = 30minutes
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -663,7 +676,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 45minutes 
+    simulation.Δt = 30minutes 
     simulation.stop_time = target_time
 
     run!(simulation)

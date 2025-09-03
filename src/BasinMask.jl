@@ -1,7 +1,7 @@
 module BasinMask
 
 using ClimaOcean
-# using CUDA: @allowscalar
+using CUDA: @allowscalar
 using Oceananigans
 using Oceananigans.Fields: instantiate, location
 using PolygonOps
