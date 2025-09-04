@@ -290,7 +290,7 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-checkpoint_intervals = TimeInterval(2days)
+checkpoint_intervals(73days)
 
 # #### REGRIDDING ####
 
