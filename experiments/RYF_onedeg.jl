@@ -145,7 +145,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
                                   minimum_depth = 15,
                                   interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
-# view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
+view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
 @info "Defining grid"
 
@@ -290,7 +290,7 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-checkpoint_intervals = TimeInterval(1days)
+checkpoint_intervals = TimeInterval(2days)
 
 # #### REGRIDDING ####
 
@@ -570,6 +570,10 @@ function save_restart(sim)
     w = on_architecture(CPU(), (sim.model.ocean.model.velocities.w)),
     T = on_architecture(CPU(), (sim.model.ocean.model.tracers.T)),
     S = on_architecture(CPU(), (sim.model.ocean.model.tracers.S)),
+    e = on_architecture(CPU(), (sim.model.ocean.model.tracers.e)),
+    η = on_architecture(CPU(), (sim.model.ocean.model.free_surface.η)),
+    U = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.U)),
+    V = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.V)),
 
     h = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thickness)),
     ℵ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_concentration)),
@@ -626,9 +630,13 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
 
     T_field = fields_loaded["T"]
     S_field = fields_loaded["S"]
+    e_field = fields_loaded["e"]
     u_field = fields_loaded["u"]
     v_field = fields_loaded["v"]
     w_field = fields_loaded["w"]
+    η_field = fields_loaded["η"]
+    U_field = fields_loaded["U"]
+    V_field = fields_loaded["V"]
 
     h_field = fields_loaded["h"]
     ℵ_field = fields_loaded["ℵ"]
@@ -645,10 +653,16 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     set!(ocean.model, 
     T = (T_field),
     S = (S_field),
+    e = (e_field),
     u = (u_field),
     v = (v_field),
-    w = (w_field))
+    w = (w_field),
+    η = (η_field))
 
+    set!(ocean.model.free_surface.barotropic_velocities,
+    U = (U_field),
+    V = (V_field))
+    
     set!(sea_ice.model, 
     h = (h_field),
     ℵ = (ℵ_field))
@@ -661,13 +675,9 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     set!(sea_ice.model.velocities.u, u_ice_field)
     set!(sea_ice.model.velocities.v, v_ice_field)
     
-    if checkpoint_type == "last"
-        @info "Restarting from iteration " * string(maximum(restart_numbers))
-    elseif checkpoint_type == "first"
-        @info "Restarting from iteration " * string(minimum(restart_numbers))
-    end
+    @info "Running simulation"
 
-    simulation.Δt = 30minutes
+    simulation.Δt = 20minutes
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -676,7 +686,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 30minutes 
+    simulation.Δt = 20minutes 
     simulation.stop_time = target_time
 
     run!(simulation)

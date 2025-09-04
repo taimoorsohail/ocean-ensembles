@@ -14,6 +14,7 @@ NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 OceanEnsembles = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+ProfileCanvas = "efd6af41-a80b-495e-886c-e51b0c7d77a3"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
