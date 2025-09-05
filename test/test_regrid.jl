@@ -1,6 +1,12 @@
 
-using GLMakie 
+using CairoMakie 
 using Dates
+
+using MPI
+using CUDA
+
+MPI.Init()
+atexit(MPI.Finalize)  
 
 using OceanEnsembles
 using Oceananigans
@@ -30,7 +36,7 @@ underlying_source_grid = TripolarGrid(arch;
 
 @info "Interpolating bottom bathymetry"
 
-data_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles/data/")
+data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 
 ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
 ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
@@ -113,16 +119,5 @@ Colorbar(fig1[2,2], label = "Weight", vertical=true, colorrange=(minimum(sum(W_b
 heatmap!(ax5, collect(interior(dst_bilin))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(dst_bilin), maximum(dst_bilin)))
 Colorbar(fig1[2,4], label = "Tracer", vertical=true, colorrange=(minimum(dst_bilin), maximum(dst_bilin)))
 
+
 display(fig1)
-
-# fig = Figure()
-# ax1 = Axis(fig[1, 1], title="Source Areas", xlabel="Point #", ylabel="Area")
-# ax2 = Axis(fig[3, 1], title="Dest. Areas", xlabel="Point #", ylabel="Area")
-
-# heatmap!(ax1, reshape(row_sums, 360,180), colormap=:viridis, colorrange=(0, maximum(row_sums)))
-# Colorbar(fig[2,1], label = "Source Temperature", vertical=false, colorrange=(0, maximum(row_sums)))
-
-# heatmap!(ax2, (reshape(W_sums, 360,180))  , colorrange=(0, maximum(W_sums)))
-# Colorbar(fig[4,1], label = "Dest. Temperature", vertical=false, colorrange=(0, maximum(W_sums)))
-
-# display(fig)

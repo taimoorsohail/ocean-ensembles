@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -P v46
 #PBS -q gpuvolta
-#PBS -l walltime=6:00:00
+#PBS -l walltime=12:00:00
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
