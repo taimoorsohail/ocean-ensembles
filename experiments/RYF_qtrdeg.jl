@@ -241,7 +241,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=90, stop_time=10days)
+simulation = Simulation(coupled_model; Δt=90, stop_time=20days)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -485,7 +485,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     
     @info "Running simulation"
 
-    simulation.Δt = 20minutes
+    simulation.Δt = 15minutes
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -494,7 +494,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 20minutes 
+    simulation.Δt = 15minutes 
     simulation.stop_time = target_time
 
     run!(simulation)

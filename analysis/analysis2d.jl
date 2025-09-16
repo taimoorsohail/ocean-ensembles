@@ -2,6 +2,7 @@ using CairoMakie
 using Oceananigans  # From local
 using Statistics
 using JLD2
+using Glob
 
 # output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
 # figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
@@ -9,11 +10,19 @@ using JLD2
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-tot_files = ["global_3m_fields_onedeg_RYF_iteration0.jld2",
-            "global_104m_fields_onedeg_RYF_iteration0.jld2",
-            "global_507m_fields_onedeg_RYF_iteration0.jld2",
-            "global_1027m_fields_onedeg_RYF_iteration0.jld2",
-            "global_2038m_fields_onedeg_RYF_iteration0.jld2"]
+# Example: get all matching files in a folder
+files = glob("global_*_RYF_iteration*.jld2", output_path)
+
+# --- Extract depth levels (numbers before 'm') ---
+depth_levels = [parse(Int, match(r"global_(\d+)m", f).captures[1]) 
+                for f in files if occursin(r"global_\d+m", f)]
+unique_depth_levels = sort(unique(depth_levels))
+
+# --- Extract iteration numbers ---
+iterations = [parse(Int, match(r"iteration(\d+)", f).captures[1]) 
+              for f in files if occursin(r"iteration\d+", f)]
+unique_iterations = sort(unique(iterations))
+
 
 vars = [ "T",
  "S",
@@ -38,6 +47,76 @@ function create_dict(vars, path)
     end
     return dicts
 end
+
+slices_depth_iter = []
+
+depth = 3
+# for depth in unique_resolutions   # ← your depth list
+    # one dict per var for this depth, keyed by time
+    merged_fields = []
+    merged_times = []
+    for iteration in unique_iterations
+        pattern = "global_$(depth)m_*iteration$(iteration).jld2"
+        matching_files = glob(pattern, output_path)
+
+        if isempty(matching_files)
+            @warn "No files found for depth: $depth m, iteration: $iteration"
+            continue
+        end
+
+        @info "Processing depth: $depth m, iteration: $iteration"
+        slice = create_dict(vars, matching_files[1])
+
+        for var in vars
+            grid[var] = slice[var].grid
+            if haskey(slice, var)
+                ft = slice[var]
+                for (tind, t) in enumerate(ft.times)   # assuming FieldTimeSeries is iterable
+                    merged[var][t] = ft[tind]   # overwrite if t already exists
+                end
+            end
+        end
+    end
+    
+    avg_val = Dict()
+    time_avg = Dict()
+
+    for var in vars
+        time_avg[var] = keys(merged[var])
+        for i in enumerate(time_avg[var])
+            avg_val[var] = Average(collect(values(merged[var]))[i[1]])
+        end
+    end
+
+#     # Convert back into time series objects (sorted by time)
+#     depth_dict = Dict{String, Any}()
+#     for var in vars
+#         times = sort(collect(keys(merged[var])))
+#         fields = [merged[var][t] for t in times]
+#         depth_dict[var] = (times, fields)   # or wrap back into FieldTimeSeries if needed
+#     end
+
+#     push!(slices_depth_iter, depth_dict)
+# # end
+
+# for depth in unique_depth_levels
+#     slices_iter = []
+#     for iteration in unique_iterations
+#         pattern = "global_$(depth)m_*iteration$(iteration).jld2"
+#         matching_files = glob(pattern, output_path)
+#         if !isempty(matching_files)
+#             @info "Processing depth: $depth m, iteration: $iteration"
+#             slice = create_dict(vars, matching_files[1])
+#             push!(slices_iter, slice)
+#         else
+#             @warn "No files found for depth: $depth m, iteration: $iteration"
+#         end
+    
+#     end
+#     push!(slices_depth_iter, slices_iter)
+# end
+
+#=
 
 @info "I am loading the surface" 
 slices_depth = []
@@ -134,3 +213,4 @@ save(figdir * "slice_std_$(abs(round(depth, digits=1))).png", fig, px_per_unit=3
 
 # # Compute kurtosis
 # T_kurt = [kurtosis(T_array[i,j,:]) for i in 1:nx, j in 1:ny]
+=#
