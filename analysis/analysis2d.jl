@@ -10,8 +10,9 @@ using Glob
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
+resolution = "onedeg"
 # Example: get all matching files in a folder
-files = glob("global_*_RYF_iteration*.jld2", output_path)
+files = glob("global_*$(resolution)_RYF_iteration*.jld2", output_path)
 
 # --- Extract depth levels (numbers before 'm') ---
 depth_levels = [parse(Int, match(r"global_(\d+)m", f).captures[1]) 
@@ -48,13 +49,11 @@ function create_dict(vars, path)
     return dicts
 end
 
-slices_depth_iter = []
+avg_val = Dict(var => Dict() for var in vars)
 
-depth = 3
-# for depth in unique_resolutions   # ← your depth list
+for depth in unique_depth_levels   # ← your depth list
     # one dict per var for this depth, keyed by time
-    merged_fields = []
-    merged_times = []
+    merged = Dict(var => Dict() for var in vars)  # time => field
     for iteration in unique_iterations
         pattern = "global_$(depth)m_*iteration$(iteration).jld2"
         matching_files = glob(pattern, output_path)
@@ -66,9 +65,7 @@ depth = 3
 
         @info "Processing depth: $depth m, iteration: $iteration"
         slice = create_dict(vars, matching_files[1])
-
         for var in vars
-            grid[var] = slice[var].grid
             if haskey(slice, var)
                 ft = slice[var]
                 for (tind, t) in enumerate(ft.times)   # assuming FieldTimeSeries is iterable
@@ -78,15 +75,68 @@ depth = 3
         end
     end
     
-    avg_val = Dict()
-    time_avg = Dict()
 
-    for var in vars
-        time_avg[var] = keys(merged[var])
-        for i in enumerate(time_avg[var])
-            avg_val[var] = Average(collect(values(merged[var]))[i[1]])
+    var = "T"
+    # for var in vars
+    #     @show var
+    # Get sorted times
+
+    sorted_times = sort(collect(keys(merged[var])))
+
+    # Preallocate the list if you want (optional)
+    nested_list = Vector{Float64}(undef, length(sorted_times))
+
+        for (i, t) in enumerate(sorted_times)
+            @show i
+            field = merged[var][t]
+            avg_field = Average(field)
+            nested_list[i] = Field(avg_field)[1,1,1]
+            @show (avg_field)
         end
-    end
+
+    avg_val[var][depth] = nested_list
+end
+    # end
+    sorted_years = sorted_times ./ (3600 * 24 * 365)
+    
+    fig = Figure(size = (1200, 800))
+    # 1. Temperature
+    ax1 = Axis(fig[1, 1:3], title = "Temperature", xlabel = "Year", ylabel = "Average Temperature (°C)")
+    lines!(ax1, sorted_years, avg_val["T"]["3m"])
+    # lines!(ax1, time_year2, filter(!isnan,T_avg2), label = "No Checkpoint")
+    xlims!(ax1, 0, maximum(sorted_years)  )
+    ylims!(ax1, minimum(avg_val["T"]), maximum(avg_val["T"]))
+
+    save(figdir * "average_slice_vars_$(resolution).png", fig, px_per_unit=3)
+
+    # # 2. Salinity
+    # ax2 = Axis(fig[1, 4:6], title = "Salinity", xlabel = "Year", ylabel = "Average Salinity (psu)")
+    # lines!(ax2, time_year, filter(!isnan,S_avg), label = "Checkpoint")
+    # # lines!(ax2, time_year2, filter(!isnan,S_avg2), label = "No Checkpoint")
+    # xlims!(ax2, 0, maximum(time_year))
+    # ylims!(ax2, minimum(S_avg), maximum(S_avg))
+
+    # # 3. U velocity
+    # ax3 = Axis(fig[2, 1:2], title = "U velocity", xlabel = "Year", ylabel = "Average U (m/s)")
+    # lines!(ax3, time_year, filter(!isnan,u_avg), label = "Checkpoint")
+    # # lines!(ax3, time_year2, filter(!isnan,u_avg2), label = "No Checkpoint")
+    # xlims!(ax3, 0, maximum(time_year))
+    # ylims!(ax3, minimum(u_avg), maximum(u_avg))
+
+    # # 4. V velocity
+    # ax4 = Axis(fig[2, 3:4], title = "V velocity", xlabel = "Year", ylabel = "Average V (m/s)")
+    # lines!(ax4, time_year, filter(!isnan,v_avg), label = "Checkpoint")
+    # # lines!(ax4, time_year2, filter(!isnan,v_avg2), label = "No Checkpoint")
+    # xlims!(ax4, 0, maximum(time_year))
+    # ylims!(ax4, minimum(v_avg), maximum(v_avg))
+
+    # # 5. W velocity
+    # ax5 = Axis(fig[2, 5:6], title = "W velocity", xlabel = "Year", ylabel = "Average W (m/s)")
+    # lines!(ax5, time_year, filter(!isnan,w_avg), label = "Checkpoint")
+    # # lines!(ax5, time_year2, filter(!isnan,w_avg2), label = "No Checkpoint")
+    # xlims!(ax5, 0, maximum(time_year))
+    # ylims!(ax5, minimum(w_avg), maximum(w_avg))
+
 
 #     # Convert back into time series objects (sorted by time)
 #     depth_dict = Dict{String, Any}()

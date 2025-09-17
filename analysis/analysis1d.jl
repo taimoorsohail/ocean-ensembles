@@ -7,8 +7,10 @@ using Glob
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
+resolution = "qtrdeg"
+
 # Example: get all matching files in a folder
-files = glob("global_tot*_RYF_iteration*.jld2", output_path)
+files = glob("global_tot*$(resolution)_RYF_iteration*.jld2", output_path)
 
 # --- Extract iteration numbers ---
 iterations = [parse(Int, match(r"iteration(\d+)", f).captures[1]) 
@@ -18,7 +20,7 @@ unique_iterations = sort(unique(iterations))
 tot_files = []
 
 for iteration in unique_iterations
-    pattern = "global_tot_integrals_onedeg_RYF_iteration$(iteration).jld2"
+    pattern = "global_tot_integrals_$(resolution)_RYF_iteration$(iteration).jld2"
     matching_files = glob(pattern, output_path)
     if !isempty(matching_files)
         push!(tot_files, matching_files[1])
@@ -164,7 +166,7 @@ ylims!(ax5, minimum(w_avg), maximum(w_avg))
 
 Legend(fig[1, 1], ax1)
 
-save(figdir * "average_global_vars.png", fig, px_per_unit=3)
+save(figdir * "average_global_vars_$(resolution).png", fig, px_per_unit=3)
 
 fig = Figure(size = (1200, 800))
 # 1. Temperature
@@ -204,4 +206,4 @@ ylims!(ax5, minimum(w_int), maximum(w_int))
 
 Legend(fig[1, 1], ax1)
 
-save(figdir * "int_global_vars.png", fig, px_per_unit=3)
+save(figdir * "int_global_vars_$(resolution).png", fig, px_per_unit=3)
