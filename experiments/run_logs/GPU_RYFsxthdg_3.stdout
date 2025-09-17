@@ -1,6 +1,0 @@
-]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia177.688158 seconds (157.50 M allocations: 22.738 GiB, 3.37% gc time, 24.00% compilation time: <1% of which was recompilation)
-177.983877 seconds (123.09 M allocations: 10.864 GiB, 1.87% gc time, 10.42% compilation time: 2% of which was recompilation)
-177.984664 seconds (124.44 M allocations: 10.954 GiB, 1.87% gc time, 11.01% compilation time: 2% of which was recompilation)
- 41.079825 seconds (6.04 M allocations: 4.025 GiB, 72.79% gc time, 16.29% compilation time)
- 43.639169 seconds (6.37 M allocations: 10.585 GiB, 67.55% gc time, 23.00% compilation time)
- 47.746542 seconds (5.00 M allocations: 11.202 GiB, 67.27% gc time, 11.34% compilation time)

@@ -1,23 +1,23 @@
 #!/bin/bash
 #PBS -P v46
-#PBS -q gpuvolta
-#PBS -l walltime=12:00:00
+#PBS -q dgxa100
+#PBS -l walltime=6:00:00
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
-#PBS -l ncpus=12 
+#PBS -l ncpus=16 
 #PBS -l ngpus=1
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_RYF1dg
+#PBS -N GPU_RYF1_10dg
 
 # Output logs
-#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1dg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1dg.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_10dg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_10dg.e
 
 # === Setup resubmission ===
-script_name='1deg_GPU_submit.sh'
+script_name='1_10deg_GPU_submit.sh'
 
 # Set default values of count and max
 if [ -z $count ]; then
@@ -31,12 +31,12 @@ fi
 # Log submission counters
 echo "Run $count of $max"
 
-target=$((count * 8))  
+target=$((count * 4))  
 
 julia --project \
-  ../RYF_onedeg.jl --arch GPU --stop_time $target\
-  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1dg_$count.stdout \
-  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1dg_$count.stderr
+  ../RYF_tntdeg.jl --arch GPU --stop_time $target\
+  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_10dg_$count.stdout \
+  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_10dg_$count.stderr
 
 
 ((count++))

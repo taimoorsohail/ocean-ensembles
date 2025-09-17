@@ -71,19 +71,19 @@ end
 
 @info "Using architecture: " * string(arch)
 
-restartfiles = glob("checkpoint_qtrdeg_iteration*", output_path)
+restartfiles = glob("checkpoint_tntdeg_iteration*", output_path)
 
 # Extract the numeric suffix from each filename
-restart_numbers = map(f -> parse(Int, match(r"checkpoint_qtrdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+restart_numbers = map(f -> parse(Int, match(r"checkpoint_tntdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
 
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     # Extract the numeric suffix from each filename
 
     # Get the file with the maximum number
     if checkpoint_type == "last"
-        clock_vars = jldopen(output_path * "checkpoint_qtrdeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
+        clock_vars = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
     elseif checkpoint_type == "first"
-        clock_vars = jldopen(output_path * "checkpoint_qtrdeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
+        clock_vars = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
     end
 
     iteration_checkpoint = deepcopy(clock_vars["clock"].iteration)
@@ -125,8 +125,8 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360*4)
-Ny = Integer(180*4)
+Nx = Integer(360*10)
+Ny = Integer(180*10)
 Nz = Integer(75)
 
 @info "Defining vertical z faces"
@@ -180,8 +180,14 @@ forcing = (; S=FS)
 
 @info "Defining closures"
 
-catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()
-closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
+using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, CATKEMixingLength, CATKEEquation
+
+mixing_length = CATKEMixingLength(Cᵇ=0.01)
+turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
+
+catke_closure = CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation) 
+closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-5))
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -241,7 +247,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=90, stop_time=20days)
+simulation = Simulation(coupled_model; Δt=20, stop_time=60days)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -341,7 +347,7 @@ for (ind, depth) in enumerate(depths)
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
                                                 schedule = TimeInterval(31days),
-                                                filename = "global_" * string(Integer(round(slice_level))) * "m_fields_qtrdeg_RYF_iteration" * iteration_number,
+                                                filename = "global_" * string(Integer(round(slice_level))) * "m_fields_tntdeg_RYF_iteration" * iteration_number,
                                                 indices = (:, :, ind_pln),
                                                 with_halos = false,
                                                 overwrite_existing = true,
@@ -352,27 +358,15 @@ end
 @time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
                                             dir = output_path,
                                             schedule = TimeInterval(1days),
-                                            filename = "global_tot_integrals_qtrdeg_RYF_iteration" * iteration_number,
+                                            filename = "global_tot_integrals_tntdeg_RYF_iteration" * iteration_number,
                                             overwrite_existing = true)
-
-
-#### CHECKPOINTING ####
-# if checkpoint_type != "none"
-#     @info "Removing all checkpoints"
-#     for f in restartfiles
-#         if isfile(f)
-#             @info "Removing old restart file: $f"
-#             rm(f; force = true)
-#         end
-#     end
-# end
 
 @info "Saving restart"
 
 function save_restart(sim)
     @info @sprintf("Saving checkpoint file")
 
-    jldsave(output_path * "checkpoint_qtrdeg_iteration" * string(sim.model.clock.iteration) * ".jld2";
+    jldsave(output_path * "checkpoint_tntdeg_iteration" * string(sim.model.clock.iteration) * ".jld2";
     u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),
     v = on_architecture(CPU(), (sim.model.ocean.model.velocities.v)),
     w = on_architecture(CPU(), (sim.model.ocean.model.velocities.w)),
@@ -395,10 +389,10 @@ function save_restart(sim)
 
     clock = sim.model.ocean.model.clock)
 
-    restartfiles = glob("checkpoint_qtrdeg_iteration*", output_path)
+    restartfiles = glob("checkpoint_tntdeg_iteration*", output_path)
 
     # Extract the numeric suffix from each filename
-    restart_numbers = map(f -> parse(Int, match(r"checkpoint_qtrdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+    restart_numbers = map(f -> parse(Int, match(r"checkpoint_tntdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
 
     sorted_restart_numbers = sort(unique(restart_numbers))
 
@@ -415,7 +409,7 @@ function save_restart(sim)
     # Loop through and remove all older files for this rank
     for number in sorted_restart_numbers
         if number ∉ keep
-            filename = output_path * "checkpoint_qtrdeg_iteration$(number).jld2"
+            filename = output_path * "checkpoint_tntdeg_iteration$(number).jld2"
             if isfile(filename)
                 @info "Removing old restart file: $filename"
                 rm(filename; force = true)
@@ -430,10 +424,10 @@ add_callback!(simulation, save_restart, checkpoint_intervals)
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     if checkpoint_type == "last"
         @info "Restarting from last checkpoint at iteration " * string(maximum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_qtrdeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
+        fields_loaded = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
     elseif checkpoint_type == "first"
         @info "Restarting from first checkpoint at iteration " * string(minimum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_qtrdeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
+        fields_loaded = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
     end
 
     T_field = fields_loaded["T"]
@@ -485,7 +479,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     
     @info "Running simulation"
 
-    simulation.Δt = 15minutes
+    simulation.Δt = 6minutes
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -494,7 +488,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 15minutes 
+    simulation.Δt = 6minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -600,7 +594,7 @@ end
 #     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, conservative_tuple;
 #                                                 dir = output_path,
 #                                                 schedule = TimeInterval(1days),
-#                                                 filename = "global_*" * string(round(pln)) * "m_fields_qtrdeg_iteration" * iteration_number,
+#                                                 filename = "global_*" * string(round(pln)) * "m_fields_tntdeg_iteration" * iteration_number,
 #                                                 indices = (:, :, ind_pln),
 #                                                 with_halos = false,
 #                                                 overwrite_existing = true,
@@ -609,7 +603,7 @@ end
 #     @time simulation.output_writers[symbols_cumint[ind]] = JLD2Writer(ocean.model, vertical_integral_tuple;
 #                                                 dir = output_path,
 #                                                 schedule = TimeInterval(1days),
-#                                                 filename = "global_*" * string(round(pln)) * "m_integral_qtrdeg_iteration" * iteration_number,
+#                                                 filename = "global_*" * string(round(pln)) * "m_integral_tntdeg_iteration" * iteration_number,
 #                                                 overwrite_existing = true)
                                             
 #     end
@@ -617,7 +611,7 @@ end
 # @time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
 #                                             dir = output_path,
 #                                             schedule = TimeInterval(1days),
-#                                             filename = "global_tot_integrals_qtrdeg_iteration" * iteration_number,
+#                                             filename = "global_tot_integrals_tntdeg_iteration" * iteration_number,
 #                                             overwrite_existing = true)
 
 
@@ -690,7 +684,7 @@ end
 # @time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
 #                                                           dir = output_path,
 #                                                           schedule = TimeInterval(1days),
-#                                                           filename = "mass_transport_qtrdeg_iteration" * iteration_number,
+#                                                           filename = "mass_transport_tntdeg_iteration" * iteration_number,
 #                                                           overwrite_existing = true)
 
 
@@ -698,5 +692,5 @@ end
 # @time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
 #                                                           dir = output_path,
 #                                                           schedule = TimeInterval(1days),
-#                                                           filename = "ocean_tracer_content_qtrdeg_iteration" * iteration_number,
+#                                                           filename = "ocean_tracer_content_tntdeg_iteration" * iteration_number,
 #                                                           overwrite_existing = true)

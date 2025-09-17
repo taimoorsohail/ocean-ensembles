@@ -34,7 +34,18 @@ data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-target_time = 365days*600 # 25 years
+checkpoint_timer = 365days
+checkpoint_intervals = TimeInterval(checkpoint_timer)
+
+
+if isempty(ARGS)
+    println("No target time provided. Please enter target time:")
+    target_time_input = readline()
+    target_time = parse(Int, target_time_input) * checkpoint_timer
+else
+    target_time = checkpoint_timer*parse(Int,ARGS[4])
+end
+@info target_time
 checkpoint_type = "last" # "none", "last", "first"
 
 ## Argument is provided by the submission script!
@@ -143,7 +154,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
@@ -290,7 +301,6 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, callback_interval)
-checkpoint_intervals(73days)
 
 # #### REGRIDDING ####
 
@@ -532,7 +542,7 @@ for (ind, depth) in enumerate(depths)
 
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
-                                                schedule = TimeInterval(1days),
+                                                schedule = TimeInterval(31days),
                                                 filename = "global_" * string(Integer(round(slice_level))) * "m_fields_onedeg_RYF_iteration" * iteration_number,
                                                 indices = (:, :, ind_pln),
                                                 with_halos = false,
@@ -594,14 +604,14 @@ function save_restart(sim)
 
     sorted_restart_numbers = sort(unique(restart_numbers))
 
-    # Keep only the last 3 iteration numbers
-    if length(sorted_restart_numbers) < 3
+    # Keep only the last 50 iteration numbers
+    if length(sorted_restart_numbers) < 50
         keep = sorted_restart_numbers
     else
-        # Keep the last 3 iterations
-        @info "Keeping last 3 restart files: " * string(sorted_restart_numbers[end-2:end])
+        # Keep the last 50 iterations
+        @info "Keeping last 50 restart files: " * string(sorted_restart_numbers[end-49:end])
         @info "Removing older restart files"
-        keep = sorted_restart_numbers[end-2:end]
+        keep = sorted_restart_numbers[end-49:end]
     end
     
     # Loop through and remove all older files for this rank
