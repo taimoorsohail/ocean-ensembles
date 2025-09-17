@@ -31,7 +31,7 @@ fi
 # Log submission counters
 echo "Run $count of $max"
 
-target=$((count * 8))  
+target=$((count * 7))  
 
 julia --project \
   ../RYF_onedeg.jl --arch GPU --stop_time $target\

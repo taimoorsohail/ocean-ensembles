@@ -15,4 +15,4 @@
 #PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/analysis_2d.o
 #PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/analysis_2d.e
 
-julia --project ../../analysis/analysis_2d.jl > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/analysis_2d.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/analysis_2d.stderr
+julia --project ../../analysis/analysis2d.jl > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/analysis_2d.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/analysis_2d.stderr
