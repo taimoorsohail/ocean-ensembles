@@ -51,7 +51,8 @@ end
 
 avg_val = Dict(var => Dict() for var in vars)
 
-for depth in unique_depth_levels   # ← your depth list
+depth = 3
+# for depth in unique_depth_levels   # ← your depth list
     # one dict per var for this depth, keyed by time
     merged = Dict(var => Dict() for var in vars)  # time => field
     for iteration in unique_iterations
@@ -82,30 +83,30 @@ for depth in unique_depth_levels   # ← your depth list
     # Get sorted times
 
     sorted_times = sort(collect(keys(merged[var])))
-
+    preallocated_field = Field{Center, Center, Nothing}(merged[var][sorted_times[1]].grid)
     # Preallocate the list if you want (optional)
     nested_list = Vector{Float64}(undef, length(sorted_times))
 
         for (i, t) in enumerate(sorted_times)
             @show i
             field = merged[var][t]
-            avg_field = Average(field)
-            nested_list[i] = Field(avg_field)[1,1,1]
-            @show (avg_field)
+            interior(preallocated_field) .= field.data  # Copy data to preallocated field
+            avg_field = Average(preallocated_field, dims = (1,2))
+            @time nested_list[i] = Field(avg_field)[1,1,1]
         end
 
     avg_val[var][depth] = nested_list
-end
+# end
     # end
     sorted_years = sorted_times ./ (3600 * 24 * 365)
     
     fig = Figure(size = (1200, 800))
     # 1. Temperature
     ax1 = Axis(fig[1, 1:3], title = "Temperature", xlabel = "Year", ylabel = "Average Temperature (°C)")
-    lines!(ax1, sorted_years, avg_val["T"]["3m"])
+    lines!(ax1, sorted_years, avg_val["T"][3])
     # lines!(ax1, time_year2, filter(!isnan,T_avg2), label = "No Checkpoint")
-    xlims!(ax1, 0, maximum(sorted_years)  )
-    ylims!(ax1, minimum(avg_val["T"]), maximum(avg_val["T"]))
+    xlims!(ax1, 0, maximum(sorted_years))
+    ylims!(ax1, minimum(avg_val["T"][3]), maximum(avg_val["T"][3]))
 
     save(figdir * "average_slice_vars_$(resolution).png", fig, px_per_unit=3)
 

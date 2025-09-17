@@ -1,47 +1,36 @@
 using Oceananigans
-using JLD2
-using Glob
+using ClimaOcean
 
+arch = CPU()
+Nx = 360
+Ny = 180
+Nz = 40
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
+depth = 4000
+z = ExponentialCoordinate(Nz, -depth, 0; scale = 0.85*depth)
 
-# Define variables in the files
-vars = [ "T",
- "S",
- "u",
- "v",
- "w"]
+underlying_grid = TripolarGrid(arch; size = (Nx, Ny, Nz), halo = (5, 5, 4), z)
 
- # Define function to create dictionary of FieldTimeSeries objects
-function create_dict(vars, path)
-    dicts = Dict()
-    for var in vars
-        try
-            # Surface
-            @info var
-            dicts[var] = FieldTimeSeries(path, var)
-        catch e
-            if e isa KeyError
-                @warn "Skipping variable $var: Key not found in file."
-            else
-                rethrow(e)
-            end
-        end
-    end
-    return dicts
-end
+bottom_height = regrid_bathymetry(underlying_grid;
+                                  minimum_depth = 10,
+                                  interpolation_passes = 1,
+                                  major_basins = 2)
 
-# Find the matching files for depth 3m and iteration 0
-pattern = "global_3m_*onedeg_RYF_iteration0.jld2"
-matching_files = glob(pattern, output_path)
-# Create a dictionary of FieldTimeSeries objects
-slice = create_dict(vars, matching_files[1])
+# We then incorporate the bathymetry into an ImmersedBoundaryGrid,
+
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height);
+                            active_cells_map=true)
+
+field_immersed = Field{Center, Center, Nothing}(grid)
+field_notimmersed = Field{Center, Center, Nothing}(underlying_grid)
 
 # Loop over vars and times to compute averages
-for var in vars
-    for (time_index, time) in enumerate(slice[var].times)
-        field = slice[var][time_index]
-        avg_field = Average(field)
-        @time test = Field(avg_field)[1,1,1]
-    end
+for i in 1:100
+    set!(field_immersed, rand())
+    set!(field_notimmersed, rand())
+    avg_field_immersed = Average(field_immersed, dims = (1,2))
+    avg_field_notimmersed = Average(field_notimmersed, dims = (1,2))
+
+    @time test_immersed = Field(avg_field_immersed)[1,1,1]
+    @time test_notimmersed = Field(avg_field_notimmersed)[1,1,1]
 end
