@@ -98,37 +98,36 @@ for depth in unique_depth_levels   # ← your depth list
         sorted_years = sorted_times ./ (3600 * 24 * 365)
         
         if var == "T"
-            ax1 = Axis(fig[1, 1:3], title = "Temperature", xlabel = "Year", ylabel = "Average Temperature (°C)")
+            ax1 = Axis(fig_avg[1, 1:3], title = "Temperature", xlabel = "Year", ylabel = "Average Temperature (°C)")
             lines!(ax1, sorted_years, avg_val[var][depth], label = "$(depth)m")
             ylims!(ax1, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            xlims!(ax1, 0, maximum(sorted_years))
         elseif var == "S"
-            ax2 = Axis(fig[1, 4:6], title = "Salinity", xlabel = "Year", ylabel = "Average Salinity (psu)")
+            ax2 = Axis(fig_avg[1, 4:6], title = "Salinity", xlabel = "Year", ylabel = "Average Salinity (psu)")
             lines!(ax2, sorted_years, avg_val[var][depth], label = "$(depth)m")
             ylims!(ax2, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            xlims!(ax2, 0, maximum(sorted_years))
         elseif var == "u"
-            ax3 = Axis(fig[2, 1:2], title = "U velocity", xlabel = "Year", ylabel = "Average U (m/s)")
+            ax3 = Axis(fig_avg[2, 1:2], title = "U velocity", xlabel = "Year", ylabel = "Average U (m/s)")
             lines!(ax3, sorted_years, avg_val[var][depth], label = "$(depth)m")
             ylims!(ax3, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            xlims!(ax3, 0, maximum(sorted_years))
         elseif var == "v"
-            ax4 = Axis(fig[2, 3:4], title = "V velocity", xlabel = "Year", ylabel = "Average V (m/s)")
+            ax4 = Axis(fig_avg[2, 3:4], title = "V velocity", xlabel = "Year", ylabel = "Average V (m/s)")
             lines!(ax4, sorted_years, avg_val[var][depth], label = "$(depth)m")
             ylims!(ax4, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            xlims!(ax4, 0, maximum(sorted_years))
         elseif var == "w"
-            ax5 = Axis(fig[2, 5:6], title = "W velocity", xlabel = "Year", ylabel = "Average W (m/s)")
+            ax5 = Axis(fig_avg[2, 5:6], title = "W velocity", xlabel = "Year", ylabel = "Average W (m/s)")
             lines!(ax5, sorted_years, avg_val[var][depth], label = "$(depth)m")
             ylims!(ax5, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            xlims!(ax5, 0, maximum(sorted_years))
         end
 
-        xlims!(ax1, 0, maximum(sorted_years))
-        xlims!(ax2, 0, maximum(sorted_years))
-        ylims!(ax2, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
-        xlims!(ax3, 0, maximum(sorted_years))
-        ylims!(ax3, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
-        xlims!(ax4, 0, maximum(sorted_years))
-        ylims!(ax4, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
-        xlims!(ax5, 0, maximum(sorted_years))
-        ylims!(ax5, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
     end
+
+    sorted_times = sort(collect(keys(merged["T"])))
+    sorted_years = sorted_times ./ (3600 * 24 * 365)
 
     nframes = length(sorted_times)
     T = merged["T"]
