@@ -21,64 +21,7 @@ using Glob
 using Oceananigans.Architectures: on_architecture
 using JLD2
 
-# File paths
-data_path = expanduser("/home/tsohail/ocean-ensembles/data/")
-output_path = expanduser("/home/tsohail/ocean-ensembles/outputs/")
-figdir = expanduser("/home/tsohail/ocean-ensembles/figures/")
-
-target_time = 365days
-
-## Argument is provided by the submission script!
-
-if isempty(ARGS)
-    println("No arguments provided. Please enter architecture (CPU/GPU):")
-    arch_input = readline()
-    if arch_input == "GPU"
-        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    elseif arch_input == "CPU"
-        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    else
-        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
-    end
-elseif ARGS[2] == "GPU"
-    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-elseif ARGS[2] == "CPU"
-    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
-end    
-
-total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
-@info "Used Memory: $(round((1 - CUDA.memory_info()[1] / CUDA.memory_info()[2]) * 100; digits=2)) %; rank: $(arch.local_rank)"
-
-@info "Using architecture: " * string(arch)
-
-restartfiles = glob("checkpoint_iteration*", output_path)
-
-# Extract the numeric suffix from each filename
-restart_numbers = map(f -> parse(Int, match(r"checkpoint_iteration(\d+)", basename(f)).captures[1]), restartfiles)
-
-iteration = 0
-time = 0.0
-if !isempty(restart_numbers) && maximum(restart_numbers) != 0
-    # Extract the numeric suffix from each filename
-
-    # Get the file with the maximum number
-    clock_vars = jldopen(output_path * "checkpoint_iteration" * string(maximum(restart_numbers)) * "_rank" * string(arch.local_rank) * ".jld2")
-
-    iteration = deepcopy(clock_vars["clock"].iteration)
-    time = deepcopy(clock_vars["clock"].time)
-    @info "Moving simulation to " * string(iteration) * " iterations"
-    @info "Moving simulation to " * string(prettytime(time))
-
-    close(clock_vars)
-end
-
-if time == target_time
-    error("Terminating simulation at target time.")
-end
-
-# ### Download necessary files to run the code
+# using ClimaOcean.DataWrangling: Restoring
 
 # ### EN4 files
 @info "Downloading/checking input data"
@@ -95,19 +38,13 @@ salinity    = Metadata(:salinity;    dates, dataset = dataset, dir=data_path)
 download_dataset(temperature)
 download_dataset(salinity)
 
-# ### Grid and Bathymetry
-@info "Defining grid"
+Nx = Integer(360)
+Ny = Integer(180)
+Nz = Integer(100/2)
 
-Nx = Integer(360/3)
-Ny = Integer(180/3)
-Nz = Integer(75)
+arch = CPU()
 
-@info "Defining vertical z faces"
-
-r_faces = (-5000,0)#ExponentialCoordinate(; Nz, depth=5000, h=12.43)
-# z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
-
-@info "Defining tripolar grid"
+z_faces = (-4000, 0)
 
 underlying_grid = TripolarGrid(arch;
                                size = (Nx, Ny, Nz),

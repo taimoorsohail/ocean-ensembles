@@ -1,8 +1,25 @@
 module OceanEnsembles
 
-export basin_mask, ocean_tracer_content!, volume_transport!, combine_outputs, identify_combination_targets
+export basin_mask, ocean_tracer_content!, volume_transport!, regrid_tracers!, regridder_weights,
+       combine_ranks, identify_combination_targets
 
 using ClimaOcean, Oceananigans, Glob
+
+# using PyCall, Conda
+
+# # Ensure Python packages exist
+# function _ensure_python_packages()
+#     for pkg in ["numpy", "xesmf", "xarray"]
+#         try
+#             pyimport(pkg)
+#         catch
+#             throw("Error: Python package $pkg not found!")
+#         end
+#     end
+# end
+
+# _ensure_python_packages()
+
 
 include("BasinMask.jl")
 include("Diagnostics.jl")
