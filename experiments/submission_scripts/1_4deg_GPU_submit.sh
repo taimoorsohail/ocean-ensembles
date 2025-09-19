@@ -1,50 +1,38 @@
 #!/bin/bash
-#PBS -P v46
-#PBS -q gpuvolta
-#PBS -l walltime=12:00:00
-#PBS -l mem=150GB
-#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
-#PBS -l wd
-#PBS -l ncpus=12 
-#PBS -l ngpus=1
-#PBS -l jobfs=10GB
-#PBS -W umask=027
-#PBS -j n 
-#PBS -N GPU_RYF1_4dg
-
-# Output logs
-#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg.e
+#SBATCH --partition=gpu-a100
+#SBATCH --time=12:00:00
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=150G
+#SBATCH --job-name=GPU_RYF1_4dg
+#SBATCH --output=/g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_%j.o
+#SBATCH --error=/g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_%j.e
+#SBATCH --export=ALL
 
 # === Setup resubmission ===
-script_name='1_4deg_GPU_submit.sh'
+script_name="1_4deg_GPU_submit.sh"
 
-# Set default values of count and max
-if [ -z $count ]; then
-    count=1
-fi
+# Default count/max
+count=${count:-1}
+max=${max:-$count}
 
-if [ -z $max ]; then
-    max=$count
-fi
-
-# Log submission counters
 echo "Run $count of $max"
 
-target=$((count * 4))  
+target=$((count * 4))
 
-julia --project \
-  ../RYF_qtrdeg.jl --arch GPU --stop_time $target\
-  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_$count.stdout \
-  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_$count.stderr
-
+# Run Julia
+julia --project ../RYF_qtrdeg.jl --arch GPU --stop_time $target \
+    > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_${count}.stdout \
+    2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_${count}.stderr
 
 ((count++))
 
+# Resubmit if needed
 if [ $count -le $max ]; then
     echo "Resubmitting model"
-    cd $PBS_O_WORKDIR
-    qsub -v count=$count,max=$max $script_name
+    sbatch --export=count=$count,max=$max $script_name
 else
     echo "Last submission; $count of $max"
 fi
+
+

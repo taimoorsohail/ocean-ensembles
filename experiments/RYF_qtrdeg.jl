@@ -30,9 +30,10 @@ using Printf
 using Glob 
 using JLD2
 
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+data_path = expanduser("../../data/")
+output_path = expanduser("../../outputs/")
+figdir = expanduser("../../figures/")
+
 checkpoint_timer = 365days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
 
@@ -301,7 +302,7 @@ end
 add_callback!(simulation, progress, callback_interval)
 
 tracers = ocean.model.tracers
-velocities = ocean.model.velocities
+velocities = abs(ocean.model.velocities)
 
 outputs = merge(tracers, velocities)
 
