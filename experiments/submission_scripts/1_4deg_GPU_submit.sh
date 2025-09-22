@@ -5,8 +5,8 @@
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=150G
 #SBATCH --job-name=GPU_RYF1_4dg
-#SBATCH --output=/g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_%j.o
-#SBATCH --error=/g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_%j.e
+#SBATCH --output=../run_logs/GPU_RYF1_4dg_%j.o
+#SBATCH --error=../run_logs/GPU_RYF1_4dg_%j.e
 #SBATCH --export=ALL
 
 # === Setup resubmission ===
@@ -22,8 +22,8 @@ target=$((count * 4))
 
 # Run Julia
 julia --project ../RYF_qtrdeg.jl --arch GPU --stop_time $target \
-    > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_${count}.stdout \
-    2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_4dg_${count}.stderr
+    > ../run_logs/GPU_RYF1_4dg_${count}.stdout \
+    2> ../run_logs/GPU_RYF1_4dg_${count}.stderr
 
 ((count++))
 
