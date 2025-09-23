@@ -25,46 +25,75 @@ iterations = [parse(Int, match(r"iteration(\d+)", f).captures[1])
               for f in files if occursin(r"iteration\d+", f)]
 unique_iterations = sort(unique(iterations))
 
-
 vars = [ "T",
  "S",
  "u",
  "v",
  "w"]
 
+# function create_dict(vars, path)
+#     dicts = Dict()
+#     for var in vars
+#         try
+#             # Surface
+#             @info var
+#             dicts[var] = FieldTimeSeries(path, var)
+#         catch e
+#             if e isa KeyError
+#                 @warn "Skipping variable $var: Key not found in file."
+#             else
+#                 rethrow(e)
+#             end
+#         end
+#     end
+#     return dicts
+# end
+
 function create_dict(vars, path)
-    dicts = Dict()
-    for var in vars
+    results = asyncmap(vars; ntasks=100) do var
         try
-            # Surface
-            @info var
-            dicts[var] = FieldTimeSeries(path, var)
+            return (var => FieldTimeSeries(path, var))
         catch e
             if e isa KeyError
                 @warn "Skipping variable $var: Key not found in file."
+                return nothing
             else
                 rethrow(e)
             end
         end
     end
-    return dicts
+
+    # filter out skipped ones
+    results = filter(!isnothing, results)
+
+    # turn into Dict
+    return Dict(results)
 end
 
 avg_val = Dict(var => Dict() for var in vars)
 
+pattern = "global_3m_*$(resolution)_RYF_iteration0.jld2"
+matching_files = glob(pattern, output_path)
+slice = create_dict(vars, matching_files[1])
+
+grid = slice["T"].grid
+area = Field{Center, Center, Nothing}(grid)
+set!(area, 1)
+area_2d = (Integral(area, dims = (1,2)) |> Field)[1,1,1]
+
 for depth in unique_depth_levels   # ← your depth list
     # one dict per var for this depth, keyed by time
     merged = Dict(var => Dict() for var in vars)  # time => field
-    for iteration in unique_iterations
-        pattern = "global_$(depth)m_*iteration$(iteration).jld2"
+    for iteration_val in unique_iterations
+        pattern = "global_$(depth)m_*$(resolution)_RYF_iteration$(iteration_val).jld2"
         matching_files = glob(pattern, output_path)
 
         if isempty(matching_files)
-            @warn "No files found for depth: $depth m, iteration: $iteration"
+            @warn "No files found for depth: $depth m, iteration: $iteration_val"
             continue
         end
 
-        @info "Processing depth: $depth m, iteration: $iteration"
+        @info "Processing depth: $depth m, iteration: $iteration_val"
         slice = create_dict(vars, matching_files[1])
         for var in vars
             if haskey(slice, var)
@@ -82,17 +111,23 @@ for depth in unique_depth_levels   # ← your depth list
         # Get sorted times
 
         sorted_times = sort(collect(keys(merged[var])))
-        preallocated_field = Field{Center, Center, Nothing}(merged[var][sorted_times[1]].grid)
+        # preallocated_field = Field{Center, Center, Nothing}(merged[var][sorted_times[1]].grid)
         # Preallocate the list if you want (optional)
-        nested_list = Vector{Float64}(undef, length(sorted_times))
-
-        for (i, t) in enumerate(sorted_times)
-            @show i
+        # nested_list = Vector{Float64}(undef, length(sorted_times))
+        nested_list = asyncmap(sorted_times; ntasks=100) do t
             field = merged[var][t]
-            interior(preallocated_field) .= field.data  # Copy data to preallocated field
-            avg_field = Average(preallocated_field, dims = (1,2))
-            @time nested_list[i] = Field(avg_field)[1,1,1]
+            local_field = Field{Center, Center, Nothing}(grid)
+            interior(local_field) .= field.data
+            avg_field = (Integral(local_field, dims=(1,2)) |> Field)[1,1,1] / area_2d
+            return avg_field
         end
+        # for (i, t) in enumerate(sorted_times)
+        #     @show i
+        #     field = merged[var][t]
+        #     interior(preallocated_field) .= field.data  # Copy data to preallocated field
+        #     @time avg_field = (Integral(preallocated_field, dims = (1,2)) |> Field)[1,1,1] / area_2d
+        #     nested_list[i] = avg_field
+        # end
 
         avg_val[var][depth] = nested_list
         sorted_years = sorted_times ./ (3600 * 24 * 365)
@@ -136,22 +171,22 @@ for depth in unique_depth_levels   # ← your depth list
     v = merged["v"]
     w = merged["w"]
 
-    depth = T.grid.z.cᵃᵃᶜ[first(T[sorted_times[1]].indices[3])]
+    depth = T[sorted_times[1]].grid.z.cᵃᵃᶜ[first(T[sorted_times[1]].indices[3])]
 
     # Observable for animation
     frame_idx = Observable(1)
-    temp_data = @lift Array(dropdims(T[sorted_times[$frame_idx]]-T[sorted_times[1]], dims=3))
-    salt_data = @lift Array(dropdims(S[sorted_times[$frame_idx]]-S[sorted_times[1]], dims=3))
-    u_data = @lift Array(dropdims(u[sorted_times[$frame_idx]]-u[sorted_times[1]], dims=3))
-    v_data = @lift Array(dropdims(v[sorted_times[$frame_idx]]-v[sorted_times[1]], dims=3))
-    w_data = @lift Array(dropdims(w[sorted_times[$frame_idx]]-w[sorted_times[1]], dims=3))
+    temp_data = @lift Array(dropdims(interior(T[sorted_times[$frame_idx]])-T[sorted_times[1]], dims=3))
+    salt_data = @lift Array(dropdims(interior(S[sorted_times[$frame_idx]])-S[sorted_times[1]], dims=3))
+    u_data = @lift Array(dropdims(interior(u[sorted_times[$frame_idx]])-u[sorted_times[1]], dims=3))
+    v_data = @lift Array(dropdims(interior(v[sorted_times[$frame_idx]])-v[sorted_times[1]], dims=3))
+    w_data = @lift Array(dropdims(interior(w[sorted_times[$frame_idx]])-w[sorted_times[1]], dims=3))
 
     fig = Figure(size = (1200, 800))
     ax = Axis(fig[1, 1])
-    hm = heatmap!(ax, temp_data; colormap=:thermal, colorrange=(-2,35))
+    hm = heatmap!(ax, temp_data; colormap=:bwr, colorrange=(-7.5,7.5))
     Colorbar(fig[1, 2], hm, label="Temperature (°C)")
     ax = Axis(fig[1, 3])
-    hm = heatmap!(ax, salt_data; colormap=:haline, colorrange=(35,37))
+    hm = heatmap!(ax, salt_data; colormap=:bwr, colorrange=(-0.75,0.75))
     Colorbar(fig[1, 4], hm, label="Salinity (g/kg)")
     ax = Axis(fig[2, 1])
     hm = heatmap!(ax, u_data; colormap=:bwr, colorrange=(-.5,.5))
@@ -168,8 +203,7 @@ for depth in unique_depth_levels   # ← your depth list
     Label(fig[0, 1:4], suptitle_text, fontsize = 24, tellwidth = false, halign = :center)
 
     # Record animation
-    record(fig, figdir * "slice_animation_$(abs(round(depth, digits=1))).mp4", 1:nframes; framerate = 20) do i
-        @info i
+    record(fig, figdir * "slice_animation_$(abs(round(depth, digits=1)))_$(resolution).mp4", 1:nframes; framerate = 20) do i
         frame_idx[] = i
     end
 end

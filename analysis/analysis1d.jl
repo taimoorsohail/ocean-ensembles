@@ -7,7 +7,7 @@ using Glob
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-resolution = "qtrdeg"
+resolution = "onedeg"
 
 # Example: get all matching files in a folder
 files = glob("global_tot*$(resolution)_RYF_iteration*.jld2", output_path)

@@ -33,6 +33,7 @@ using JLD2
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+
 checkpoint_timer = 365days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
 
@@ -53,25 +54,25 @@ if isempty(ARGS)
     println("No arguments provided. Please enter architecture (CPU/GPU):")
     arch_input = readline()
     if arch_input == "GPU"
-        arch = GPU()
+        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
     elseif arch_input == "CPU"
-        arch = CPU()
+        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
     else
         throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
     end
 elseif ARGS[2] == "GPU"
-    arch = GPU()
+    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 elseif ARGS[2] == "CPU"
-    arch = CPU()
+    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
 
 #total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
-
+localrank = Integer(arch.local_rank)
 @info "Using architecture: " * string(arch)
 
-restartfiles = glob("checkpoint_tntdeg_iteration*", output_path)
+restartfiles = glob("checkpoint_tntdeg_iteration*rank$(localrank)*", output_path)
 
 # Extract the numeric suffix from each filename
 restart_numbers = map(f -> parse(Int, match(r"checkpoint_tntdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
@@ -81,9 +82,9 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
 
     # Get the file with the maximum number
     if checkpoint_type == "last"
-        clock_vars = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
+        clock_vars = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(maximum(restart_numbers)) * "_rank$(localrank).jld2")
     elseif checkpoint_type == "first"
-        clock_vars = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
+        clock_vars = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(minimum(restart_numbers)) * "_rank$(localrank).jld2")
     end
 
     iteration_checkpoint = deepcopy(clock_vars["clock"].iteration)
@@ -180,14 +181,8 @@ forcing = (; S=FS)
 
 @info "Defining closures"
 
-using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, CATKEMixingLength, CATKEEquation
-
-mixing_length = CATKEMixingLength(Cᵇ=0.01)
-turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
-
-catke_closure = CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation) 
-closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-5))
+catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()
+closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -247,7 +242,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=20, stop_time=60days)
+simulation = Simulation(coupled_model; Δt=60, stop_time=20days)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -357,16 +352,28 @@ end
 
 @time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
                                             dir = output_path,
-                                            schedule = TimeInterval(1days),
+                                            schedule = TimeInterval(5days),
                                             filename = "global_tot_integrals_tntdeg_RYF_iteration" * iteration_number,
                                             overwrite_existing = true)
+
+
+#### CHECKPOINTING ####
+# if checkpoint_type != "none"
+#     @info "Removing all checkpoints"
+#     for f in restartfiles
+#         if isfile(f)
+#             @info "Removing old restart file: $f"
+#             rm(f; force = true)
+#         end
+#     end
+# end
 
 @info "Saving restart"
 
 function save_restart(sim)
     @info @sprintf("Saving checkpoint file")
 
-    jldsave(output_path * "checkpoint_tntdeg_iteration" * string(sim.model.clock.iteration) * ".jld2";
+    jldsave(output_path * "checkpoint_tntdeg_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";
     u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),
     v = on_architecture(CPU(), (sim.model.ocean.model.velocities.v)),
     w = on_architecture(CPU(), (sim.model.ocean.model.velocities.w)),
@@ -389,7 +396,7 @@ function save_restart(sim)
 
     clock = sim.model.ocean.model.clock)
 
-    restartfiles = glob("checkpoint_tntdeg_iteration*", output_path)
+    restartfiles = glob("checkpoint_tntdeg_iteration*rank$(localrank)*", output_path)
 
     # Extract the numeric suffix from each filename
     restart_numbers = map(f -> parse(Int, match(r"checkpoint_tntdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
@@ -409,7 +416,7 @@ function save_restart(sim)
     # Loop through and remove all older files for this rank
     for number in sorted_restart_numbers
         if number ∉ keep
-            filename = output_path * "checkpoint_tntdeg_iteration$(number).jld2"
+            filename = output_path * "checkpoint_tntdeg_iteration$(number)_rank$(localrank).jld2"
             if isfile(filename)
                 @info "Removing old restart file: $filename"
                 rm(filename; force = true)
@@ -424,10 +431,10 @@ add_callback!(simulation, save_restart, checkpoint_intervals)
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     if checkpoint_type == "last"
         @info "Restarting from last checkpoint at iteration " * string(maximum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
+        fields_loaded = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(maximum(restart_numbers)) * "_rank$(localrank).jld2")
     elseif checkpoint_type == "first"
         @info "Restarting from first checkpoint at iteration " * string(minimum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
+        fields_loaded = jldopen(output_path * "checkpoint_tntdeg_iteration" * string(minimum(restart_numbers)) * "_rank$(localrank).jld2")
     end
 
     T_field = fields_loaded["T"]
@@ -479,7 +486,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     
     @info "Running simulation"
 
-    simulation.Δt = 6minutes
+    simulation.Δt = 5minutes
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -488,7 +495,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 6minutes 
+    simulation.Δt = 5minutes 
     simulation.stop_time = target_time
 
     run!(simulation)

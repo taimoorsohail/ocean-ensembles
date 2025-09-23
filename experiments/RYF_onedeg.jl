@@ -594,7 +594,6 @@ function save_restart(sim)
     Gʰ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.thermodynamic_tendency)),
     u_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.u)),
     v_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.v)),
-
     clock = sim.model.ocean.model.clock)
 
     restartfiles = glob("checkpoint_onedeg_iteration*", output_path)

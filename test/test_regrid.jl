@@ -12,68 +12,81 @@ using OceanEnsembles
 using Oceananigans
 using ClimaOcean
 
-# ### Grid and Bathymetry
-@info "Defining grid"
-arch = CPU()
-Nx = Integer(360)
-Ny = Integer(180)
-Nz = Integer(75)
+# # ### Grid and Bathymetry
+# @info "Defining grid"
+# arch = CPU()
+# Nx = Integer(360)
+# Ny = Integer(180)
+# Nz = Integer(75)
 
-@info "Defining vertical z faces"
-depth = -6000.0 # Depth of the ocean in meters
-r_faces = ExponentialCoordinate(Nz, depth, 0)
-# @show r_faces(Nz)
-# r_faces = Oceananigans.Grids.MutableVerticalDiscretization(r_faces)
+# @info "Defining vertical z faces"
+# depth = -6000.0 # Depth of the ocean in meters
+# r_faces = ExponentialCoordinate(Nz, depth, 0)
+# # @show r_faces(Nz)
+# # r_faces = Oceananigans.Grids.MutableVerticalDiscretization(r_faces)
 
-@info "Defining source underlying grid"
+# @info "Defining source underlying grid"
 
-underlying_source_grid = TripolarGrid(arch;
-                            size = (Nx, Ny, Nz),
-                            z = r_faces,
-                            halo = (5, 5, 4),
-                            first_pole_longitude = 70,
-                            north_poles_latitude = 55)
+# underlying_source_grid = TripolarGrid(arch;
+#                             size = (Nx, Ny, Nz),
+#                             z = r_faces,
+#                             halo = (5, 5, 4),
+#                             first_pole_longitude = 70,
+#                             north_poles_latitude = 55)
 
-@info "Interpolating bottom bathymetry"
+# @info "Interpolating bottom bathymetry"
 
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
+# data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
+# figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
-ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
+# ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
+# ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
-@time bottom_height = regrid_bathymetry(underlying_source_grid, ETOPOmetadata;
-                                  minimum_depth = 10,
-                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
-				                  major_basins = 2)
-# view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
+# @time bottom_height = regrid_bathymetry(underlying_source_grid, ETOPOmetadata;
+#                                   minimum_depth = 10,
+#                                   interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+# 				                  major_basins = 2)
+# # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
                                   
-@info "Defining source grid"
+# @info "Defining source grid"
 
-@time source_grid = ImmersedBoundaryGrid(underlying_source_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+# @time source_grid = ImmersedBoundaryGrid(underlying_source_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
-@info "Defining destination underlying grid"
-### DESTINATION FIELD
-underlying_destination_grid = LatitudeLongitudeGrid(arch;
-                             size = (Nx, Ny, Nz),
-                             halo = (7, 7, 7),
-                             z = r_faces,
-                             latitude  = (-80, 90),
-                             longitude = (0, 360))
+# @info "Defining destination underlying grid"
+# ### DESTINATION FIELD
+# underlying_destination_grid = LatitudeLongitudeGrid(arch;
+#                              size = (Nx, Ny, Nz),
+#                              halo = (7, 7, 7),
+#                              z = r_faces,
+#                              latitude  = (-80, 90),
+#                              longitude = (0, 360))
 
-@info "Interpolating bottom bathymetry"
+# @info "Interpolating bottom bathymetry"
 
-@time bottom_height = regrid_bathymetry(underlying_destination_grid, ETOPOmetadata;
-                                  minimum_depth = 10,
-                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
-				                  major_basins = 2)
-# view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
+# @time bottom_height = regrid_bathymetry(underlying_destination_grid, ETOPOmetadata;
+#                                   minimum_depth = 10,
+#                                   interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+# 				                  major_basins = 2)
+# # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
                                   
-@info "Defining destination grid"
+# @info "Defining destination grid"
 
-@time destination_grid = ImmersedBoundaryGrid(underlying_destination_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+# @time destination_grid = ImmersedBoundaryGrid(underlying_destination_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+
+tg = TripolarGrid(; size=(360, 180, 1), z, first_pole_longitude=70, north_poles_latitude=55)
+
+llg_fine = LatitudeLongitudeGrid(; size=(360, 180, 1),
+                                 longitude=(0, 360),
+                                 latitude=(-80, 90),
+                                 z)
+
+source_grid, destination_grid = tg, llg_fine
 
 source_field = Field{Center, Center, Center}(source_grid)
 destination_field = Field{Center, Center, Center}(destination_grid)
+
+set!(source_field, 1)
+set!(source_field, (λ, φ, z) -> exp(-((λ-150)^2 + (φ - 30)^2) / (2*12^2)))
 # f(x, y, z) = y > 0 ? 1.0 : 0.0 # Example function to set the source field
 # set!(source_field, f)
 
@@ -93,10 +106,11 @@ salinity    = Metadata(:salinity;    dates, dataset = dataset, dir=data_path)
 set!(source_field, first(temperature))
 
 # Test the regridding functions
-@time W_cons = regridder_weights!(source_field, destination_field; method = "conservative")
-@time dst_cons = regrid_tracers!(source_field, destination_field, W_cons)
-@time W_bilin = regridder_weights!(source_field, destination_field; method = "bilinear")
-@time dst_bilin = regrid_tracers!(source_field, destination_field, W_bilin)
+@time W_cons = regridder_weights(source_field, destination_field; method = "conservative")
+@time regrid_tracers!(destination_field, W_cons, source_field)
+dst_cons = deepcopy(destination_field)
+@time W_bilin = regridder_weights(source_field, destination_field; method = "bilinear")
+# @time dst_bilin = regrid_tracers!(destination_field, W_bilin, source_field)
 
 # Plotting the regridded data vs the source data
 fig1 = Figure()
@@ -109,15 +123,15 @@ ax5 = Axis(fig1[2, 3], title="Destination Field - Bilinear", xlabel="Longitude",
 z_ind = Nz
 
 heatmap!(ax1, collect(interior(source_field))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(source_field), maximum(source_field)))
-Colorbar(fig1[1,2], label = "Tracer", vertical=true, colorrange=(minimum(source_field), maximum(source_field)))
+# Colorbar(fig1[1,2], label = "Tracer", vertical=true, colorrange=(minimum(source_field), maximum(source_field)))
 heatmap!(ax2, reshape(sum(W_cons, dims = 2), Nx, Ny), colormap=:viridis, colorrange=(minimum(sum(W_cons, dims = 2)), maximum(sum(W_cons, dims = 2))))
-Colorbar(fig1[1,4], label = "Weight", vertical=true, colorrange=(minimum(sum(W_cons, dims = 2)), maximum(sum(W_cons, dims = 2))))
+# Colorbar(fig1[1,4], label = "Weight", vertical=true, colorrange=(minimum(sum(W_cons, dims = 2)), maximum(sum(W_cons, dims = 2))))
 heatmap!(ax3, collect(interior(dst_cons))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(dst_cons), maximum(dst_cons)))
-Colorbar(fig1[1,6], label = "Tracer", vertical=true, colorrange=(minimum(dst_cons), maximum(dst_cons)))
-heatmap!(ax4, reshape(sum(W_bilin, dims = 2), Nx, Ny), colormap=:viridis, colorrange=(minimum(sum(W_bilin, dims = 2)), maximum(sum(W_bilin, dims = 2))))
-Colorbar(fig1[2,2], label = "Weight", vertical=true, colorrange=(minimum(sum(W_bilin, dims = 2)), maximum(sum(W_bilin, dims = 2))))
-heatmap!(ax5, collect(interior(dst_bilin))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(dst_bilin), maximum(dst_bilin)))
-Colorbar(fig1[2,4], label = "Tracer", vertical=true, colorrange=(minimum(dst_bilin), maximum(dst_bilin)))
-
+# Colorbar(fig1[1,6], label = "Tracer", vertical=true, colorrange=(minimum(dst_cons), maximum(dst_cons)))
+# heatmap!(ax4, reshape(sum(W_bilin, dims = 2), Nx, Ny), colormap=:viridis, colorrange=(minimum(sum(W_bilin, dims = 2)), maximum(sum(W_bilin, dims = 2))))
+# # Colorbar(fig1[2,2], label = "Weight", vertical=true, colorrange=(minimum(sum(W_bilin, dims = 2)), maximum(sum(W_bilin, dims = 2))))
+# heatmap!(ax5, collect(interior(dst_bilin))[:,:,z_ind], colormap=:viridis, colorrange=(minimum(dst_bilin), maximum(dst_bilin)))
+# Colorbar(fig1[2,4], label = "Tracer", vertical=true, colorrange=(minimum(dst_bilin), maximum(dst_bilin)))
 
 display(fig1)
+save(figdir * "checking_weights.png", fig1, px_per_unit=3)
