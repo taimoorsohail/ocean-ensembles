@@ -12,6 +12,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 resolution = "onedeg"
+nframes = nothing
 # Example: get all matching files in a folder
 files = glob("global_*$(resolution)_RYF_iteration*.jld2", output_path)
 
@@ -81,7 +82,21 @@ area = Field{Center, Center, Nothing}(grid)
 set!(area, 1)
 area_2d = (Integral(area, dims = (1,2)) |> Field)[1,1,1]
 
-for depth in unique_depth_levels   # ← your depth list
+
+ax1 = Axis(fig_avg[1, 1:3], title = "Temperature", xlabel = "Year", ylabel = "Average Temperature (°C)")
+ax2 = Axis(fig_avg[1, 4:6], title = "Salinity", xlabel = "Year", ylabel = "Average Salinity (psu)")
+ax3 = Axis(fig_avg[2, 1:2], title = "U velocity", xlabel = "Year", ylabel = "Average U (m/s)")
+ax4 = Axis(fig_avg[2, 3:4], title = "V velocity", xlabel = "Year", ylabel = "Average V (m/s)")
+ax5 = Axis(fig_avg[2, 5:6], title = "W velocity", xlabel = "Year", ylabel = "Average W (m/s)")
+
+fig = Figure(size = (1200, 800))
+fig_vel = Figure(size = (1200, 800))
+
+# Observable for animation
+frame_idx = Observable(1)
+
+
+for (idx, depth) in enumerate(unique_depth_levels)   # ← your depth list
     # one dict per var for this depth, keyed by time
     merged = Dict(var => Dict() for var in vars)  # time => field
     for iteration_val in unique_iterations
@@ -133,29 +148,24 @@ for depth in unique_depth_levels   # ← your depth list
         sorted_years = sorted_times ./ (3600 * 24 * 365)
         
         if var == "T"
-            ax1 = Axis(fig_avg[1, 1:3], title = "Temperature", xlabel = "Year", ylabel = "Average Temperature (°C)")
             lines!(ax1, sorted_years, avg_val[var][depth], label = "$(depth)m")
-            ylims!(ax1, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            # ylims!(ax1, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
             xlims!(ax1, 0, maximum(sorted_years))
         elseif var == "S"
-            ax2 = Axis(fig_avg[1, 4:6], title = "Salinity", xlabel = "Year", ylabel = "Average Salinity (psu)")
             lines!(ax2, sorted_years, avg_val[var][depth], label = "$(depth)m")
-            ylims!(ax2, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            # ylims!(ax2, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
             xlims!(ax2, 0, maximum(sorted_years))
         elseif var == "u"
-            ax3 = Axis(fig_avg[2, 1:2], title = "U velocity", xlabel = "Year", ylabel = "Average U (m/s)")
             lines!(ax3, sorted_years, avg_val[var][depth], label = "$(depth)m")
-            ylims!(ax3, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            # ylims!(ax3, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
             xlims!(ax3, 0, maximum(sorted_years))
         elseif var == "v"
-            ax4 = Axis(fig_avg[2, 3:4], title = "V velocity", xlabel = "Year", ylabel = "Average V (m/s)")
             lines!(ax4, sorted_years, avg_val[var][depth], label = "$(depth)m")
-            ylims!(ax4, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            # ylims!(ax4, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
             xlims!(ax4, 0, maximum(sorted_years))
         elseif var == "w"
-            ax5 = Axis(fig_avg[2, 5:6], title = "W velocity", xlabel = "Year", ylabel = "Average W (m/s)")
             lines!(ax5, sorted_years, avg_val[var][depth], label = "$(depth)m")
-            ylims!(ax5, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
+            # ylims!(ax5, minimum(avg_val[var][depth]), maximum(avg_val[var][depth]))
             xlims!(ax5, 0, maximum(sorted_years))
         end
 
@@ -173,39 +183,47 @@ for depth in unique_depth_levels   # ← your depth list
 
     depth = T[sorted_times[1]].grid.z.cᵃᵃᶜ[first(T[sorted_times[1]].indices[3])]
 
-    # Observable for animation
-    frame_idx = Observable(1)
     temp_data = @lift Array(dropdims(interior(T[sorted_times[$frame_idx]])-T[sorted_times[1]], dims=3))
     salt_data = @lift Array(dropdims(interior(S[sorted_times[$frame_idx]])-S[sorted_times[1]], dims=3))
     u_data = @lift Array(dropdims(interior(u[sorted_times[$frame_idx]])-u[sorted_times[1]], dims=3))
     v_data = @lift Array(dropdims(interior(v[sorted_times[$frame_idx]])-v[sorted_times[1]], dims=3))
     w_data = @lift Array(dropdims(interior(w[sorted_times[$frame_idx]])-w[sorted_times[1]], dims=3))
 
-    fig = Figure(size = (1200, 800))
-    ax = Axis(fig[1, 1])
-    hm = heatmap!(ax, temp_data; colormap=:bwr, colorrange=(-7.5,7.5))
-    Colorbar(fig[1, 2], hm, label="Temperature (°C)")
-    ax = Axis(fig[1, 3])
-    hm = heatmap!(ax, salt_data; colormap=:bwr, colorrange=(-0.75,0.75))
-    Colorbar(fig[1, 4], hm, label="Salinity (g/kg)")
-    ax = Axis(fig[2, 1])
-    hm = heatmap!(ax, u_data; colormap=:bwr, colorrange=(-.5,.5))
-    Colorbar(fig[2, 2], hm, label="u (m/s)")
-    ax = Axis(fig[2, 3])
-    hm = heatmap!(ax, v_data; colormap=:bwr, colorrange=(-.5,.5))
-    Colorbar(fig[2, 4], hm, label="v (m/s)")
-    ax = Axis(fig[3, 1])
-    hm = heatmap!(ax, w_data; colormap=:bwr, colorrange=(-.001,.001))
-    Colorbar(fig[3, 2], hm, label="w (m/s)")
+    ax_T = Axis(fig[idx, 1], title = "Depth = $(abs(round(depth, digits=1))) m")
+    cax_T = fig[idx, 2]
+    ax_S = Axis(fig[idx, 3], title = "Depth = $(abs(round(depth, digits=1))) m")
+    cax_S = fig[idx, 4]
+    ax_u = Axis(fig_vel[idx, 1], title = "Depth = $(abs(round(depth, digits=1))) m")
+    cax_u = fig_vel[idx, 2]  
+    ax_v = Axis(fig_vel[idx, 3], title = "Depth = $(abs(round(depth, digits=1))) m")
+    cax_v = fig_vel[idx, 4]
+    ax_w = Axis(fig_vel[idx, 5], title = "Depth = $(abs(round(depth, digits=1))) m")
+    cax_w = fig_vel[idx, 6]
+    hm = heatmap!(ax_T, temp_data; colormap=:bwr, colorrange=(-7.5,7.5))
+    Colorbar(cax_T, hm, label="Temperature (°C)")
+    hm = heatmap!(ax_S, salt_data; colormap=:bwr, colorrange=(-0.75,0.75))
+    Colorbar(cax_S, hm, label="Salinity (g/kg)")
+    hm = heatmap!(ax_u, u_data; colormap=:bwr, colorrange=(-.5,.5))
+    Colorbar(cax_u, hm, label="u (m/s)")
+    hm = heatmap!(ax_v, v_data; colormap=:bwr, colorrange=(-.5,.5))
+    Colorbar(cax_v, hm, label="v (m/s)")
+    hm = heatmap!(ax_w, w_data; colormap=:bwr, colorrange=(-.001,.001))
+    Colorbar(cax_w, hm, label="w (m/s)")
 
-    suptitle_text = @lift("Year = $(sorted_years[$frame_idx]) days, Depth = $(abs(round(depth, digits=1))) m")
+    suptitle_text = @lift("Year = $(sorted_years[$frame_idx]) years")
+    if idx == 1
+        Label(fig[0, 1:4], suptitle_text, fontsize = 24, tellwidth = false, halign = :center)
+        Label(fig_vel[0, 1:4], suptitle_text, fontsize = 24, tellwidth = false, halign = :center)
 
-    Label(fig[0, 1:4], suptitle_text, fontsize = 24, tellwidth = false, halign = :center)
-
-    # Record animation
-    record(fig, figdir * "slice_animation_$(abs(round(depth, digits=1)))_$(resolution).mp4", 1:nframes; framerate = 20) do i
-        frame_idx[] = i
     end
+
+end
+# Record animation
+record(fig, figdir * "slice_animation_tracer_$(resolution).mp4", 1:nframes; framerate = 20) do i
+    frame_idx[] = i
+end
+record(fig_vel, figdir * "slice_animation_vel_$(resolution).mp4", 1:nframes; framerate = 20) do i
+    frame_idx[] = i
 end
 
 # #### SURFACE PLOTS AND ANIMATION ####
