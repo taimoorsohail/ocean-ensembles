@@ -191,8 +191,9 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
 @info "Defining free surface"
 
-free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=45minutes)
-momentum_advection = WENOVectorInvariant(order = 7)
+# free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=45minutes)
+free_surface = SplitExplicitFreeSurface(grid; substeps=70)
+momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
 
 @time ocean = ocean_simulation(grid; Δt=1minutes,

@@ -10,11 +10,11 @@
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_RYF1_10dg
+#PBS -N GPU_RYF1_12dg
 
 # Output logs
-#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_10dg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_10dg.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_12dg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_12dg.e
 
 # === Setup resubmission ===
 script_name='1_10deg_GPU_submit.sh'
@@ -34,9 +34,9 @@ echo "Run $count of $max"
 target=$((count * 4))  
 
 mpirun -n 4 julia --project \
-  ../RYF_tntdeg.jl --arch GPU --stop_time $target\
-  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_10dg_$count.stdout \
-  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_10dg_$count.stderr
+  ../RYF_twfdeg.jl --arch GPU --stop_time $target\
+  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_12dg_$count.stdout \
+  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_12dg_$count.stderr
 
 
 ((count++))
