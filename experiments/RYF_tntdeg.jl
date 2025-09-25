@@ -30,9 +30,10 @@ using Printf
 using Glob 
 using JLD2
 
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+data_path = expanduser("../../data/")
+output_path = expanduser("../../outputs/")
+figdir = expanduser("../../figures/")
+
 checkpoint_timer = 365days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
 
@@ -247,7 +248,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=20, stop_time=60days)
+simulation = Simulation(coupled_model; Δt=1minutes, stop_time=20days)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -346,7 +347,7 @@ for (ind, depth) in enumerate(depths)
 
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
-                                                schedule = TimeInterval(31days),
+                                                schedule = TimeInterval(5days),
                                                 filename = "global_" * string(Integer(round(slice_level))) * "m_fields_tntdeg_RYF_iteration" * iteration_number,
                                                 indices = (:, :, ind_pln),
                                                 with_halos = false,
@@ -357,7 +358,7 @@ end
 
 @time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
                                             dir = output_path,
-                                            schedule = TimeInterval(1days),
+                                            schedule = TimeInterval(5days),
                                             filename = "global_tot_integrals_tntdeg_RYF_iteration" * iteration_number,
                                             overwrite_existing = true)
 
@@ -479,7 +480,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     
     @info "Running simulation"
 
-    simulation.Δt = 6minutes
+    simulation.Δt = 10minutes
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -488,7 +489,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 6minutes 
+    simulation.Δt = 10minutes
     simulation.stop_time = target_time
 
     run!(simulation)

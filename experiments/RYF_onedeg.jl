@@ -503,7 +503,7 @@ add_callback!(simulation, progress, callback_interval)
 #                                                           overwrite_existing = true)
 
 tracers = ocean.model.tracers
-velocities = abs(ocean.model.velocities)
+velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 

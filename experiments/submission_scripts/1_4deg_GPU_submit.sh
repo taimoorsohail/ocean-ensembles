@@ -1,10 +1,11 @@
 #!/bin/bash
 #SBATCH --partition=gpu-a100
-#SBATCH --time=12:00:00
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=12
+#SBATCH --time=24:00:00
+#SBATCH --gres=gpu:4
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
 #SBATCH --mem=150G
-#SBATCH --job-name=GPU_RYF1_4dg
+#SBATCH --job-name=GPU_RYF25dg
 #SBATCH --output=../run_logs/GPU_RYF1_4dg_%j.o
 #SBATCH --error=../run_logs/GPU_RYF1_4dg_%j.e
 #SBATCH --export=ALL
@@ -18,10 +19,10 @@ max=${max:-$count}
 
 echo "Run $count of $max"
 
-target=$((count * 4))
+target=$((count * 1))
 
 # Run Julia
-julia --project ../RYF_qtrdeg.jl --arch GPU --stop_time $target \
+mpirun -np 4 julia --project ../RYF_qtrdeg.jl --arch GPU --stop_time $target \
     > ../run_logs/GPU_RYF1_4dg_${count}.stdout \
     2> ../run_logs/GPU_RYF1_4dg_${count}.stderr
 
@@ -34,5 +35,3 @@ if [ $count -le $max ]; then
 else
     echo "Last submission; $count of $max"
 fi
-
-

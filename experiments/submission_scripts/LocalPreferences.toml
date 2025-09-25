@@ -5,7 +5,7 @@ version = "12.5"
 [MPIPreferences]
 __clear__ = ["preloads_env_switch"]
 _format = "1.0"
-abi = "OpenMPI"
+abi = "MPICH"
 binary = "system"
 cclibs = []
 libmpi = "libmpi"
