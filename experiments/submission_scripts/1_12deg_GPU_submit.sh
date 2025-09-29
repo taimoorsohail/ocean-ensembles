@@ -5,13 +5,13 @@
 #SBATCH --ntasks=4
 #SBATCH --gpus-per-task=1
 #SBATCH --mem=150G
-#SBATCH --job-name=GPU_RYF01dg
-#SBATCH --output=../run_logs/GPU_RYF1_10dg_%j.o
-#SBATCH --error=../run_logs/GPU_RYF1_10dg_%j.e
+#SBATCH --job-name=GPU_RYF12dg
+#SBATCH --output=../run_logs/GPU_RYF1_12dg_%j.o
+#SBATCH --error=../run_logs/GPU_RYF1_12dg_%j.e
 #SBATCH --export=ALL
 
 # === Setup resubmission ===
-script_name="1_10deg_GPU_submit.sh"
+script_name="1_12deg_GPU_submit.sh"
 
 # Default count/max
 count=${count:-1}
@@ -22,9 +22,9 @@ echo "Run $count of $max"
 target=$((count * 1))
 
 # Run Julia
-mpirun -n 4 julia --project ../RYF_tntdeg.jl --arch GPU --stop_time $target \
-    > ../run_logs/GPU_RYF1_10dg_${count}.stdout \
-    2> ../run_logs/GPU_RYF1_10dg_${count}.stderr
+mpirun -n 4 julia --project ../RYF_twfdeg.jl --arch GPU --stop_time $target \
+    > ../run_logs/GPU_RYF1_12dg_${count}.stdout \
+    2> ../run_logs/GPU_RYF1_12dg_${count}.stderr
 
 ((count++))
 

@@ -19,6 +19,7 @@ max=${max:-$count}
 
 echo "Run $count of $max"
 
+<<<<<<< HEAD
 target=$((count * 1))
 
 # Run Julia

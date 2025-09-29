@@ -138,8 +138,6 @@ const z_surf = z_faces(Nz)
 
 @info "Top grid cell is " * string(abs(round(z_faces(Nz)))) * "m thick"
 
-# z_faces = Oceananigans.Grids.MutableVerticalDiscretization(z_faces)
-
 @info "Defining tripolar grid"
 
 underlying_grid = TripolarGrid(arch;
