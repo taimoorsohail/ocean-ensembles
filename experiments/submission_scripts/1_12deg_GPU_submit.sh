@@ -33,7 +33,7 @@ echo "Run $count of $max"
 
 target=$((count * 4))  
 
-mpirun -n 4 julia --project \
+mpirun -n 8 julia --project \
   ../RYF_twfdeg.jl --arch GPU --stop_time $target\
   > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_12dg_$count.stdout \
   2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_12dg_$count.stderr
