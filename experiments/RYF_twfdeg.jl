@@ -373,6 +373,7 @@ end
 
 function save_restart(sim)
     @info @sprintf("Saving checkpoint file")
+    localrank = Integer(sim.model.architecture.local_rank)
 
     jldsave(output_path * "checkpoint_twfdeg_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";
     u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),

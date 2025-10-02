@@ -37,6 +37,20 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 checkpoint_timer = 365days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
 
+function memory_status(arch::Union{Distributed{<:GPU}, <:GPU})
+    free, total = CUDA.memory_info()
+    used = total - free
+    used_GiB, free_GiB, total_GiB = used / 2^30, free / 2^30, total / 2^30
+    @show arch.local_rank, used_GiB, free_GiB, total_GiB
+end
+
+function memory_status(arch::Union{Distributed{<:CPU}, <:CPU})
+    total = Sys.total_memory()
+    free  = Sys.free_memory()
+    used  = total - free
+    used_GiB, free_GiB, total_GiB = used / 2^30, free / 2^30, total / 2^30
+    @show arch.local_rank, used_GiB, free_GiB, total_GiB
+end
 
 if isempty(ARGS)
     println("No target time provided. Please enter target time:")
@@ -71,11 +85,9 @@ end
 #total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 localrank = Integer(arch.local_rank)
 @info "Using architecture: " * string(arch)
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
+memory_status(arch)
+
 restartfiles = glob("checkpoint_sxtdeg_iteration*rank$(localrank)*", output_path)
 
 # Extract the numeric suffix from each filename
@@ -133,14 +145,12 @@ download_dataset(salinity)
 Nx = Integer(360*6)
 Ny = Integer(180*6)
 Nz = Integer(75)
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
+memory_status(arch)
+
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-z_faces = ExponentialCoordinate(Nz, depth, 0)
+z_faces = ExponentialDiscretization(Nz, depth, 0)
 
 const z_surf = z_faces(Nz)
 
@@ -154,48 +164,37 @@ underlying_grid = TripolarGrid(arch;
                                halo = (7, 7, 7))
 
 @info "Defining bottom bathymetry"
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
+memory_status(arch)
+
 ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
 ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
+memory_status(arch)
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
+memory_status(arch)
 ### Restoring
 
 # We include surface salinity restoring to a predetermined dataset.
 
 @info "Defining restoring rate"
 
-# restoring_rate  = 1 / 18days
-# @inline mask(x, y, z, t) = z ≥ z_surf - 1
+restoring_rate  = 1 / 18days
+@inline mask(x, y, z, t) = z ≥ z_surf - 1
 
-# FS = DatasetRestoring(salinity, grid; mask, rate=restoring_rate, time_indices_in_memory = 10)
-# forcing = (; S=FS)
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+FS = DatasetRestoring(salinity, grid; mask, rate=restoring_rate, time_indices_in_memory = 10)
+forcing = (; S=FS)
+
+memory_status(arch)
 # ### Closures
 # We include a Gent-McWilliam isopycnal diffusivity as a parameterization for the mesoscale
 # eddy fluxes. For vertical mixing at the upper-ocean boundary layer we include the CATKE
@@ -205,36 +204,25 @@ end
 
 catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
+memory_status(arch)
+
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
 # We use a split-explicit timestepping with 30 substeps for the barotropic
 # mode.
 
 @info "Defining free surface"
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
 # free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=10minutes)
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
 free_surface = SplitExplicitFreeSurface(grid; substeps=70)
+memory_status(arch)
+
 momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
+memory_status(arch)
+
 @info "Defining ocean model"
 
 @time ocean = ocean_simulation(grid; Δt=1minutes,
@@ -242,13 +230,11 @@ end
                          tracer_advection,
                          timestepper = :SplitRungeKutta3,
                          free_surface,
-                         #forcing = forcing,
+                         forcing = forcing,
                          closure)
-@info "Rank $(MPI.Comm_rank(MPI.COMM_WORLD)) GPU memory" begin
-    free, total = CUDA.memory_info()
-    used = total - free
-    (used_GiB = used / 2^30, free_GiB = free / 2^30, total_GiB = total / 2^30)
-end
+
+memory_status(arch)
+
 # ### Initial condition
 
 # We initialize the ocean from the ECCO state estimate.
@@ -257,6 +243,8 @@ end
 
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
                   S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
+
+memory_status(arch)
 
 #####
 ##### A Prognostic Sea-ice model
@@ -268,6 +256,8 @@ sea_ice = sea_ice_simulation(grid, ocean; advection=WENO(order=7))
 set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), dir=data_path),
                     ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir=data_path))
 
+memory_status(arch)
+
 # ### Atmospheric forcing
 
 # We force the simulation with an JRA55-do atmospheric reanalysis.
@@ -275,6 +265,8 @@ set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), 
 
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), include_rivers_and_icebergs=true)
+
+memory_status(arch)
 
 # ### Coupled simulation
 
@@ -288,7 +280,11 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
+memory_status(arch)
+
 simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
+
+memory_status(arch)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -402,6 +398,7 @@ end
                                             filename = "global_tot_integrals_sxtdeg_RYF_iteration" * iteration_number,
                                             overwrite_existing = true)
 
+memory_status(arch)
 
 #### CHECKPOINTING ####
 # if checkpoint_type != "none"
@@ -418,6 +415,7 @@ end
 
 function save_restart(sim)
     @info @sprintf("Saving checkpoint file")
+    localrank = Integer(sim.model.architecture.local_rank)
 
     jldsave(output_path * "checkpoint_sxtdeg_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";
     u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),
