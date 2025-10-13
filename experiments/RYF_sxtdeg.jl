@@ -351,7 +351,7 @@ for (ind, depth) in enumerate(depths)
 
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
-                                                schedule = TimeInterval(31days),
+                                                schedule = AverageTimeInterval(31days),
                                                 filename = "global_" * string(Integer(round(slice_level))) * "m_fields_sxtdeg_RYF_iteration" * iteration_number,
                                                 indices = (:, :, ind_pln),
                                                 with_halos = false,
@@ -362,7 +362,7 @@ end
 
 @time simulation.output_writers[:checkpointer] = JLD2Writer(ocean.model, global_outputs;
                                             dir = output_path,
-                                            schedule = TimeInterval(5days),
+                                            schedule = AverageTimeInterval(5days),
                                             filename = "global_tot_integrals_sxtdeg_RYF_iteration" * iteration_number,
                                             overwrite_existing = true)
 
@@ -393,13 +393,13 @@ sea_ice_checkpointer_tracers = merge(
 
 @time ocean.output_writers[:checkpointer] = JLD2Writer(ocean.model, ocean_checkpointer_tracers;
                                             dir = output_path,
-                                            schedule = IterationInterval(40),
+                                            schedule = checkpoint_intervals,
                                             filename = "ocean_checkpointer_vars_iteration" * iteration_number,
                                             overwrite_existing = true)
 
 @time sea_ice.output_writers[:checkpointer] = JLD2Writer(sea_ice.model, sea_ice_checkpointer_tracers;
                                             dir = output_path,
-                                            schedule = IterationInterval(40),
+                                            schedule = checkpoint_intervals,
                                             filename = "sea_ice_checkpointer_vars_iteration" * iteration_number,
                                             overwrite_existing = true)
 
