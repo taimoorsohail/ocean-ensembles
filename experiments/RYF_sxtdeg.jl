@@ -37,21 +37,6 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 checkpoint_timer = 365days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
 
-function memory_status(arch::Union{Distributed{<:GPU}, <:GPU})
-    free, total = CUDA.memory_info()
-    used = total - free
-    used_GiB, free_GiB, total_GiB = used / 2^30, free / 2^30, total / 2^30
-    @show arch.local_rank, used_GiB, free_GiB, total_GiB
-end
-
-function memory_status(arch::Union{Distributed{<:CPU}, <:CPU})
-    total = Sys.total_memory()
-    free  = Sys.free_memory()
-    used  = total - free
-    used_GiB, free_GiB, total_GiB = used / 2^30, free / 2^30, total / 2^30
-    @show arch.local_rank, used_GiB, free_GiB, total_GiB
-end
-
 if isempty(ARGS)
     println("No target time provided. Please enter target time:")
     target_time_input = readline()
@@ -85,8 +70,6 @@ end
 #total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 localrank = Integer(arch.local_rank)
 @info "Using architecture: " * string(arch)
-
-memory_status(arch)
 
 restartfiles = glob("checkpoint_sxtdeg_iteration*rank$(localrank)*", output_path)
 
@@ -146,8 +129,6 @@ Nx = Integer(360*6)
 Ny = Integer(180*6)
 Nz = Integer(75)
 
-memory_status(arch)
-
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
 z_faces = ExponentialDiscretization(Nz, depth, 0)
@@ -165,23 +146,20 @@ underlying_grid = TripolarGrid(arch;
 
 @info "Defining bottom bathymetry"
 
-memory_status(arch)
-
 ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
 ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
-view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
+# view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
-memory_status(arch)
+
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
-memory_status(arch)
 ### Restoring
 
 # We include surface salinity restoring to a predetermined dataset.
@@ -194,7 +172,6 @@ restoring_rate  = 1 / 18days
 FS = DatasetRestoring(salinity, grid; mask, rate=restoring_rate, time_indices_in_memory = 10)
 forcing = (; S=FS)
 
-memory_status(arch)
 # ### Closures
 # We include a Gent-McWilliam isopycnal diffusivity as a parameterization for the mesoscale
 # eddy fluxes. For vertical mixing at the upper-ocean boundary layer we include the CATKE
@@ -205,8 +182,6 @@ memory_status(arch)
 catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
-memory_status(arch)
-
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
 # We use a split-explicit timestepping with 30 substeps for the barotropic
@@ -215,13 +190,10 @@ memory_status(arch)
 @info "Defining free surface"
 # free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=10minutes)
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=70)
-memory_status(arch)
+free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=10minutes)
 
 momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
-
-memory_status(arch)
 
 @info "Defining ocean model"
 
@@ -233,8 +205,6 @@ memory_status(arch)
                          forcing = forcing,
                          closure)
 
-memory_status(arch)
-
 # ### Initial condition
 
 # We initialize the ocean from the ECCO state estimate.
@@ -243,8 +213,6 @@ memory_status(arch)
 
 set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
                   S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
-
-memory_status(arch)
 
 #####
 ##### A Prognostic Sea-ice model
@@ -256,8 +224,6 @@ sea_ice = sea_ice_simulation(grid, ocean; advection=WENO(order=7))
 set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), dir=data_path),
                     ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir=data_path))
 
-memory_status(arch)
-
 # ### Atmospheric forcing
 
 # We force the simulation with an JRA55-do atmospheric reanalysis.
@@ -265,8 +231,6 @@ memory_status(arch)
 
 radiation  = Radiation(arch)
 atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), include_rivers_and_icebergs=true)
-
-memory_status(arch)
 
 # ### Coupled simulation
 
@@ -278,13 +242,13 @@ memory_status(arch)
 # flow fields.
 
 @info "Defining coupled model"
-@time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
+@time coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 
-memory_status(arch)
+simulation = Simulation(coupled_model; Δt=10minutes, stop_time=20days)
 
-simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
-
-memory_status(arch)
+import Oceananigans.Diagnostics: CFL
+(c::CFL)(sim::Simulation) = c(sim.model)
+(c::CFL)(sim::Simulation{<:ClimaOcean.OceanSeaIceModels.OceanSeaIceModel}) = c(sim.model.ocean.model)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -316,6 +280,7 @@ function progress(sim)
     η = sim.model.ocean.model.free_surface.η
     u, v, w = sim.model.ocean.model.velocities
     T, S = sim.model.ocean.model.tracers
+    cfl = AdvectiveCFL(sim.Δt)
 
     Trange = (maximum((T)), minimum((T)))
     Srange = (maximum((S)), minimum((S)))
@@ -333,9 +298,11 @@ function progress(sim)
     msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
     msg6 = @sprintf("extrema(η): (%.2f, %.2f) m, ", ηrange...)
     msg7 = @sprintf("wall time: %s \n", prettytime(step_time))
+    msg8 = @sprintf("SYPD: %.2f \n", (24*3600)/step_time/365)
+    msg5 = @sprintf("CFL: %.2f \n", cfl)
 
-    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7
-    
+    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7 * msg8 * msg5
+
     wall_time[] = time_ns()
 
     return nothing
@@ -350,23 +317,24 @@ outputs = merge(tracers, velocities)
 
 tot_integral = Symbol[]
 tot_integral_outputs = Field[]
-avg = Symbol[]
-avg_outputs = Field[]
+tot_integral_volume_symbols = Symbol[]
+tot_integral_volumes = Field[]
 
 for key in keys(outputs)
     f = outputs[key]
     f_tot = Field(Integral(f, dims = (1,2,3)))
-    f_avg = Field(Average(f, dims = (1,2,3)))
+    set!(f,1)
+    f_tot_V = Field(Integral(f, dims = (1,2,3)))
     push!(tot_integral_outputs, f_tot)
     push!(tot_integral, Symbol(key, "_totintegral"))
-    push!(avg_outputs, f_avg)
-    push!(avg, Symbol(key, "_avg"))
+    push!(tot_integral_volume_symbols, Symbol(key, "_totintegral_volume"))
+    push!(tot_integral_volumes, f_tot_V)
 end
 
 cumulative_tuple = NamedTuple{Tuple(tot_integral)}(Tuple(tot_integral_outputs))
-average_tuple = NamedTuple{Tuple(avg)}(Tuple(avg_outputs))
+cumulative_tuple_vol = NamedTuple{Tuple(tot_integral_volume_symbols)}(Tuple(tot_integral_volumes))
 
-global_outputs = merge(cumulative_tuple, average_tuple)
+global_outputs = merge(cumulative_tuple, cumulative_tuple_vol)
 
 iteration_number = string(Oceananigans.iteration(simulation))
 
@@ -392,84 +360,116 @@ for (ind, depth) in enumerate(depths)
 
 end
 
-@time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
+@time simulation.output_writers[:checkpointer] = JLD2Writer(ocean.model, global_outputs;
                                             dir = output_path,
                                             schedule = TimeInterval(5days),
                                             filename = "global_tot_integrals_sxtdeg_RYF_iteration" * iteration_number,
                                             overwrite_existing = true)
 
-memory_status(arch)
 
-#### CHECKPOINTING ####
-# if checkpoint_type != "none"
-#     @info "Removing all checkpoints"
-#     for f in restartfiles
-#         if isfile(f)
-#             @info "Removing old restart file: $f"
-#             rm(f; force = true)
-#         end
-#     end
-# end
+
+################################### START CHECKPOINTING ######################################
 
 @info "Saving restart"
 
 function save_restart(sim)
-    @info @sprintf("Saving checkpoint file")
-    localrank = Integer(sim.model.architecture.local_rank)
-
-    jldsave(output_path * "checkpoint_sxtdeg_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";
-    u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),
-    v = on_architecture(CPU(), (sim.model.ocean.model.velocities.v)),
-    w = on_architecture(CPU(), (sim.model.ocean.model.velocities.w)),
-    T = on_architecture(CPU(), (sim.model.ocean.model.tracers.T)),
-    S = on_architecture(CPU(), (sim.model.ocean.model.tracers.S)),
-    e = on_architecture(CPU(), (sim.model.ocean.model.tracers.e)),
-    η = on_architecture(CPU(), (sim.model.ocean.model.free_surface.η)),
-    U = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.U)),
-    V = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.V)),
-
-    h = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thickness)),
-    ℵ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_concentration)),
-    σ₁₁ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₁)),
-    σ₂₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₂₂)),
-    σ₁₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₂)),
-    Tu = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.top_surface_temperature)),
-    Gʰ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.thermodynamic_tendency)),
-    u_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.u)),
-    v_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.v)),
-
+    localrank = MPI.Comm_rank(MPI.COMM_WORLD)
+    jldsave(output_path * "ocean_checkpointer_clock_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";
     clock = sim.model.ocean.model.clock)
-
-    restartfiles = glob("checkpoint_sxtdeg_iteration*rank$(localrank)*", output_path)
-
-    # Extract the numeric suffix from each filename
-    restart_numbers = map(f -> parse(Int, match(r"checkpoint_sxtdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
-
-    sorted_restart_numbers = sort(unique(restart_numbers))
-
-    # Keep only the last 50 iteration numbers
-    if length(sorted_restart_numbers) < 50
-        keep = sorted_restart_numbers
-    else
-        # Keep the last 50 iterations
-        @info "Keeping last 50 restart files: " * string(sorted_restart_numbers[end-49:end])
-        @info "Removing older restart files"
-        keep = sorted_restart_numbers[end-49:end]
-    end
-    
-    # Loop through and remove all older files for this rank
-    for number in sorted_restart_numbers
-        if number ∉ keep
-            filename = output_path * "checkpoint_sxtdeg_iteration$(number)_rank$(localrank).jld2"
-            if isfile(filename)
-                @info "Removing old restart file: $filename"
-                rm(filename; force = true)
-            end
-        end
-    end
 end
 
+ocean_checkpointer_tracers = merge(
+    ocean.model.velocities,
+    ocean.model.tracers,
+    ocean.model.free_surface.barotropic_velocities,
+    (; η = simulation.model.ocean.model.free_surface.η)
+)
+sea_ice_checkpointer_tracers = merge(  
+                                (ice_thickness = sea_ice.model.ice_thickness,
+                                ice_concentration = sea_ice.model.ice_concentration,
+                                top_surface_temperature = sea_ice.model.ice_thermodynamics.top_surface_temperature),
+                                sea_ice.model.dynamics.auxiliaries.fields, 
+                                sea_ice.model.velocities)
+
+@time ocean.output_writers[:checkpointer] = JLD2Writer(ocean.model, ocean_checkpointer_tracers;
+                                            dir = output_path,
+                                            schedule = IterationInterval(40),
+                                            filename = "ocean_checkpointer_vars_iteration" * iteration_number,
+                                            overwrite_existing = true)
+
+@time sea_ice.output_writers[:checkpointer] = JLD2Writer(sea_ice.model, sea_ice_checkpointer_tracers;
+                                            dir = output_path,
+                                            schedule = IterationInterval(40),
+                                            filename = "sea_ice_checkpointer_vars_iteration" * iteration_number,
+                                            overwrite_existing = true)
+
 add_callback!(simulation, save_restart, checkpoint_intervals)
+
+################################## END CHECKPOINTING ######################################
+
+# function save_restart(sim)
+#     @info @sprintf("Saving checkpoint file")
+#     @info sim.model.architecture
+#     if sim.model.architecture === nothing
+#         error("sim.model.architecture is not initialized; cannot determine local rank")
+#     end
+#     localrank = Integer(sim.model.architecture.local_rank)
+#     @info "Local rank: " * string(localrank)
+#     @info "Saving filename" * output_path * "checkpoint_sxtdeg_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2"
+
+#     jldsave(output_path * "checkpoint_sxtdeg_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";
+#     u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),
+#     v = on_architecture(CPU(), (sim.model.ocean.model.velocities.v)),
+#     w = on_architecture(CPU(), (sim.model.ocean.model.velocities.w)),
+#     T = on_architecture(CPU(), (sim.model.ocean.model.tracers.T)),
+#     S = on_architecture(CPU(), (sim.model.ocean.model.tracers.S)),
+#     e = on_architecture(CPU(), (sim.model.ocean.model.tracers.e)),
+#     η = on_architecture(CPU(), (sim.model.ocean.model.free_surface.η)),
+#     U = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.U)),
+#     V = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.V)),
+
+#     h = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thickness)),
+#     ℵ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_concentration)),
+#     σ₁₁ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₁)),
+#     σ₂₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₂₂)),
+#     σ₁₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₂)),
+#     Tu = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.top_surface_temperature)),
+#     Gʰ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.thermodynamic_tendency)),
+#     u_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.u)),
+#     v_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.v)),
+#     clock = sim.model.ocean.model.clock)
+
+#     restartfiles = glob("checkpoint_sxtdeg_iteration*rank$(localrank)*", output_path)
+#     @info "restart files: " * string(restartfiles)
+#     # Extract the numeric suffix from each filename
+#     restart_numbers = map(f -> parse(Int, match(r"checkpoint_sxtdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+#     @info "Restart numbers: " * string(restart_numbers)
+#     sorted_restart_numbers = sort(unique(restart_numbers))
+
+#     # Keep only the last 50 iteration numbers
+#     if length(sorted_restart_numbers) < 50
+#         keep = sorted_restart_numbers
+#     else
+#         # Keep the last 50 iterations
+#         @info "Keeping last 50 restart files: " * string(sorted_restart_numbers[end-49:end])
+#         @info "Removing older restart files"
+#         keep = sorted_restart_numbers[end-49:end]
+#     end
+    
+#     # Loop through and remove all older files for this rank
+#     for number in sorted_restart_numbers
+#         if number ∉ keep
+#             filename = output_path * "checkpoint_sxtdeg_iteration$(number)_rank$(localrank).jld2"
+#             if isfile(filename)
+#                 @info "Removing old restart file: $filename"
+#                 rm(filename; force = true)
+#             end
+#         end
+#     end
+#     @info "Done for rank $(localrank)"
+# end
+
+# add_callback!(simulation, save_restart, checkpoint_intervals)
 
 
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
@@ -530,7 +530,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     
     @info "Running simulation"
 
-    simulation.Δt = 15minutes
+    simulation.Δt = 40minutes
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -539,7 +539,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 15minutes 
+    simulation.Δt = 40minutes 
     simulation.stop_time = target_time
 
     run!(simulation)

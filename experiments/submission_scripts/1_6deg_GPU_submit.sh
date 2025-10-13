@@ -5,8 +5,8 @@
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
-#PBS -l ncpus=48
-#PBS -l ngpus=4
+#PBS -l ncpus=36
+#PBS -l ngpus=3
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
@@ -33,7 +33,7 @@ echo "Run $count of $max"
 
 target=$((count * 7))  
 
-mpirun -n 6 julia --project \
+mpirun -n 3 julia --project \
   ../RYF_sxtdeg.jl --arch GPU --stop_time $target\
   > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_$count.stdout \
   2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_$count.stderr

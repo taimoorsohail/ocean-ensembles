@@ -7,7 +7,8 @@ using Glob
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-resolution = "onedeg"
+resolution = "sxtdeg"
+ranks = 3
 
 # Example: get all matching files in a folder
 files = glob("global_tot*$(resolution)_RYF_iteration*.jld2", output_path)
@@ -16,18 +17,21 @@ files = glob("global_tot*$(resolution)_RYF_iteration*.jld2", output_path)
 iterations = [parse(Int, match(r"iteration(\d+)", f).captures[1]) 
               for f in files if occursin(r"iteration\d+", f)]
 unique_iterations = sort(unique(iterations))
+# --- Extract rank numbers ---
+ranks = unique(parse.(Int, match(r"rank(\d+)", f).captures[1] for f in files))
 
 tot_files = []
 
 for iteration in unique_iterations
-    pattern = "global_tot_integrals_$(resolution)_RYF_iteration$(iteration).jld2"
-    matching_files = glob(pattern, output_path)
-    if !isempty(matching_files)
-        push!(tot_files, matching_files[1])
-    else
-        @warn "No files found for iteration: $iteration"
+    for rank in ranks
+        pattern = "global_tot_integrals_$(resolution)_RYF_iteration$(iteration)_rank$(rank).jld2"
+        matching_files = glob(pattern, output_path)
+        if !isempty(matching_files)
+            push!(tot_files, matching_files[1])
+        else
+            @warn "No files found for iteration: $iteration and rank: $rank"
+        end
     end
-
 end
 
 vars_int = [ "T_totintegral",
@@ -72,6 +76,7 @@ end
 @info "I am loading the surface" 
 slice_times = []
 for file in tot_files
+    rank = unique(parse.(Int, match(r"rank(\d+)", f).captures[1] for file))
     slice = create_dict(vars, file)
     push!(slice_times, slice)
 end

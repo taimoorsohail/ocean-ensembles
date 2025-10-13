@@ -10,7 +10,7 @@ using Oceananigans.DistributedComputations
 using Printf
 using Dates
 
-arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
+arch = CPU()#Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
 
 function memory_status(arch::Union{Distributed{<:GPU}, <:GPU})
     free, total = CUDA.memory_info()

@@ -48,7 +48,7 @@ Nx, Ny, Nz = 100, 100, 50
 Lx, Ly = 100, 100
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-z_faces = ExponentialCoordinate(Nz, depth, 0) 
+z_faces = ExponentialDiscretization(Nz, depth, 0) 
 memory_status(arch)
 @info "Creating grid"
 
