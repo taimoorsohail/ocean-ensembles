@@ -8,10 +8,10 @@ using Glob
 # figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
 fig_avg = Figure(size = (1200, 800))
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-resolution = "onedeg"
+resolution = "sxtdeg"
 nframes = nothing
 # Example: get all matching files in a folder
 files = glob("global_*$(resolution)_RYF_iteration*.jld2", output_path)
@@ -25,6 +25,11 @@ unique_depth_levels = sort(unique(depth_levels))
 iterations = [parse(Int, match(r"iteration(\d+)", f).captures[1]) 
               for f in files if occursin(r"iteration\d+", f)]
 unique_iterations = sort(unique(iterations))
+
+# --- Extract rank numbers ---
+ranks = [parse(Int, match(r"rank(\d+)", f).captures[1])
+         for f in files if occursin(r"rank\d+", f)]
+unique_ranks = sort(unique(ranks))
 
 vars = [ "T",
  "S",
@@ -73,7 +78,7 @@ end
 
 avg_val = Dict(var => Dict() for var in vars)
 
-pattern = "global_3m_*$(resolution)_RYF_iteration0.jld2"
+pattern = "global_3m_*$(resolution)_RYF_iteration0*"
 matching_files = glob(pattern, output_path)
 slice = create_dict(vars, matching_files[1])
 

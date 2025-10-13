@@ -63,7 +63,6 @@ module Diagnostics
 
         lat,   lon   = two_dimensionalize(lat,   lon)
         lat_b, lon_b = two_dimensionalize(lat_b, lon_b)
-
         return structured_coordinate_dataset(lat, lon, lat_b, lon_b)
     end
 
@@ -143,7 +142,9 @@ module Diagnostics
         # Create source and destination fields
 
         src_ds = coordinate_dataset(source_field.grid)
+        @show src_ds
         dst_ds = coordinate_dataset(destination_field.grid)
+        @show dst_ds
 
         # # Extract Centers
         # if isa(source_field.grid, SomeTripolarGrid)
@@ -240,9 +241,8 @@ module Diagnostics
         #         "lon" => (["lon"], lon_dst_np)    )),
         #     name="destination"
         # )
-        @info "I am Periodic now!"
         regridder = get_xesmf().Regridder(src_ds, dst_ds, method, periodic=PyObject(true))
-
+        
         # Move back to Julia
         # Convert the regridder weights to a Julia sparse matrix
         coo = regridder.weights.data
@@ -254,8 +254,9 @@ module Diagnostics
         shape = Tuple(Int.(coo[:shape]))
         W = sparse(rows, cols, vals, shape[1], shape[2])
 
-        return W
+        return W, regridder, dst_ds
     end
+
 
     """
         regrid_tracers!(src::Field, dst::Field, W::SparseMatrixCSC)

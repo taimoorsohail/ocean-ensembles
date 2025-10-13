@@ -112,7 +112,7 @@ Nz = Integer(75)
 
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-r_faces = ExponentialCoordinate(Nz, depth)
+r_faces = ExponentialDiscretization(Nz, depth, 0)
 # z_faces = Oceananigans.MutableVerticalDiscretization(r_faces)
 
 @info "Defining tripolar grid"
