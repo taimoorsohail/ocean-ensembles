@@ -3,6 +3,7 @@ using Oceananigans  # From local
 using Statistics
 using JLD2
 using Glob
+using OceanEnsembles
 
 # output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
 # figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
@@ -16,22 +17,37 @@ nframes = nothing
 # Example: get all matching files in a folder
 files = glob("global_*$(resolution)_RYF_iteration*.jld2", output_path)
 
+# Collect prefixes here
+prefixes = String[]
+
+for file in files
+    fname = basename(file)
+    prefix = replace(fname, r"_iteration.*" => "")
+    push!(prefixes, joinpath(output_path, prefix))
+end
+
+# Keep only unique prefixes
+unique_prefixes = unique(prefixes)
+
+println(unique_prefixes)
+for prefix in unique_prefixes
+    println("Combining files for prefix: $prefix")
+    combine_ranks(prefix, prefix; remove_split_files = false, gridtype = "TripolarGrid")
+end
+
+files_combined = glob("global_*$(resolution)_RYF_iteration0.jld2", output_path)
+
 # --- Extract depth levels (numbers before 'm') ---
 depth_levels = [parse(Int, match(r"global_(\d+)m", f).captures[1]) 
-                for f in files if occursin(r"global_\d+m", f)]
+                for f in files_combined if occursin(r"global_\d+m", f)]
 unique_depth_levels = sort(unique(depth_levels))
 
 # --- Extract iteration numbers ---
 iterations = [parse(Int, match(r"iteration(\d+)", f).captures[1]) 
-              for f in files if occursin(r"iteration\d+", f)]
+              for f in files_combined if occursin(r"iteration\d+", f)]
 unique_iterations = sort(unique(iterations))
 
-# --- Extract rank numbers ---
-ranks = [parse(Int, match(r"rank(\d+)", f).captures[1])
-         for f in files if occursin(r"rank\d+", f)]
-unique_ranks = sort(unique(ranks))
-
-vars = [ "T",
+vars = ["T",
  "S",
  "u",
  "v",
@@ -78,7 +94,7 @@ end
 
 avg_val = Dict(var => Dict() for var in vars)
 
-pattern = "global_3m_*$(resolution)_RYF_iteration0*"
+pattern = "global_3m_*$(resolution)_RYF_iteration0.jld2"
 matching_files = glob(pattern, output_path)
 slice = create_dict(vars, matching_files[1])
 

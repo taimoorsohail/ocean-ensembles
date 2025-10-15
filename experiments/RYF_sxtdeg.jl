@@ -242,7 +242,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 # flow fields.
 
 @info "Defining coupled model"
-@time coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
+@time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
 simulation = Simulation(coupled_model; Δt=10minutes, stop_time=20days)
 
@@ -299,7 +299,7 @@ function progress(sim)
     msg6 = @sprintf("extrema(η): (%.2f, %.2f) m, ", ηrange...)
     msg7 = @sprintf("wall time: %s \n", prettytime(step_time))
     msg8 = @sprintf("SYPD: %.2f \n", (24*3600)/step_time/365)
-    msg5 = @sprintf("CFL: %.2f \n", cfl)
+    msg5 = @sprintf("CFL: %.2f \n", getfield(cfl, 1))
 
     @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7 * msg8 * msg5
 
@@ -351,7 +351,7 @@ for (ind, depth) in enumerate(depths)
 
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
-                                                schedule = AverageTimeInterval(31days),
+                                                schedule = AveragedTimeInterval(31days),
                                                 filename = "global_" * string(Integer(round(slice_level))) * "m_fields_sxtdeg_RYF_iteration" * iteration_number,
                                                 indices = (:, :, ind_pln),
                                                 with_halos = false,
@@ -362,7 +362,7 @@ end
 
 @time simulation.output_writers[:checkpointer] = JLD2Writer(ocean.model, global_outputs;
                                             dir = output_path,
-                                            schedule = AverageTimeInterval(5days),
+                                            schedule = AveragedTimeInterval(5days),
                                             filename = "global_tot_integrals_sxtdeg_RYF_iteration" * iteration_number,
                                             overwrite_existing = true)
 

@@ -19,7 +19,7 @@ function grid_metrics(prefix, ranks)
     ny = Integer(Ny / length(ranks))
 
     depth = -6000.0 # Depth of the ocean in meters
-    z_faces = ExponentialCoordinate(Nz, depth)
+    z_faces = ExponentialDiscretization(Nz, depth, 0)
     return Nx, Ny, Nz, Hx, Hy, Hz, nx, ny, z_faces
 end
 
@@ -66,6 +66,7 @@ end
 function combine_ranks(prefix, prefix_out; remove_split_files = false, gridtype = "TripolarGrid")
     iter_rank_map = identify_combination_targets(basename(prefix), dirname(prefix))
     iterations = collect(keys(iter_rank_map))
+    @show iterations
     for iteration in iterations
         ranks = iter_rank_map[iteration]
         grid = create_grid(prefix * "_iteration$(iteration)", ranks; gridtype = gridtype)
@@ -102,17 +103,17 @@ function combine_ranks(prefix, prefix_out; remove_split_files = false, gridtype 
         end
         @info "Setting distributed field time series for iteration $(iteration) with ranks $(ranks)"
 
-        set_distributed_field_time_series!(utmp, prefix_out, ranks)
+        set_distributed_field_time_series!(utmp, prefix, ranks)
         @show "Set u field time series for iteration $(iteration) with ranks $(ranks)"
-        set_distributed_field_time_series!(vtmp, prefix_out, ranks)
+        set_distributed_field_time_series!(vtmp, prefix, ranks)
         @show "Set v field time series for iteration $(iteration) with ranks $(ranks)"
-        set_distributed_field_time_series!(wtmp, prefix_out, ranks)
+        set_distributed_field_time_series!(wtmp, prefix, ranks)
         @show "Set w field time series for iteration $(iteration) with ranks $(ranks)"
-        set_distributed_field_time_series!(Ttmp, prefix_out, ranks)
+        set_distributed_field_time_series!(Ttmp, prefix, ranks)
         @show "Set T field time series for iteration $(iteration) with ranks $(ranks)"
-        set_distributed_field_time_series!(Stmp, prefix_out, ranks)
+        set_distributed_field_time_series!(Stmp, prefix, ranks)
         @show "Set S field time series for iteration $(iteration) with ranks $(ranks)"
-        set_distributed_field_time_series!(etmp, prefix_out, ranks)
+        set_distributed_field_time_series!(etmp, prefix, ranks)
         @show "Set e field time series for iteration $(iteration) with ranks $(ranks)"
 
         if remove_split_files

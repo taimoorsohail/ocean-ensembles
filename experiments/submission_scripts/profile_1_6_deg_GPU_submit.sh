@@ -1,0 +1,52 @@
+#!/bin/bash
+#PBS -P v46
+#PBS -q gpuvolta
+#PBS -l walltime=12:00:00
+#PBS -l mem=150GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=36
+#PBS -l ngpus=3
+#PBS -l jobfs=180GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N GPU_RYF1_6dg
+
+# Output logs
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg.e
+
+# === Setup resubmission ===
+script_name='1_6deg_GPU_submit.sh'
+
+# Set default values of count and max
+if [ -z $count ]; then
+    count=1
+fi
+
+if [ -z $max ]; then
+    max=$count
+fi
+
+# Log submission counters
+echo "Run $count of $max"
+
+target=$((count * 7))  
+
+# Run 3 MPI ranks, one per GPU, each with its own nsys profile output
+mpiexec -np 3 bash -c '
+  nsys profile \
+    --trace=cuda,mpi \
+    --force-overwrite true \
+    --output=my_profile${OMPI_COMM_WORLD_RANK} \
+    julia --project --check-bounds=no ../RYF_sxtdeg.jl --arch GPU --stop 2
+'
+((count++))
+
+if [ $count -le $max ]; then
+    echo "Resubmitting model"
+    cd $PBS_O_WORKDIR
+    qsub -v count=$count,max=$max $script_name
+else
+    echo "Last submission; $count of $max"
+fi
