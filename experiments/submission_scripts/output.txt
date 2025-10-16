@@ -1,0 +1,6 @@
+]0;Julia]0;Julia]0;Julia]0;Julia328.329863 seconds (54.80 M allocations: 3.453 GiB, 0.83% gc time, 96.49% compilation time)
+328.329727 seconds (53.92 M allocations: 3.395 GiB, 0.78% gc time, 99.94% compilation time)
+133.581413 seconds (14.33 M allocations: 852.377 MiB, 99.89% compilation time)
+135.239771 seconds (14.29 M allocations: 849.637 MiB, 99.90% compilation time)
+Iteration: 0000, time: 0 seconds, Δt: 10 seconds, max(|w|) = 0.0e+00 ms⁻¹, wall time: 0 seconds
+Iteration: 0000, time: 0 seconds, Δt: 10 seconds, max(|w|) = 0.0e+00 ms⁻¹, wall time: 0 seconds

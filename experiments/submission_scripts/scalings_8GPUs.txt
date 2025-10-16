@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -P v46
+#PBS -q gpuvolta
+#PBS -l walltime=04:00:00
+#PBS -l mem=128GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=96
+#PBS -l ngpus=8 
+#PBS -l jobfs=10GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N scalings_8GPU
+
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/scalings_8GPU.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/scalings_8GPU.e
+
+mpirun -n 8 julia --project ../scaling.jl > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/scalings_8GPU.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/scalings_8GPU.stderr
