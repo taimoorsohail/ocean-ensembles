@@ -10,7 +10,7 @@
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N scalings_2GPU
+#PBS -N scalings_4GPU
 
 ## Where the outputs go
 #PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/scalings_4GPU.o
