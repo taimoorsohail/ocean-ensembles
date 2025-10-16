@@ -7,7 +7,7 @@
 #PBS -l wd
 #PBS -l ncpus=96
 #PBS -l ngpus=8 
-#PBS -l jobfs=10GB
+#PBS -l jobfs=180GB
 #PBS -W umask=027
 #PBS -j n 
 #PBS -N scalings_8GPU

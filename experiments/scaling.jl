@@ -16,7 +16,7 @@ using JLD2
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 
-arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
+arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 
 function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5, active_cells_map = false) # degrees
     λp = underlying_grid.conformal_mapping.first_pole_longitude
