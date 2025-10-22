@@ -10,7 +10,7 @@
 #PBS -l jobfs=180GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_RYF1_6dg
+#PBS -N RYF1_6dg_profiles
 
 # Output logs
 #PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg.o
@@ -39,7 +39,8 @@ mpiexec -np 3 bash -c '
     --trace=cuda,mpi \
     --force-overwrite true \
     --output=my_profile${OMPI_COMM_WORLD_RANK} \
-    julia --project --check-bounds=no ../RYF_sxtdeg.jl --arch GPU --stop 2
+    julia --project --check-bounds=no ../RYF_sxtdeg.jl --arch GPU --stop 2 \
+    > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_sxtdeg.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_sxtdeg.stderr
 '
 ((count++))
 

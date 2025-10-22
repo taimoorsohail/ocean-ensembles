@@ -53,16 +53,16 @@ if isempty(ARGS)
     println("No arguments provided. Please enter architecture (CPU/GPU):")
     arch_input = readline()
     if arch_input == "GPU"
-        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
     elseif arch_input == "CPU"
-        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
     else
         throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
     end
 elseif ARGS[2] == "GPU"
-    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
 elseif ARGS[2] == "CPU"
-    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
 else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
@@ -158,7 +158,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @info "Defining grid"
 
-@time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+@time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=false)
 
 ### Restoring
 
@@ -244,7 +244,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=10minutes, stop_time=20days)
+simulation = Simulation(coupled_model; Δt=10minutes, stop_iteration=200)
 
 import Oceananigans.Diagnostics: CFL
 (c::CFL)(sim::Simulation) = c(sim.model)
@@ -274,7 +274,7 @@ end
 
 wall_time = Ref(time_ns())
 
-callback_interval = TimeInterval(1days)
+callback_interval = IterationInterval(10)
 
 function progress(sim)
     η = sim.model.ocean.model.free_surface.η
@@ -530,19 +530,19 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     
     @info "Running simulation"
 
-    simulation.Δt = 40minutes
-    simulation.stop_time = target_time
+    # simulation.Δt = 40minutes
+    # simulation.stop_time = target_time
 
-    run!(simulation)
+    # run!(simulation)
 else
     @info "Running simulation"
 
     run!(simulation)
 
-    simulation.Δt = 40minutes 
-    simulation.stop_time = target_time
+    # simulation.Δt = 40minutes 
+    # simulation.stop_time = target_time
 
-    run!(simulation)
+    # run!(simulation)
 end
 
 
