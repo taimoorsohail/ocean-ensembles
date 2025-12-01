@@ -53,16 +53,16 @@ if isempty(ARGS)
     println("No arguments provided. Please enter architecture (CPU/GPU):")
     arch_input = readline()
     if arch_input == "GPU"
-        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
+        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
     elseif arch_input == "CPU"
-        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
+        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
     else
         throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
     end
 elseif ARGS[2] == "GPU"
-    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
+    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 elseif ARGS[2] == "CPU"
-    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
+    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
@@ -71,19 +71,19 @@ end
 localrank = Integer(arch.local_rank)
 @info "Using architecture: " * string(arch)
 
-restartfiles = glob("checkpoint_sxtdeg_iteration*rank$(localrank)*", output_path)
+restartfiles = glob("ocean_checkpointer_clock_iteration*rank$(localrank)*", output_path)
 
 # Extract the numeric suffix from each filename
-restart_numbers = map(f -> parse(Int, match(r"checkpoint_sxtdeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+restart_numbers = map(f -> parse(Int, match(r"ocean_checkpointer_clock_iteration(\d+)", basename(f)).captures[1]), restartfiles)
 
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     # Extract the numeric suffix from each filename
 
     # Get the file with the maximum number
     if checkpoint_type == "last"
-        clock_vars = jldopen(output_path * "checkpoint_sxtdeg_iteration" * string(maximum(restart_numbers)) * "_rank$(localrank).jld2")
+        clock_vars = jldopen(output_path * "ocean_checkpointer_clock_iteration" * string(maximum(restart_numbers)) * "_rank$(localrank).jld2")
     elseif checkpoint_type == "first"
-        clock_vars = jldopen(output_path * "checkpoint_sxtdeg_iteration" * string(minimum(restart_numbers)) * "_rank$(localrank).jld2")
+        clock_vars = jldopen(output_path * "ocean_checkpointer_clock_iteration" * string(minimum(restart_numbers)) * "_rank$(localrank).jld2")
     end
 
     iteration_checkpoint = deepcopy(clock_vars["clock"].iteration)
@@ -131,7 +131,7 @@ Nz = Integer(75)
 
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-z_faces = ExponentialDiscretization(Nz, depth, 0)
+z_faces = ExponentialDiscretization(Nz, depth, 0) # IMPORTANT: WE NEED TO ACCOUNT FOR THIS
 
 const z_surf = z_faces(Nz)
 
@@ -151,7 +151,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
@@ -179,7 +179,7 @@ forcing = (; S=FS)
 
 @info "Defining closures"
 
-catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()
+catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
 # ### Ocean simulation
@@ -190,7 +190,7 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 @info "Defining free surface"
 # free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=10minutes)
 
-free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=10minutes)
+free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=12minutes)
 
 momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
@@ -244,7 +244,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=10minutes, stop_iteration=200)
+simulation = Simulation(coupled_model; Δt=10minutes, stop_time=20days)
 
 import Oceananigans.Diagnostics: CFL
 (c::CFL)(sim::Simulation) = c(sim.model)
@@ -298,7 +298,7 @@ function progress(sim)
     msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
     msg6 = @sprintf("extrema(η): (%.2f, %.2f) m, ", ηrange...)
     msg7 = @sprintf("wall time: %s \n", prettytime(step_time))
-    msg8 = @sprintf("SYPD: %.2f \n", (24*3600)/step_time/365)
+    msg8 = @sprintf("SYPD: %.2f \n", (10*sim.Δt)/step_time/365)
     msg5 = @sprintf("CFL: %.2f \n", getfield(cfl, 1))
 
     @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7 * msg8 * msg5
@@ -323,7 +323,6 @@ tot_integral_volumes = Field[]
 for key in keys(outputs)
     f = outputs[key]
     f_tot = Field(Integral(f, dims = (1,2,3)))
-    set!(f,1)
     f_tot_V = Field(Integral(f, dims = (1,2,3)))
     push!(tot_integral_outputs, f_tot)
     push!(tot_integral, Symbol(key, "_totintegral"))
@@ -475,33 +474,37 @@ add_callback!(simulation, save_restart, checkpoint_intervals)
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     if checkpoint_type == "last"
         @info "Restarting from last checkpoint at iteration " * string(maximum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_sxtdeg_iteration" * string(maximum(restart_numbers)) * "_rank$(localrank).jld2")
+        ocean_fields_loaded = jldopen(output_path * "ocean_checkpointer_vars_iteration" * string(maximum(restart_numbers)) * "_rank$(localrank).jld2")
+        seaice_fields_loaded = jldopen(output_path * "sea_ice_checkpointer_vars_iteration" * string(maximum(restart_numbers)) * "_rank$(localrank).jld2")
+
     elseif checkpoint_type == "first"
         @info "Restarting from first checkpoint at iteration " * string(minimum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_sxtdeg_iteration" * string(minimum(restart_numbers)) * "_rank$(localrank).jld2")
+        ocean_fields_loaded = jldopen(output_path * "ocean_checkpointer_vars_iteration" * string(minimum(restart_numbers)) * "_rank$(localrank).jld2")
+        seaice_fields_loaded = jldopen(output_path * "sea_ice_checkpointer_vars_iteration" * string(minimum(restart_numbers)) * "_rank$(localrank).jld2")
     end
 
-    T_field = fields_loaded["T"]
-    S_field = fields_loaded["S"]
-    e_field = fields_loaded["e"]
-    u_field = fields_loaded["u"]
-    v_field = fields_loaded["v"]
-    w_field = fields_loaded["w"]
-    η_field = fields_loaded["η"]
-    U_field = fields_loaded["U"]
-    V_field = fields_loaded["V"]
+    T_field = ocean_fields_loaded["T"]
+    S_field = ocean_fields_loaded["S"]
+    e_field = ocean_fields_loaded["e"]
+    u_field = ocean_fields_loaded["u"]
+    v_field = ocean_fields_loaded["v"]
+    w_field = ocean_fields_loaded["w"]
+    η_field = ocean_fields_loaded["η"]
+    U_field = ocean_fields_loaded["U"]
+    V_field = ocean_fields_loaded["V"]
 
-    h_field = fields_loaded["h"]
-    ℵ_field = fields_loaded["ℵ"]
-    σ₁₁_field =  fields_loaded["σ₁₁"]
-    σ₂₂_field =  fields_loaded["σ₂₂"]
-    σ₁₂_field =  fields_loaded["σ₁₂"]
-    Tu_field = fields_loaded["Tu"]
-    Gʰ_field = fields_loaded["Gʰ"]
-    u_ice_field = fields_loaded["u_ice"]
-    v_ice_field = fields_loaded["v_ice"]
+    h_field = seaice_fields_loaded["h"]
+    ℵ_field = seaice_fields_loaded["ℵ"]
+    σ₁₁_field =  seaice_fields_loaded["σ₁₁"]
+    σ₂₂_field =  seaice_fields_loaded["σ₂₂"]
+    σ₁₂_field =  seaice_fields_loaded["σ₁₂"]
+    Tu_field = seaice_fields_loaded["Tu"]
+    Gʰ_field = seaice_fields_loaded["Gʰ"]
+    u_ice_field = seaice_fields_loaded["u_ice"]
+    v_ice_field = seaice_fields_loaded["v_ice"]
 
-    close(fields_loaded)
+    close(seaice_fields_loaded)
+    close(ocean_fields_loaded)
 
     set!(ocean.model, 
     T = (T_field),
@@ -530,19 +533,19 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     
     @info "Running simulation"
 
-    # simulation.Δt = 40minutes
-    # simulation.stop_time = target_time
+    simulation.Δt = 12minutes
+    simulation.stop_time = target_time
 
-    # run!(simulation)
+    run!(simulation)
 else
     @info "Running simulation"
 
     run!(simulation)
 
-    # simulation.Δt = 40minutes 
-    # simulation.stop_time = target_time
+    simulation.Δt = 12minutes 
+    simulation.stop_time = target_time
 
-    # run!(simulation)
+    run!(simulation)
 end
 
 

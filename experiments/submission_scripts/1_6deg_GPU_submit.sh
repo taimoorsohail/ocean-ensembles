@@ -5,8 +5,8 @@
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
-#PBS -l ncpus=36
-#PBS -l ngpus=3
+#PBS -l ncpus=48
+#PBS -l ngpus=4
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
@@ -33,7 +33,9 @@ echo "Run $count of $max"
 
 target=$((count * 7))  
 
-mpirun -n 3 julia --project \
+mpi_args=""
+
+mpiexec --bind-to socket --map-by socket -n 4 julia --project \
   ../RYF_sxtdeg.jl --arch GPU --stop_time $target\
   > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_$count.stdout \
   2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_$count.stderr
@@ -43,7 +45,7 @@ mpirun -n 3 julia --project \
 if [ $count -le $max ]; then
     echo "Resubmitting model"
     cd $PBS_O_WORKDIR
-    qsub -v count=$count,max=$max $script_name
+    qsub -v count=$count, max=$max $script_name
 else
     echo "Last submission; $count of $max"
 fi
