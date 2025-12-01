@@ -1,11 +1,11 @@
 [CUDA_Runtime_jll]
-local = "true"
-version = "12.5"
+__clear__ = ["local"]
+version = "12.4"
 
 [MPIPreferences]
 __clear__ = ["preloads_env_switch"]
 _format = "1.0"
-abi = "MPICH"
+abi = "OpenMPI"
 binary = "system"
 cclibs = []
 libmpi = "libmpi"

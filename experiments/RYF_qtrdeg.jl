@@ -37,6 +37,21 @@ figdir = expanduser("../../figures/")
 checkpoint_timer = 365days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
 
+function memory_status(arch::Union{Distributed{<:GPU}, <:GPU})
+    free, total = CUDA.memory_info()
+    used = total - free
+    used_GiB, free_GiB, total_GiB = used / 2^30, free / 2^30, total / 2^30
+    @show arch.local_rank, used_GiB, free_GiB, total_GiB
+end
+
+function memory_status(arch::Union{Distributed{<:CPU}, <:CPU})
+    total = Sys.total_memory()
+    free  = Sys.free_memory()
+    used  = total - free
+    used_GiB, free_GiB, total_GiB = used / 2^30, free / 2^30, total / 2^30
+    @show arch.local_rank, used_GiB, free_GiB, total_GiB
+end
+
 
 if isempty(ARGS)
     println("No target time provided. Please enter target time:")
@@ -132,7 +147,7 @@ Nz = Integer(75)
 
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-z_faces = ExponentialCoordinate(Nz, depth, 0)
+z_faces = ExponentialDiscretization(Nz, depth, 0)
 
 const z_surf = z_faces(Nz)
 
@@ -150,9 +165,9 @@ underlying_grid = TripolarGrid(arch;
 ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
 ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
-@time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
+bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                   minimum_depth = 15,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                  interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
 				                  major_basins = 2)
 view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
@@ -171,6 +186,8 @@ restoring_rate  = 1 / 18days
 
 FS = DatasetRestoring(salinity, grid; mask, rate=restoring_rate, time_indices_in_memory = 10)
 forcing = (; S=FS)
+
+memory_status(arch)
 
 # ### Closures
 # We include a Gent-McWilliam isopycnal diffusivity as a parameterization for the mesoscale
@@ -240,8 +257,11 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
+memory_status(arch)
+@info "Defining simulation"
 
 simulation = Simulation(coupled_model; Δt=5minutes, stop_time=20days)
+memory_status(arch)
 
 # ### Restarting the simulation
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
