@@ -34,15 +34,15 @@ data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-checkpoint_timer = 365days
+checkpoint_timer = 73days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
 
 if isempty(ARGS)
     println("No target time provided. Please enter target time:")
     target_time_input = readline()
-    target_time = parse(Int, target_time_input) * checkpoint_timer
+    target_time = parse(Int, target_time_input) * checkpoint_timer * 5
 else
-    target_time = checkpoint_timer*parse(Int,ARGS[4])
+    target_time = checkpoint_timer*parse(Int,ARGS[4]) * 5
 end
 @info target_time
 checkpoint_type = "last" # "none", "last", "first"
@@ -392,17 +392,17 @@ sea_ice_checkpointer_tracers = merge(
 
 @time ocean.output_writers[:checkpointer] = JLD2Writer(ocean.model, ocean_checkpointer_tracers;
                                             dir = output_path,
-                                            schedule = checkpoint_intervals,
+                                            schedule =  TimeInterval(73days),
                                             filename = "ocean_checkpointer_vars_iteration" * iteration_number,
                                             overwrite_existing = true)
 
 @time sea_ice.output_writers[:checkpointer] = JLD2Writer(sea_ice.model, sea_ice_checkpointer_tracers;
                                             dir = output_path,
-                                            schedule = checkpoint_intervals,
+                                            schedule = TimeInterval(73days),
                                             filename = "sea_ice_checkpointer_vars_iteration" * iteration_number,
                                             overwrite_existing = true)
 
-add_callback!(simulation, save_restart, checkpoint_intervals)
+add_callback!(simulation, save_restart, TimeInterval(73days))
 
 ################################## END CHECKPOINTING ######################################
 

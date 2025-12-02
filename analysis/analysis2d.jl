@@ -6,12 +6,12 @@ using Glob
 
 # output_path = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/outputs/")
 # figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
-fig_avg = Figure(size = (1200, 800))
+fig_avg = Figure(size = (1200, 1600))
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-resolution = "onedeg"
+resolution = "sxtdeg"
 nframes = nothing
 # Example: get all matching files in a folder
 files = glob("global_*$(resolution)_RYF_iteration*.jld2", output_path)
@@ -132,7 +132,7 @@ for (idx, depth) in enumerate(unique_depth_levels)   # ← your depth list
         nested_list = asyncmap(sorted_times; ntasks=100) do t
             field = merged[var][t]
             local_field = Field{Center, Center, Nothing}(grid)
-            interior(local_field) .= field.data
+            interior(local_field) .= interior(field)
             avg_field = (Integral(local_field, dims=(1,2)) |> Field)[1,1,1] / area_2d
             return avg_field
         end
@@ -181,7 +181,10 @@ for (idx, depth) in enumerate(unique_depth_levels)   # ← your depth list
     v = merged["v"]
     w = merged["w"]
 
-    depth = T[sorted_times[1]].grid.z.cᵃᵃᶜ[first(T[sorted_times[1]].indices[3])]
+    # @show T[sorted_times[1]].grid.z.cᵃᵃᶜ
+    # @show T[sorted_times[1]][1,1,:].grid.z.cᵃᵃᶜ
+    # @show T[sorted_times[1]].indices[3]
+    # depth = T[sorted_times[1]][1,1,:].grid.z.cᵃᵃᶜ
 
     temp_data = @lift Array(dropdims(interior(T[sorted_times[$frame_idx]])-T[sorted_times[1]], dims=3))
     salt_data = @lift Array(dropdims(interior(S[sorted_times[$frame_idx]])-S[sorted_times[1]], dims=3))
@@ -189,15 +192,15 @@ for (idx, depth) in enumerate(unique_depth_levels)   # ← your depth list
     v_data = @lift Array(dropdims(interior(v[sorted_times[$frame_idx]])-v[sorted_times[1]], dims=3))
     w_data = @lift Array(dropdims(interior(w[sorted_times[$frame_idx]])-w[sorted_times[1]], dims=3))
 
-    ax_T = Axis(fig[idx, 1], title = "Depth = $(abs(round(depth, digits=1))) m")
+    ax_T = Axis(fig[idx, 1], title = "Depth = $depth m")#(abs(round(depth, digits=1))) m")
     cax_T = fig[idx, 2]
-    ax_S = Axis(fig[idx, 3], title = "Depth = $(abs(round(depth, digits=1))) m")
+    ax_S = Axis(fig[idx, 3], title = "Depth = $depth m")#(abs(round(depth, digits=1))) m")
     cax_S = fig[idx, 4]
-    ax_u = Axis(fig_vel[idx, 1], title = "Depth = $(abs(round(depth, digits=1))) m")
+    ax_u = Axis(fig_vel[idx, 1], title = "Depth = $depth m")#(abs(round(depth, digits=1))) m")
     cax_u = fig_vel[idx, 2]  
-    ax_v = Axis(fig_vel[idx, 3], title = "Depth = $(abs(round(depth, digits=1))) m")
+    ax_v = Axis(fig_vel[idx, 3], title = "Depth = $depth m")#(abs(round(depth, digits=1))) m")
     cax_v = fig_vel[idx, 4]
-    ax_w = Axis(fig_vel[idx, 5], title = "Depth = $(abs(round(depth, digits=1))) m")
+    ax_w = Axis(fig_vel[idx, 5], title = "Depth = $depth m")#(abs(round(depth, digits=1))) m")
     cax_w = fig_vel[idx, 6]
     hm = heatmap!(ax_T, temp_data; colormap=:bwr, colorrange=(-7.5,7.5))
     Colorbar(cax_T, hm, label="Temperature (°C)")
@@ -214,15 +217,14 @@ for (idx, depth) in enumerate(unique_depth_levels)   # ← your depth list
     if idx == 1
         Label(fig[0, 1:4], suptitle_text, fontsize = 24, tellwidth = false, halign = :center)
         Label(fig_vel[0, 1:4], suptitle_text, fontsize = 24, tellwidth = false, halign = :center)
-
     end
 
 end
 # Record animation
-record(fig, figdir * "slice_animation_tracer_$(resolution).mp4", 1:nframes; framerate = 20) do i
+record(fig, figdir * "slice_animation_tracer_$(resolution).mp4", 1:3; framerate = 1) do i
     frame_idx[] = i
 end
-record(fig_vel, figdir * "slice_animation_vel_$(resolution).mp4", 1:nframes; framerate = 20) do i
+record(fig_vel, figdir * "slice_animation_vel_$(resolution).mp4", 1:3; framerate = 1) do i
     frame_idx[] = i
 end
 

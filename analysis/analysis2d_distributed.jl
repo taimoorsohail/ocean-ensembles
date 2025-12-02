@@ -9,7 +9,7 @@ using OceanEnsembles
 # figdir = expanduser("/Users/tsohail/Library/CloudStorage/OneDrive-TheUniversityofMelbourne/uom/ocean-ensembles-2/figures/")
 fig_avg = Figure(size = (1200, 800))
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 resolution = "sxtdeg"
@@ -143,7 +143,7 @@ for (idx, depth) in enumerate(unique_depth_levels)   # ← your depth list
     
 
     for var in vars
-        @show var
+        @show var, merged
         # Get sorted times
 
         sorted_times = sort(collect(keys(merged[var])))
@@ -152,8 +152,9 @@ for (idx, depth) in enumerate(unique_depth_levels)   # ← your depth list
         # nested_list = Vector{Float64}(undef, length(sorted_times))
         nested_list = asyncmap(sorted_times; ntasks=100) do t
             field = merged[var][t]
-            local_field = Field{Center, Center, Nothing}(grid)
-            interior(local_field) .= field.data
+            @show local_field = Field{Center, Center, Nothing}(grid)
+            @show size(field.data)
+            @show interior(local_field) .= field.data
             avg_field = (Integral(local_field, dims=(1,2)) |> Field)[1,1,1] / area_2d
             return avg_field
         end
