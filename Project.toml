@@ -1,7 +1,5 @@
 name = "OceanEnsembles"
-uuid = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
-version = "0.2.0"
-authors = ["Taimoor Sohail and Navid C. Constantinou <navidcy@users.noreply.github.com>"]
+uuid = "e9aca8d1-80c0-42f9-8837-1cb698c59cf0"
 
 [deps]
 CFTime = "179af706-886a-5703-950a-314cd64e0468"
@@ -22,7 +20,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 CFTime = "0.1.4"
 ClimaOcean = "0.8.5"
-Oceananigans = "0.99.2"
+Oceananigans = "0.100 - 0.110"
 PolygonOps = "0.1.2"
 SparseArrays = "1.10"
 StaticArrays = "1.9.3"

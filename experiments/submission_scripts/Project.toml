@@ -14,7 +14,7 @@ MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 NVTX = "5da4648a-3479-48b8-97b9-01cb529c0a1f"
-OceanEnsembles = "1fe4989e-fef4-4bab-a83b-8e70b07b8467"
+OceanEnsembles = "e9aca8d1-80c0-42f9-8837-1cb698c59cf0"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ProfileCanvas = "efd6af41-a80b-495e-886c-e51b0c7d77a3"
@@ -23,6 +23,7 @@ SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [sources]
+ClimaOcean = {path = "../../../ClimaOcean.jl"}
 OceanEnsembles = {path = "../.."}
 
 [extras]
