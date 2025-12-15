@@ -132,13 +132,7 @@ Nz = Integer(75)
 
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-z_faces = ExponentialCoordinate(Nz, depth, 0)
-
-const z_surf = z_faces(Nz)
-
-@info "Top grid cell is " * string(abs(round(z_faces(Nz)))) * "m thick"
-
-# z_faces = Oceananigans.Grids.MutableVerticalDiscretization(z_faces)
+z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true) # IMPORTANT: WE NEED TO ACCOUNT FOR THIS
 
 @info "Defining tripolar grid"
 

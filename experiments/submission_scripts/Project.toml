@@ -25,6 +25,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [sources]
 ClimaOcean = {path = "../../../ClimaOcean.jl"}
 OceanEnsembles = {path = "../.."}
+Oceananigans = {path = "../../../Oceananigans.jl"}
 
 [extras]
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
