@@ -75,15 +75,38 @@ bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                 interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
                                 major_basins = 6)
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
+xs1 = [755, 1010, 1010, 755]          # (don’t need to repeat the last point)
+ys1 = [800,  790,  920,  920]
 
-fig = Figure(size = (800, 600))
+xs2 = [679, 670-9, 679, 688+9]
+ys2 = [872-10, 875+6, 882+5, 875+6]            # already had the -6 applied in your call
+
+mask_blacksea_caspian = section_mask(xs1, ys1, ones(length(xs1)), underlying_grid)
+mask_danish_strait = section_mask(xs2, ys2, ones(length(xs2)).*2, underlying_grid)
+
+#grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+
+fig = Figure(size = (1600*3, 1600))
 
 ax1 = Axis(fig[1, 1], title = "Bathymetry", xlabel = "Longitude", ylabel = "Latitude")
+ax2 = Axis(fig[1, 2], title = "Bathymetry", xlabel = "Longitude", ylabel = "Latitude")
+ax3 = Axis(fig[1, 3], title = "Bathymetry", xlabel = "Longitude", ylabel = "Latitude")
 
-hm = heatmap!(ax1, interior(grid.immersed_boundary.bottom_height)[:,:,1]; colormap = Reverse(:deep), colorrange = (-3, 0))
+bh_matrix = interior(bottom_height)[:,:,1]
+hm = heatmap!(ax1, bh_matrix; colormap = Reverse(:seismic), colorrange = (-3,0))
+
+bh_matrix[(mask_blacksea_caspian .== 1) .& (bh_matrix .<= 0)] .= 0;
+hm = heatmap!(ax2, bh_matrix; colormap = Reverse(:seismic), colorrange = (-3,0))
+
+bh_matrix[(mask_danish_strait .== 2) .& (bh_matrix .>= 0) .& (bh_matrix .<= 3)] .= -10;
+@show minimum(bh_matrix)
+hm = heatmap!(ax3, bh_matrix; colormap = Reverse(:seismic), colorrange = (-3, 0))
+
+Colorbar(fig[1,4], hm; label = "Depth (m)")
+save(figdir * "Bathymetry_masks.png", fig, px_per_unit=1)
+
+
+
 # lines!(ax1, [755, 1010, 1010, 755, 755], [800,790, 920,920, 800])
 # lines!(ax1, [679, 670, 679, 688, 679], [878-6,881-6, 888-6,881-6, 878-6])
-Colorbar(fig[1,2], hm; label = "Depth (m)")
-save(figdir * "Bathymetry_masks.png", fig, px_per_unit=1)

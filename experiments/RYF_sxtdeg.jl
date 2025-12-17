@@ -154,9 +154,37 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
                                 interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
                                 major_basins = 6)
 
+# Manually masking Black Sea, Caspian Sea and blasting open the Baltic Sea
+
+xs1 = [755, 1010, 1010, 755]
+ys1 = [800,  790,  920,  920]
+
+xs2 = [679, 670-9, 679, 688+9]
+ys2 = [872-10, 875+6, 882+5, 875+6]
+
+mask_blacksea_caspian = section_mask(xs1, ys1, ones(length(xs1)), underlying_grid)
+mask_danish_strait = section_mask(xs2, ys2, ones(length(xs2)).*2, underlying_grid)
+
+interior(bottom_height)[:,:,1][(mask_blacksea_caspian .== 1) .& (interior(bottom_height)[:,:,1] .<= 0)] .= 0;
+
+interior(bottom_height)[:,:,1][(mask_danish_strait .== 2) .& (interior(bottom_height)[:,:,1] .>= 0) .& (interior(bottom_height)[:,:,1] .<= 3)] .= -10;
+
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+
+@show interior(grid.immersed_boundary.bottom_height)[:,:,1]
+
+# using CairoMakie
+
+# fig = Figure(size = (1600*3, 1600))
+# ax1 = Axis(fig[1, 1], title = "Bathymetry", xlabel = "Longitude", ylabel = "Latitude")
+
+# bh_matrix = interior(grid.immersed_boundary.bottom_height)[:,:,1]
+# hm = heatmap!(ax1, bh_matrix; colormap = Reverse(:seismic), colorrange = (-3,0))
+
+# Colorbar(fig[1,2], hm; label = "Depth (m)")
+# save(figdir * "Bathymetry_masks_rank$localrank.png", fig, px_per_unit=1)
 
 ### Restoring
 

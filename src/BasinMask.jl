@@ -137,28 +137,24 @@ Returns
 function section_mask(xs_list, ys_list, labels, grid)
     @assert length(xs_list) == length(ys_list) == length(labels)
 
-    Nx = grid.Nx
-    Ny = grid.Ny
-
+    Nx, Ny = grid.Nx, grid.Ny
     mask = zeros(Int, Nx, Ny)
 
-    # All grid points in index space
-    pts = collect(Iterators.product(1:Nx, 1:Ny))
+    # points in index space
+    pts = [[i, j] for i in 1:Nx, j in 1:Ny]
+    pts = reshape(pts, :)
 
-    for (xs, ys, label) in zip(xs_list, ys_list, labels)
+    for (xs, ys, label) in zip([xs_list], [ys_list], labels)
         @assert length(xs) == length(ys)
 
-        # Build & close polygon
-        poly = collect(zip(xs, ys))
-        push!(poly, poly[1])
+        poly = [[xs[i], ys[i]] for i in eachindex(xs)]
+        push!(poly, poly[1])   # close polygon
 
         inside = PolygonOps.inpolygon.(pts, Ref(poly))
-
         mask[reshape(inside .== 1, Nx, Ny)] .= label
     end
 
     return mask
 end
-
 
 end # module
