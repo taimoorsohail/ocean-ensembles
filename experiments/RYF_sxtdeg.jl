@@ -154,34 +154,6 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
                                 interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
                                 major_basins = 6)
 
-
-function paint_polygon!(bottom_height, xs, ys; k=1, value=0.0)
-    imin = max(1, floor(Int, minimum(xs)))
-    imax = min(size(bottom_height, 1), ceil(Int, maximum(xs)))
-    jmin = max(1, floor(Int, minimum(ys)))
-    jmax = min(size(bottom_height, 2), ceil(Int, maximum(ys)))
-
-    for i in imin:imax, j in jmin:jmax
-        # Use cell-centers so the polygon fill behaves nicely
-        x = i + 0.5
-        y = j + 0.5
-        if inpoly(x, y, xs, ys)
-            bottom_height[i, j, k] = value
-        end
-    end
-    return bottom_height
-end
-
-xs1 = [755, 1010, 1010, 755]
-ys1 = [800,  790,  920,  920]
-
-paint_polygon!(bottom_height, xs1, ys1; k=1, value=0.0)
-
-xs2 = [679, 670, 679, 688]
-ys2 = [872, 875, 882, 875]            # already had the -6 applied in your call
-
-paint_polygon!(bottom_height, xs2, ys2; k=1, value=-10.0)
-
 @info "Defining grid"
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
