@@ -7,7 +7,7 @@ using ClimaOcean
 using Glob
 using Printf
 
-export combine_ranks, identify_combination_targets, create_grid
+export combine_ranks, identify_combination_targets, create_grid, read_bathymetry
 
 function grid_metrics(prefix, ranks)
     file   = jldopen(prefix * "_rank$(ranks[1]).jld2")
@@ -66,7 +66,7 @@ end
 
 function combine_ranks(prefix, grid)
     iter_rank_map = identify_combination_targets(basename(prefix), dirname(prefix))
-    iterations    = collect(keys(iter_rank_map))
+    iterations    = sort(collect(keys(iter_rank_map)))
 
     for iteration in iterations
         ranks = iter_rank_map[iteration]
@@ -101,75 +101,105 @@ function combine_ranks(prefix, grid)
         # --------------------------------------------------------------
         # Create output FieldTimeSeries (one file, 6 variables)
         # --------------------------------------------------------------
-        utmp = FieldTimeSeries{Face,   Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="u")
-        vtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=outpath, name="v")
-        wtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=outpath, name="w")
-        Ttmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="T")
-        Stmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="S")
-        etmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="e")
+        @info "Creating u output FieldTimeSeries at $outpath"
+        @time utmp = FieldTimeSeries{Face,   Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="u")
+        @info "Creating v output FieldTimeSeries at $outpath"
+        @time vtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=outpath, name="v")
+        @info "Creating w output FieldTimeSeries at $outpath"
+        @time wtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=outpath, name="w")
+        @info "Creating T output FieldTimeSeries at $outpath"
+        @time Ttmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="T")
+        @info "Creating S output FieldTimeSeries at $outpath"
+        @time Stmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="S")
+        @info "Creating e output FieldTimeSeries at $outpath"
+        @time etmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="e")
 
         # --------------------------------------------------------------
         # Worker: stitch ranks into a global field (FAST)
         # --------------------------------------------------------------
-        function stitch!(fts, prefix, ranks, iteration, iters, grid)
-            Nx, Ny, Nz, Hx, Hy, Hz, nx, ny, Lz, z_faces =
-                grid_metrics(prefix * "_iteration$(iteration)", ranks)
+        # function stitch!(fts, prefix, ranks, iteration, iters, grid)
+        #     Nx, Ny, Nz, Hx, Hy, Hz, nx, ny, Lz, z_faces =
+        #         grid_metrics(prefix * "_iteration$(iteration)", ranks)
 
-            field = Field{location(fts)...}(grid)
+        #     field = Field{location(fts)...}(grid)
 
-            # open ALL rank files ONCE
-            rfiles = Dict(r => jldopen(prefix * "_iteration$(iteration)_rank$(r).jld2", "r")
-                          for r in ranks)
+        #     # open ALL rank files ONCE
+        #     rfiles = Dict(r => jldopen(prefix * "_iteration$(iteration)_rank$(r).jld2", "r")
+        #                   for r in ranks)
 
-            try
-                for (idx, tkey) in enumerate(iters)
+        #     try
+        #         for (idx, tkey) in enumerate(iters)
 
-                    for r in ranks
-                        f = rfiles[r]
-                        arr = f["timeseries/$(fts.name)/$(tkey)"][:, :, :]
-                        irange = ny * r + 1 : ny * (r + 1)
-                        interior(field, :, irange, :) .= arr
-                    end
+        #             for r in ranks
+        #                 f = rfiles[r]
+        #                 arr = f["timeseries/$(fts.name)/$(tkey)"][:, :, :]
+        #                 irange = ny * r + 1 : ny * (r + 1)
+        #                 interior(field, :, irange, :) .= arr
+        #             end
 
-                    set!(fts, field, idx)
-                end
+        #             set!(fts, field, idx)
+        #         end
 
-            finally
-                foreach(close, values(rfiles))
-            end
-        end
+        #     finally
+        #         foreach(close, values(rfiles))
+        #     end
+        # end
 
         # --------------------------------------------------------------
         # Build each variable (minimising open files and allocations)
         # --------------------------------------------------------------
-        stitch!(utmp, prefix, ranks, iteration, iters, grid)
-        stitch!(vtmp, prefix, ranks, iteration, iters, grid)
-        stitch!(wtmp, prefix, ranks, iteration, iters, grid)
-        stitch!(Ttmp, prefix, ranks, iteration, iters, grid)
-        stitch!(Stmp, prefix, ranks, iteration, iters, grid)
-        stitch!(etmp, prefix, ranks, iteration, iters, grid)
+        @info "Stitching u for iteration $(iteration) → $outpath"
+        @time set_distributed_field_time_series!(utmp, prefix, ranks, iteration, iters, grid)
+        @info "Stitching v for iteration $(iteration) → $outpath"
+        @time set_distributed_field_time_series!(vtmp, prefix, ranks, iteration, iters, grid)
+        @info "Stitching w for iteration $(iteration) → $outpath"
+        @time set_distributed_field_time_series!(wtmp, prefix, ranks, iteration, iters, grid)
+        @info "Stitching T for iteration $(iteration) → $outpath"
+        @time set_distributed_field_time_series!(Ttmp, prefix, ranks, iteration, iters, grid)
+        @info "Stitching S for iteration $(iteration) → $outpath"
+        @time set_distributed_field_time_series!(Stmp, prefix, ranks, iteration, iters, grid)
+        @info "Stitching e for iteration $(iteration) → $outpath"
+        @time set_distributed_field_time_series!(etmp, prefix, ranks, iteration, iters, grid)
 
         @info "Finished writing iteration $(iteration) → $outpath"
 
         # --------------------------------------------------------------
         # CRITICAL: Explicitly close all output JLD2 file handles
         # --------------------------------------------------------------
-        close(utmp.output)
-        close(vtmp.output)
-        close(wtmp.output)
-        close(Ttmp.output)
-        close(Stmp.output)
-        close(etmp.output)
+        @info "Closing output files for iteration $(iteration) → $outpath"
+        # close(utmp.output)
+        # close(vtmp.output)
+        # close(wtmp.output)
+        # close(Ttmp.output)
+        # close(Stmp.output)
+        # close(etmp.output)
 
         # --------------------------------------------------------------
         # Release MMAP buffers (prevents SystemError: msync errors)
         # --------------------------------------------------------------
+        @info "Releasing MMAP buffers for iteration $(iteration) → $outpath"
         GC.gc()
     end
 
     return nothing
 end
 
+function set_distributed_field_time_series!(fts, prefix, ranks, iteration, iters, grid) 
+    Nx, Ny, Nz, Hx, Hy, Hz, nx, ny, Lz, z_faces = grid_metrics(prefix * "_iteration$(iteration)", ranks) 
+    field = Field{location(fts)...}(grid) 
+    Ny = size(fts, 2) # loop over timesteps FIRST 
+    for (idx, iter) in enumerate(iters) # fresh field for this timestep (critical!) 
+        field = Field{location(fts)...}(grid) # fill the global domain rank-by-rank 
+        for rank in ranks 
+            file = jldopen(prefix * "_iteration$(iteration)_rank$(rank).jld2") # shape typically (Nx_local, Ny_local, Nz_local) 
+            data = file["timeseries/$(fts.name)/$(iter)"][:, :, :] # y-range for rank 
+            irange = ny * rank + 1 : ny * (rank + 1) # fill full vertical column (use ":" in last dim) 
+            interior(field, :, irange, :) .= data 
+            close(file)
+        end # now write this full timestep to disk 
+        set!(fts, field, idx) 
+    end 
+end
 
 function identify_combination_targets(prefix, output_path; type = "iterrank")
     if type == "iterrank"

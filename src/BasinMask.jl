@@ -8,7 +8,7 @@ using PolygonOps
 using StaticArrays
 using Oceananigans.Architectures: architecture
 
-export basin_mask, get_coords_from_grid
+export basin_mask, get_coords_from_grid, section_mask
 
 const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 const TripolarOrLatLonGrid = Union{SomeTripolarGrid, LatitudeLongitudeGrid}
@@ -111,5 +111,54 @@ function basin_mask(grid::TripolarOrLatLonGrid, basin::AbstractString, var::Ocea
 
     return bool_mask
 end
+
+
+"""
+    section_mask(xs_list, ys_list, labels, grid)
+
+Create an integer label mask of size (grid.nx, grid.ny) from polygon vertex lists
+defined in index space.
+
+Arguments
+---------
+- xs_list :: Vector{<:AbstractVector}
+- ys_list :: Vector{<:AbstractVector}
+    Lists of x and y vertex coordinates (indices).
+- labels :: Vector{Int}
+    Integer label assigned to each polygon.
+- grid
+    Grid object with fields `nx` and `ny`.
+
+Returns
+-------
+- mask :: Matrix{Int}
+    Integer mask with 0 = outside all polygons.
+"""
+function section_mask(xs_list, ys_list, labels, grid)
+    @assert length(xs_list) == length(ys_list) == length(labels)
+
+    Nx = grid.Nx
+    Ny = grid.Ny
+
+    mask = zeros(Int, Nx, Ny)
+
+    # All grid points in index space
+    pts = collect(Iterators.product(1:Nx, 1:Ny))
+
+    for (xs, ys, label) in zip(xs_list, ys_list, labels)
+        @assert length(xs) == length(ys)
+
+        # Build & close polygon
+        poly = collect(zip(xs, ys))
+        push!(poly, poly[1])
+
+        inside = PolygonOps.inpolygon.(pts, Ref(poly))
+
+        mask[reshape(inside .== 1, Nx, Ny)] .= label
+    end
+
+    return mask
+end
+
 
 end # module

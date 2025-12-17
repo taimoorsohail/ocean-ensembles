@@ -26,12 +26,15 @@ unique_prefixes = unique(prefixes)
 println(unique_prefixes)
 
 iter_rank_map = identify_combination_targets(basename(unique_prefixes[1]), dirname(unique_prefixes[1]); type = "iterrank")
-iterations = collect(keys(iter_rank_map))
+iterations = sort(collect(keys(iter_rank_map)))
 ranks = iter_rank_map[iterations[1]]
+
+@show iterations
+@show ranks
 
 grid = create_grid(unique_prefixes[1] * "_iteration$(iterations[1])", ranks; gridtype = "TripolarGrid")
 
-@info "Created grid for combining files."
+@info "Grid created."
 
 for prefix in unique_prefixes
     println("Combining files for prefix: $prefix")

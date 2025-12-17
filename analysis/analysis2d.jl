@@ -44,6 +44,7 @@ function make_variable_video(var::String,
     all_depth_data  = Vector{Vector{Matrix{Float32}}}()
 
     for depth in depths
+        @info "Reading  $depth m"
         raw_times = Float64[]
         raw_data  = Matrix{Float32}[]
 
@@ -51,8 +52,6 @@ function make_variable_video(var::String,
 
             filepath = output_path *
                 "global_$(depth)_fields_$(resolution)_RYF_iteration$(iteration).jld2"
-
-            @info "Reading $filepath"
 
             f = jldopen(filepath)
 
@@ -139,7 +138,7 @@ function make_variable_video(var::String,
 
     elseif var == "speed"
         clim = (0f0, 0.7f0)
-        cmap = :turbo
+        cmap = :speed
 
     else
         A0 = all_depth_data[1][end]
@@ -151,10 +150,6 @@ function make_variable_video(var::String,
     # Build figure (2 × 3 grid)
     # -------------------------------------------------------------------
     fig = Figure(size = (1600, 900))
-    fig.layout.widths = [1, 1, 1]   # Force all three columns equal
-    fig.layout.heights = [1, 1]     # Optional: equal row height
-
-    fig_title = fig[0, :] = Label(fig, "Loading...")
 
     positions = [(1,1), (1,2), (1,3), (2,1), (2,2)]
 
@@ -167,7 +162,7 @@ function make_variable_video(var::String,
     for k in 1:nd
         (i, j) = positions[k]
 
-        axs[k] = Axis(fig[i, j], title = "Depth $(depths_actual[k]) m")
+        axs[k] = Axis(fig[i, j], title = "Depth $(round(depths_actual[k], digits=1)) m")#, width = 300, height = 150)
 
         hms[k] = heatmap!(
             axs[k],
@@ -176,8 +171,14 @@ function make_variable_video(var::String,
             colorrange = clim
         )
 
-        Colorbar(fig, hms[k])
+
     end
+
+    fig_title = Label(fig[0, :], "Loading...", tellwidth = false)
+    Colorbar(fig[3,:], hms[1], label = "$var", vertical = false)
+    resize_to_layout!(fig)
+
+
     # Output filename
     if isnothing(outname)
         outname = figdir * "$(var).mp4"
@@ -190,8 +191,8 @@ function make_variable_video(var::String,
     years = times ./ (365*24*60*60)
     nframes = length(times)
 
-    record(fig, outname, 1:nframes; framerate=1) do frame
-        # fig_title.text = "Var: $var — Year = $(round(years[frame], digits=2))"
+    record(fig, outname, 1:nframes; framerate=5) do frame
+        fig_title.text = "Var: $var — Year = $(round(years[frame], digits=2))"
 
         for d in 1:nd
             Z[d][] = all_depth_data[d][frame]   # <-- observable update

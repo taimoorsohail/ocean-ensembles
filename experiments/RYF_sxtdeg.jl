@@ -34,15 +34,15 @@ data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-checkpoint_timer = 73days
+checkpoint_timer = (365/2)days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
 
 if isempty(ARGS)
     println("No target time provided. Please enter target time:")
     target_time_input = readline()
-    target_time = parse(Int, target_time_input) * checkpoint_timer * 1 * 3
+    target_time = parse(Int, target_time_input) * checkpoint_timer
 else
-    target_time = checkpoint_timer*parse(Int,ARGS[4]) * 1 * 3
+    target_time = checkpoint_timer*parse(Int,ARGS[4])
 end
 @info target_time
 checkpoint_type = "last" # "none", "last", "first"
@@ -150,11 +150,37 @@ ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
 ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
-                                  minimum_depth = 15,
-                                  interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
-				                  major_basins = 1)
-# view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
+                                minimum_depth = 15,
+                                interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                major_basins = 6)
 
+
+function paint_polygon!(bottom_height, xs, ys; k=1, value=0.0)
+    imin = max(1, floor(Int, minimum(xs)))
+    imax = min(size(bottom_height, 1), ceil(Int, maximum(xs)))
+    jmin = max(1, floor(Int, minimum(ys)))
+    jmax = min(size(bottom_height, 2), ceil(Int, maximum(ys)))
+
+    for i in imin:imax, j in jmin:jmax
+        # Use cell-centers so the polygon fill behaves nicely
+        x = i + 0.5
+        y = j + 0.5
+        if inpoly(x, y, xs, ys)
+            bottom_height[i, j, k] = value
+        end
+    end
+    return bottom_height
+end
+
+xs1 = [755, 1010, 1010, 755]
+ys1 = [800,  790,  920,  920]
+
+paint_polygon!(bottom_height, xs1, ys1; k=1, value=0.0)
+
+xs2 = [679, 670, 679, 688]
+ys2 = [872, 875, 882, 875]            # already had the -6 applied in your call
+
+paint_polygon!(bottom_height, xs2, ys2; k=1, value=-10.0)
 
 @info "Defining grid"
 
@@ -357,7 +383,7 @@ for (ind, depth) in enumerate(depths)
 
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
-                                                schedule = AveragedTimeInterval(31days),
+                                                schedule = AveragedTimeInterval((365/12)days),
                                                 filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_iteration" * iteration_number,
                                                 indices = (:, :, ind_pln),
                                                 with_halos = false,
@@ -368,7 +394,7 @@ end
 
 @time simulation.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
                                             dir = output_path,
-                                            schedule = AveragedTimeInterval(5days),
+                                            schedule = AveragedTimeInterval((365/48)days),
                                             filename = "global_tot_integrals_sxtdeg_RYF_iteration" * iteration_number,
                                             overwrite_existing = true)
 
@@ -401,19 +427,19 @@ sea_ice_checkpointer_tracers = merge(
 
 @time simulation.output_writers[:checkpointer_ocean] = JLD2Writer(ocean.model, ocean_checkpointer_tracers;
                                             dir = output_path,
-                                            schedule =  TimeInterval(73days),
+                                            schedule =  TimeInterval((365/2)days),
                                             filename = "ocean_checkpointer_vars_iteration" * iteration_number,
                                             with_halos = false,
                                             overwrite_existing = true)
 
 @time simulation.output_writers[:checkpointer_sea_ice] = JLD2Writer(sea_ice.model, sea_ice_checkpointer_tracers;
                                             dir = output_path,
-                                            schedule = TimeInterval(73days),
+                                            schedule = TimeInterval((365/2)days),
                                             filename = "sea_ice_checkpointer_vars_iteration" * iteration_number,
                                             with_halos = false,
                                             overwrite_existing = true)
 
-add_callback!(simulation, save_restart, TimeInterval(73days))
+add_callback!(simulation, save_restart, TimeInterval((365/2)days))
 
 ################################### END CHECKPOINTING ######################################
 
