@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -P v46
+#PBS -q normalbw
+#PBS -l walltime=12:00:00
+#PBS -l mem=128GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=12 
+#PBS -l jobfs=10GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N CPU_RYF1dg
+
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/CPU_RYF1dg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/CPU_RYF1dg.e
+
+julia --project ../RYF_onedeg.jl --arch CPU > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/CPU_RYF1dg.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/CPU_RYF1dg.stderr

@@ -1,0 +1,20 @@
+[gadi-gpu-v100-0097.gadi.nci.org.au:2717718] shmem: mmap: an error occurred while determining whether or not /jobfs/148929447.gadi-pbs/ompi.gadi-gpu-v100-0097.10662/jf.0/2452946944/shared_mem_cuda_pool.gadi-gpu-v100-0097 could be created.
+[gadi-gpu-v100-0097.gadi.nci.org.au:2717718] create_and_attach: unable to create shared memory BTL coordinating structure :: size 134217728 
+┌ Warning: Module ClimaOcean with build ID fafbfcfd-55ac-f107-5c58-0269575aafc7 is missing from the cache.
+│ This may mean ClimaOcean [0376089a-ecfe-4b0e-a64f-9c555d74d754] does not support precompilation but is imported by a module that does.
+└ @ Base loading.jl:2018
+┌ Warning: Module PrecompileTools with build ID fafbfcfd-3aa4-3267-67c2-1426be9535da is missing from the cache.
+│ This may mean PrecompileTools [aea7be01-6a6a-4083-8856-8a6e6704d82a] does not support precompilation but is imported by a module that does.
+└ @ Base loading.jl:2018
+┌ Warning: Module PrecompileTools with build ID fafbfcfd-3aa4-3267-67c2-1426be9535da is missing from the cache.
+│ This may mean PrecompileTools [aea7be01-6a6a-4083-8856-8a6e6704d82a] does not support precompilation but is imported by a module that does.
+└ @ Base loading.jl:2018
+┌ Warning: Module PrecompileTools with build ID fafbfcfd-3aa4-3267-67c2-1426be9535da is missing from the cache.
+│ This may mean PrecompileTools [aea7be01-6a6a-4083-8856-8a6e6704d82a] does not support precompilation but is imported by a module that does.
+└ @ Base loading.jl:2018
+┌ Warning: Module PrecompileTools with build ID fafbfcfd-3aa4-3267-67c2-1426be9535da is missing from the cache.
+│ This may mean PrecompileTools [aea7be01-6a6a-4083-8856-8a6e6704d82a] does not support precompilation but is imported by a module that does.
+└ @ Base loading.jl:2018
+┌ Warning: Module Parsers with build ID ffffffff-ffff-ffff-df3b-3fd56d896acd is missing from the cache.
+│ This may mean Parsers [69de0a69-1ddd-5017-9359-2bf0b02dc9f0] does not support precompilation but is imported by a module that does.
+└ @ Base loading.jl:2018

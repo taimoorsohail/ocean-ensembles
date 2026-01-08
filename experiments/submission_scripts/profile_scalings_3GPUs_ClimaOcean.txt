@@ -1,0 +1,25 @@
+#!/bin/bash
+#PBS -P v46
+#PBS -q gpuvolta
+#PBS -l walltime=04:00:00
+#PBS -l mem=256GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=36 
+#PBS -l ngpus=3 
+#PBS -l jobfs=180GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N clmocnprofile_scalings_3GPU
+
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_3GPU_clmocn.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_3GPU_clmocn.e
+
+mpiexec -np 3 bash -c '
+  nsys profile \
+    --trace=cuda,mpi,nvtx \
+    --force-overwrite true \
+    --output=/g/data/v46/txs156/ocean-ensembles/experiments/run_logs/my_profile_3GPUs_clmocn_${OMPI_COMM_WORLD_RANK} \
+    julia --project  --check-bounds=no ../scaling_ClimaOcean.jl > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_3GPU_clmocn.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_3GPU_clmocn.stderr
+'

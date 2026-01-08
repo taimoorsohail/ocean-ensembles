@@ -27,7 +27,7 @@ Manifest.toml
 *.jld2
 *.nc
 *.zip
-
+*.nsys-rep
 ## Text files
 *.tab
 *.history
@@ -35,8 +35,8 @@ Manifest.toml
 ## Output logs from Gadi runs
 *.o*
 *.e*
-run_logs/*
-
+experiments/run_logs/*
+experiments/submission_scripts/*.nsys*
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
