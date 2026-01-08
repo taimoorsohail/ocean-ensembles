@@ -53,39 +53,28 @@ function make_variable_video(var::String,
             filepath = output_path *
                 "global_$(depth)_fields_$(resolution)_RYF_iteration$(iteration).jld2"
 
+            if is_speed
+                    # ---------------------------
+                    # speed = sqrt(u^2 + v^2)
+                    # ---------------------------
+                    has_u = FieldTimeSeries(filepath, "u")
+                    has_v = FieldTimeSeries(filepath, "v")
+            end
+
             f = jldopen(filepath)
 
             # timestep keys
             ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))))
 
-            for key in ts_keys
+            for (i, key) in enumerate(ts_keys)
                 tval = f["timeseries/t/$(key)"]
                 push!(raw_times, tval)
                 if is_speed
-                    # ---------------------------
-                    # speed = sqrt(u^2 + v^2)
-                    # ---------------------------
-                    has_u = haskey(f, "timeseries/u")
-                    has_v = haskey(f, "timeseries/v")
 
-                    if !(has_u && has_v)
-                        @warn "Missing u or v in $filepath (depth=$depth, iter=$iteration). Skipping timestep $key."
-                        continue
-                    end
+                    raw_u = has_u[i]
+                    raw_v = has_v[i]
 
-                    raw_u = f["timeseries/u/$(key)"]
-                    raw_v = f["timeseries/v/$(key)"]
-
-                    if ndims(raw_u) < 2 || ndims(raw_v) < 2
-                        @warn "u or v has unexpected dimensions at timestep $key, skipping."
-                        continue
-                    end
-
-                    u = Float32.(ndims(raw_u) == 3 ? raw_u[:, :, 1] : raw_u)
-                    v = Float32.(ndims(raw_v) == 3 ? raw_v[:, :, 1] : raw_v)
-
-                    A = sqrt.(u.^2 .+ v.^2)
-
+                    A = @at (Center, Center, Nothing) sqrt.(raw_u.^2 + raw_v.^2) |> Field
                 else
                     # ---------------------------
                     # Normal variable: T, S, u, v, w, ...

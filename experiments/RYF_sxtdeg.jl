@@ -42,7 +42,7 @@ if isempty(ARGS)
     target_time_input = readline()
     target_time = parse(Int, target_time_input) * checkpoint_timer
 else
-    target_time = checkpoint_timer*parse(Int,ARGS[4])
+    target_time = checkpoint_timer*parse(Int,ARGS[4]) * 2 + 22days
 end
 @info target_time
 checkpoint_type = "last" # "none", "last", "first"
@@ -67,7 +67,7 @@ else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
 
-#total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
+total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 localrank = Integer(arch.local_rank)
 @info "Using architecture: " * string(arch)
 
@@ -75,6 +75,7 @@ restartfiles = glob("ocean_checkpointer_clock_iteration*rank$(localrank)*", outp
 
 # Extract the numeric suffix from each filename
 restart_numbers = map(f -> parse(Int, match(r"ocean_checkpointer_clock_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+restart_numbers = sort(restart_numbers)
 
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     # Extract the numeric suffix from each filename
@@ -127,6 +128,7 @@ download_dataset(salinity)
 
 Nx = Integer(360*6)
 Ny = Integer(180*6)
+ny = Ny/total_ranks
 Nz = Integer(75)
 
 @info "Defining vertical z faces"
@@ -137,12 +139,10 @@ const z_surf = z_faces.cᵃᵃᶠ(Nz)
 @info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
 
 @info "Defining tripolar grid"
-
 underlying_grid = TripolarGrid(arch;
-                               size = (Nx, Ny, Nz),
-                               z = z_faces,
-                               halo = (7, 7, 7))
-
+                            size = (Nx, Ny, Nz),
+                            z = z_faces,
+                            halo = (7, 7, 7))
 
 @info "Defining bottom bathymetry"
 
@@ -156,35 +156,57 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 # Manually masking Black Sea, Caspian Sea and blasting open the Baltic Sea
 
+@info "Applying bathymetry masks"
+# Black + Caspian Seas
 xs1 = [755, 1010, 1010, 755]
-ys1 = [800,  790,  920,  920]
+# We split the y-polygon because it stretches across two ranks [unique to 4 rank run :(]
+ys1_1 = [800,  790,  809,  809]
+ys1_2 = [810,  810,  920,  920]
 
+# Baltic Sea / Danish Straits
 xs2 = [679, 670-9, 679, 688+9]
 ys2 = [872-10, 875+6, 882+5, 875+6]
 
-mask_blacksea_caspian = section_mask(xs1, ys1, ones(length(xs1)), underlying_grid)
-mask_danish_strait = section_mask(xs2, ys2, ones(length(xs2)).*2, underlying_grid)
+nys1_1 = ys1_1/ny
+ys1_1_floor = floor.(nys1_1)
 
-interior(bottom_height)[:,:,1][(mask_blacksea_caspian .== 1) .& (interior(bottom_height)[:,:,1] .<= 0)] .= 0;
+nys1_2 = ys1_2/ny
+ys1_2_floor = floor.(nys1_2)
 
-interior(bottom_height)[:,:,1][(mask_danish_strait .== 2) .& (interior(bottom_height)[:,:,1] .>= 0) .& (interior(bottom_height)[:,:,1] .<= 3)] .= -10;
+nys2 = ys2/ny
+ys2_floor = floor.(nys2)
 
-@info "Defining grid"
+length(unique(ys1_1_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_1_floor))")
+
+length(unique(ys1_2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_2_floor))")
+
+length(unique(ys2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys2_floor))")
+
+if localrank == Integer(unique(ys1_1_floor)[1])
+    bh = interior(bottom_height)[:,:,1]
+    ys1_1 = [ys1_1[1], ys1_1[2], ys1_1[3]+2, ys1_1[4]+2]
+    mask_blacksea_caspian_1 = section_mask(xs1, Int.(ys1_1 .- ny * localrank), ones(length(xs1)), underlying_grid)
+    idx = (CuArray(mask_blacksea_caspian_1) .== 1) .& (bh .<= 0)
+    bh[idx] .= 0;
+    interior(bottom_height) .= bh
+end 
+
+if localrank == Integer(unique(ys1_2_floor)[1])
+    bh = interior(bottom_height)[:,:,1]
+    mask_blacksea_caspian_2 = section_mask(xs1, Int.(ys1_2 .- ny * localrank), ones(length(xs1)), underlying_grid)
+    idx = (CuArray(mask_blacksea_caspian_2) .== 1) .& (bh .<= 0)
+    bh[idx] .= 0;
+    interior(bottom_height) .= bh
+end
+if localrank == Integer(unique(ys2_floor)[1])
+    bh = interior(bottom_height)[:,:,1]
+    mask_danish_strait = section_mask(xs2, Int.(ys2 .- ny * localrank), ones(length(xs2)).*2, underlying_grid)
+    idx = (CuArray(mask_danish_strait) .== 2) .& (bh .>= 0) .& (bh .<= 3)
+    bh[idx] .= -10;
+    interior(bottom_height) .= bh
+end
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
-
-@show interior(grid.immersed_boundary.bottom_height)[:,:,1]
-
-# using CairoMakie
-
-# fig = Figure(size = (1600*3, 1600))
-# ax1 = Axis(fig[1, 1], title = "Bathymetry", xlabel = "Longitude", ylabel = "Latitude")
-
-# bh_matrix = interior(grid.immersed_boundary.bottom_height)[:,:,1]
-# hm = heatmap!(ax1, bh_matrix; colormap = Reverse(:seismic), colorrange = (-3,0))
-
-# Colorbar(fig[1,2], hm; label = "Depth (m)")
-# save(figdir * "Bathymetry_masks_rank$localrank.png", fig, px_per_unit=1)
 
 ### Restoring
 
@@ -446,6 +468,7 @@ add_callback!(simulation, save_restart, TimeInterval((365/2)days))
 restartfiles = glob("ocean_checkpointer_vars_iteration*rank$(localrank)*", output_path)
 
 restart_numbers = map(f -> parse(Int, match(r"ocean_checkpointer_vars_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+restart_numbers = sort(restart_numbers)
 
 if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
     if checkpoint_type == "last"
@@ -459,7 +482,8 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
         seaice_fields_loaded = jldopen(output_path * "sea_ice_checkpointer_vars_iteration" * string(restart_numbers[1]) * "_rank$(localrank).jld2")
     end
 
-    final_time = keys(ocean_fields_loaded["timeseries/T"])[end]
+    times = parse.(Int, keys(ocean_fields_loaded["timeseries/t"]))
+    final_time = string(maximum(times))
 
     @info "Restarting from checkpoint at iteration " * final_time
 
