@@ -1,12 +1,14 @@
-using CairoMakie
-using JLD2
-using Glob
-using OceanEnsembles
-using Oceananigans: @at
+using ClimaOcean
 using Oceananigans
+using Oceananigans.Units
+using OceanEnsembles
+using CairoMakie
+using Glob 
+using Oceananigans.Fields: location
+using JLD2
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+output_path = expanduser("../../outputs/saved_fields/")
+figdir = expanduser("../../figures/")
 
 resolution = "sxtdeg"
 
@@ -15,6 +17,53 @@ grid = create_grid(output_path * "global_75_fields_$(resolution)_RYF_iteration0"
 files_combined = filter(f -> !occursin("_rank", f),
                         glob("global_*$(resolution)_RYF_iteration*.jld2", output_path))
 
+Tfield = CenterField(grid)
+ufield = XFaceField(grid)
+vfield = YFaceField(grid)
+
+function spherical_coordinates_viz(λ, φ, r=1)
+    # Convert degrees to radians
+    λ_rad = deg2rad.(λ)
+    φ_rad = deg2rad.(φ)
+
+    x = @. r * cos(φ_rad) * cos(λ_rad)
+    y = @. r * cos(φ_rad) * sin(λ_rad)
+    z = @. r * sin(φ_rad)
+
+    return x, y, z
+end
+
+Tℓx, Tℓy, Tℓz = location(Tfield)
+Uℓx, Uℓy, Uℓz = location(ufield)
+Vℓx, Vℓy, Vℓz = location(vfield)
+
+λ = λnodes(grid.underlying_grid, Tℓx(), Tℓy(), Tℓz())
+φ = φnodes(grid.underlying_grid, Tℓx(), Tℓy(), Tℓz())
+
+Tx, Ty, Tz = spherical_coordinates_viz(λ, φ, 1)
+
+λ = λnodes(grid.underlying_grid, Uℓx(), Uℓy(), Uℓz())
+φ = φnodes(grid.underlying_grid, Uℓx(), Uℓy(), Uℓz())
+
+Ux, Uy, Uz = spherical_coordinates_viz(λ, φ, 1)
+
+λ = λnodes(grid.underlying_grid, Vℓx(), Vℓy(), Vℓz())
+φ = φnodes(grid.underlying_grid, Vℓx(), Vℓy(), Vℓz())
+
+Vx, Vy, Vz = spherical_coordinates_viz(λ, φ, 1)
+
+earth_texture = load("../../figures/blue-marble-only-land.png")
+
+n = 1024 ÷ 4 # 2048
+lat = reverse(LinRange(-π/2, π/2, n))      # -π/2 = south pole, 0 = equator, π/2 = north pole
+lon = LinRange(-π, π, 2*n)
+
+r = 1.0
+r_offset = 0.001   # 1% inflation
+
+x = [ (r + r_offset) * cos(lat) * cos(lon) for lat in lat, lon in lon ]
+y = [ (r + r_offset) * cos(lat) * sin(lon) for lat in lat, lon in lon ]
+z = [ (r + r_offset) * sin(lat)         for lat in lat, lon in lon ]
 # --- Extract depth levels (numbers before 'm') ---
 depth_levels = [parse(Int, match(r"global_(\d+)", f).captures[1]) 
                 for f in files_combined if occursin(r"global_\d+", f)]
@@ -30,28 +79,31 @@ vars = keys(jldopen(files_combined[1])["timeseries"])
 
 files = sort(files_combined; rev=true)
 
+# filepath = output_path *
+#     "global_$(depth)_fields_$(resolution)_RYF_iteration$(iteration).jld2"
+
+
+# f = jldopen(filepath)
+
+# raw = f["$varpath/$(key)"]
 ####################################################################
 function make_variable_video(var::String,
                              depths::Vector{Int},
                              depth_actual::Vector{Float64},
                              iterations::Vector{Int};
                              outname=nothing)
-
     is_speed = (var == "speed")
 
-    # -------------------------------------------------------------------
-    # Load & sort time-series data
-    # -------------------------------------------------------------------
     all_depth_times = Vector{Vector{Float64}}()
     all_depth_data  = Vector{Vector{Matrix{Float32}}}()
 
-    for depth in depths
+    for depth in [75]
         @info "Reading  $depth m"
         raw_times = Float64[]
         raw_data  = Matrix{Float32}[]
 
         for iteration in iterations
-
+            @show iteration
             filepath = output_path *
                 "global_$(depth)_fields_$(resolution)_RYF_iteration$(iteration).jld2"
 
@@ -61,6 +113,8 @@ function make_variable_video(var::String,
                     # ---------------------------
                     has_u = FieldTimeSeries(filepath, "u")
                     has_v = FieldTimeSeries(filepath, "v")
+            else
+                    raw = FieldTimeSeries(filepath, "$var")
             end
 
             f = jldopen(filepath)
@@ -78,6 +132,7 @@ function make_variable_video(var::String,
 
                     A = @at (Center, Center, Nothing) sqrt(raw_u^2 + raw_v^2) |> Field
                     A = interior(A)[:, :, 1]  # extract 2D slice
+
                 else
                     # ---------------------------
                     # Normal variable: T, S, u, v, w, ...
@@ -88,18 +143,8 @@ function make_variable_video(var::String,
                         @warn "Variable $var not found in $filepath. Skipping."
                         continue
                     end
+                    A = interior(raw[i])[:, :, 1]
 
-                    raw = f["$varpath/$(key)"]
-
-                    # Determine correct slicing
-                    if ndims(raw) == 2
-                        A = Float32.(raw)
-                    elseif ndims(raw) == 3
-                        A = Float32.(raw[:, :, 1])
-                    else
-                        @warn "Unexpected shape for $var at timestep $key, skipping."
-                        continue
-                    end
                 end
 
                 push!(raw_data, A)
@@ -114,61 +159,88 @@ function make_variable_video(var::String,
         push!(all_depth_data,  raw_data[order])
     end
 
-    nd = length(depths)
+    nd = 1# length(depths)
     Nx, Ny = size(all_depth_data[1][1])
-    @show Nx, Ny
+
     # -------------------------------------------------------------------
     # Colormap & clim
     # -------------------------------------------------------------------
     if var == "S"
         clim = (34.8f0, 35.7f0)
-        cmap = :viridis
-
-    elseif var in ("u", "v", "w")
+        cmap = :haline
+        cx, cy, cz = Tx, Ty, Tz
+    elseif var  == "u"
         clim = (-0.5f0, 0.5f0)
         cmap = :bwr
-
+        cx, cy, cz = Ux, Uy, Uz
+    elseif var =="v"
+        clim = (-0.5f0, 0.5f0)
+        cmap = :bwr
+        cx, cy, cz = Vx, Vy, Vz
+    elseif var == "w"
+        clim = (-0.00005f0, 0.00005f0)
+        cmap = :bwr
+        cx, cy, cz = Tx, Ty, Tz
     elseif var == "speed"
         clim = (0f0, 0.7f0)
-        cmap = :speed
-
+        cmap = :Blues
+        cx, cy, cz = Tx, Ty, Tz
     else
         A0 = all_depth_data[1][end]
         clim = (minimum(A0), maximum(A0))
-        cmap = :viridis
+        cmap = :thermal
+        cx, cy, cz = Tx, Ty, Tz
     end
 
     # -------------------------------------------------------------------
     # Build figure (2 × 3 grid)
     # -------------------------------------------------------------------
-    fig = Figure(size = (1600, 900))
+    fig = Figure(
+    colgap = 0,
+    rowgap = 0,
+    size = (800,800))
+
+    land = (grid.immersed_boundary.bottom_height) .≥ 0
+    land = view(land, :, :, 1)
+    gl = fig[1, 1] = GridLayout()
 
     positions = [(1,1), (1,2), (1,3), (2,1), (2,2)]
 
-    axs = Vector{Axis}(undef, nd)
-    hms = Vector{Heatmap}(undef, nd)
+    axs = Vector{Axis3}(undef, nd)
+    hms = Vector{Surface}(undef, nd)
 
     # Preallocate observable matrices for each depth
     Z = [Observable(zeros(Float32, Nx, Ny)) for _ in 1:nd]
-
     for k in 1:nd
-        (i, j) = positions[k]
+        (i, j) = (1,1)#positions[k]
+        Z[k][][land] .= NaN
 
-        axs[k] = Axis(fig[i, j], title = "Depth $(round(depths_actual[k], digits=1)) m")#, width = 300, height = 150)
+        axs[k] = Axis3(gl[i, j], aspect=:data, viewmode = :fit, protrusions = 0)#, width = 300, height = 150)
 
-        hms[k] = heatmap!(
+        hms[k] = surface!(
             axs[k],
-            Z[k];                  # <-- use observable
-            colormap = cmap
+            cx, cy, cz;  
+            color=Z[k],                # <-- use observable
+            colormap = cmap,
+            colorrange = clim
         )
 
+        surface!(axs[k], x, y, z;
+        color = earth_texture,
+        shading = NoShading,
+        backlight = 1.5f0
+        )
+
+        hidedecorations!(axs[k])
+        hidespines!(axs[k])
 
     end
 
     fig_title = Label(fig[0, :], "Loading...", tellwidth = false)
-    Colorbar(fig[3,:], hms[1], label = "$var", vertical = false)
-    resize_to_layout!(fig)
+    Colorbar(gl[2,1], hms[1], label = "$var", vertical = false)
 
+    # colgap!(fig.layout, 1, Relative(-0.2))
+    resize_to_layout!(fig)
 
     # Output filename
     if isnothing(outname)
@@ -182,11 +254,38 @@ function make_variable_video(var::String,
     years = times ./ (365*24*60*60)
     nframes = length(times)
 
-    record(fig, outname, 1:nframes; framerate=5) do frame
+    record(fig, outname, 1:nframes; framerate=3) do frame
         fig_title.text = "Var: $var — Year = $(round(years[frame], digits=2))"
+        half_clg = Int(ceil((nframes - 6)/2.0))
+        qtr_clg = Int(ceil((nframes - 6)/4))
+        eighth_clg = Int(ceil((nframes - 6)/8))
+
+        # Precompute the two main halves
+        h_lat_up1   = LinRange(-90, 0, eighth_clg)
+        h_lat_up2 = LinRange(0, 90, eighth_clg)[2:end]
+        h_lat_down1   = LinRange(90, 0, eighth_clg)
+        h_lat_down2 = LinRange(0, -90, eighth_clg)[2:end]
+        h_flat = LinRange(0, 0, qtr_clg)[2:end]
+        # Full sequence with 3-frame tail from the start
+        lat_sequence = vcat(h_lat_down2[end-2:end], h_lat_up1, h_flat, h_lat_up2, h_lat_down1, h_flat, h_lat_down2, h_lat_up1[1:3])
+        # Latitude for current frame
+        h_lat = lat_sequence[frame]
+        
+        # Step size for the sweep
+        start_az = -190
+        end_az   = 190
+
+        # Main sweep
+        az_main = LinRange(start_az, end_az, nframes)
+
+        # Full azimuth sequence
+        az_sequence = az_main
+        az = az_sequence[frame]
 
         for d in 1:nd
-            Z[d][] = all_depth_data[d][frame]   # <-- observable update
+            Z[d][] = all_depth_data[d][frame] 
+            axs[d].elevation = deg2rad(h_lat)
+            axs[d].azimuth   = deg2rad(az)
         end
     end
     @info "Saved → $outname"
@@ -197,10 +296,10 @@ end
 # RUN
 ####################################################################
 
-vars = ["T", "S", "u", "v","speed"]
+vars = ["T", "S", "speed",  "u", "v", "w"]
 
 for var in vars
     @info "Processing $var..."
     make_variable_video(var, unique_depth_levels, depths_actual, unique_iterations;
-                        outname = figdir * "$(var)_all_depths.mp4")
+                        outname = figdir * "$(var)_earth_vid.mp4")
 end

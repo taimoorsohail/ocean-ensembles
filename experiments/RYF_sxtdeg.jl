@@ -401,7 +401,7 @@ symbols_slice = Symbol[]  # empty vector to store symbols
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
     slice_level = ind_pln
-    push!(symbols_slice, Symbol("plane_$(abs(round(slice_level, digits=1)))"))
+    push!(symbols_slice, Symbol("plane$(abs(round(slice_level, digits=1)))"))
 
     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
@@ -451,14 +451,14 @@ sea_ice_checkpointer_tracers = merge(
                                             dir = output_path,
                                             schedule =  TimeInterval((365/2)days),
                                             filename = "ocean_checkpointer_vars_iteration" * iteration_number,
-                                            with_halos = false,
+                                            with_halos = true,
                                             overwrite_existing = true)
 
 @time simulation.output_writers[:checkpointer_sea_ice] = JLD2Writer(sea_ice.model, sea_ice_checkpointer_tracers;
                                             dir = output_path,
                                             schedule = TimeInterval((365/2)days),
                                             filename = "sea_ice_checkpointer_vars_iteration" * iteration_number,
-                                            with_halos = false,
+                                            with_halos = true,
                                             overwrite_existing = true)
 
 add_callback!(simulation, save_restart, TimeInterval((365/2)days))
@@ -510,30 +510,53 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     close(seaice_fields_loaded)
     close(ocean_fields_loaded)
 
-    set!(ocean.model, 
-    T = (T_field),
-    S = (S_field),
-    e = (e_field),
-    u = (u_field),
-    v = (v_field),
-    w = (w_field),
-    η = (η_field))
+    # Start with submission number 14
+    copyto!(ocean.model.tracers.T.data, T_field)
+    copyto!(ocean.model.tracers.S.data, S_field)
+    copyto!(ocean.model.tracers.e.data, e_field)
+    copyto!(ocean.model.velocities.u.data, u_field)
+    copyto!(ocean.model.velocities.v.data, v_field)
+    copyto!(ocean.model.velocities.w.data, w_field)
+    copyto!(ocean.model.free_surface.η.data, η_field)
+    copyto!(ocean.model.free_surface.barotropic_velocities.U.data, U_field)
+    copyto!(ocean.model.free_surface.barotropic_velocities.V.data, V_field)
 
-    set!(ocean.model.free_surface.barotropic_velocities,
-    U = (U_field),
-    V = (V_field))
+    copyto!(sea_ice.model.ice_thickness.data, h_field)
+    copyto!(sea_ice.model.ice_concentration.data, ℵ_field)
+    copyto!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₁.data, σ₁₁_field)
+    copyto!(sea_ice.model.dynamics.auxiliaries.fields.σ₂₂.data, σ₂₂_field)
+    copyto!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₂.data, σ₁₂_field)
+    copyto!(sea_ice.model.ice_thermodynamics.top_surface_temperature.data, Tu_field)
+    copyto!(sea_ice.model.ice_thermodynamics.thermodynamic_tendency.data, Gʰ_field)
+    copyto!(sea_ice.model.velocities.u.data, u_ice_field)
+    copyto!(sea_ice.model.velocities.v.data, v_ice_field)
+
+    # Keep with submission number 13
+
+    # set!(ocean.model, 
+    # T = (T_field),
+    # S = (S_field),
+    # e = (e_field),
+    # u = (u_field),
+    # v = (v_field),
+    # w = (w_field),
+    # η = (η_field))
+
+    # set!(ocean.model.free_surface.barotropic_velocities,
+    # U = (U_field),
+    # V = (V_field))
     
-    set!(sea_ice.model, 
-    h = (h_field),
-    ℵ = (ℵ_field))
+    # set!(sea_ice.model, 
+    # h = (h_field),
+    # ℵ = (ℵ_field))
     
-    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₁, σ₁₁_field)
-    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₂₂, σ₂₂_field)
-    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₂, σ₁₂_field)
-    set!(sea_ice.model.ice_thermodynamics.top_surface_temperature, Tu_field)
-    set!(sea_ice.model.ice_thermodynamics.thermodynamic_tendency, Gʰ_field)
-    set!(sea_ice.model.velocities.u, u_ice_field)
-    set!(sea_ice.model.velocities.v, v_ice_field)
+    # set!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₁, σ₁₁_field)
+    # set!(sea_ice.model.dynamics.auxiliaries.fields.σ₂₂, σ₂₂_field)
+    # set!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₂, σ₁₂_field)
+    # set!(sea_ice.model.ice_thermodynamics.top_surface_temperature, Tu_field)
+    # set!(sea_ice.model.ice_thermodynamics.thermodynamic_tendency, Gʰ_field)
+    # set!(sea_ice.model.velocities.u, u_ice_field)
+    # set!(sea_ice.model.velocities.v, v_ice_field)
     
     @info "Checkpointers detected; advancing dt and running simulation"
 
