@@ -182,7 +182,7 @@ function make_variable_video(var::String,
     years = times ./ (365*24*60*60)
     nframes = length(times)
 
-    record(fig, outname, 1:nframes; framerate=5) do frame
+    record(fig, outname, 1:nframes; framerate=12) do frame
         fig_title.text = "Var: $var — Year = $(round(years[frame], digits=2))"
 
         for d in 1:nd

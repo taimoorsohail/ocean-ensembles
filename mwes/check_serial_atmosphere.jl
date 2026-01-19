@@ -14,7 +14,7 @@ using ClimaOcean.EN4
 using ClimaOcean.EN4: download_dataset
 using ClimaOcean.DataWrangling.ETOPO
 
-arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+arch = CPU()
 
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
@@ -106,7 +106,7 @@ output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 @time simulation.output_writers[:snapshot] = JLD2Writer(ocean.model, outputs;
                                             dir = output_path,
                                             schedule = TimeInterval(10minutes),
-                                            filename = "test_slice_snapshot_distributed",
+                                            filename = "test_slice_snapshot_serial",
                                             indices = (:, :, Nz),
                                             with_halos = false,
                                             overwrite_existing = true,

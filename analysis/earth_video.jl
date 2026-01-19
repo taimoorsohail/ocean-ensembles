@@ -59,11 +59,12 @@ lat = reverse(LinRange(-π/2, π/2, n))      # -π/2 = south pole, 0 = equator, 
 lon = LinRange(-π, π, 2*n)
 
 r = 1.0
-r_offset = 0.001   # 1% inflation
+r_offset = 0.05   # 1% inflation
 
 x = [ (r + r_offset) * cos(lat) * cos(lon) for lat in lat, lon in lon ]
 y = [ (r + r_offset) * cos(lat) * sin(lon) for lat in lat, lon in lon ]
 z = [ (r + r_offset) * sin(lat)         for lat in lat, lon in lon ]
+
 # --- Extract depth levels (numbers before 'm') ---
 depth_levels = [parse(Int, match(r"global_(\d+)", f).captures[1]) 
                 for f in files_combined if occursin(r"global_\d+", f)]
@@ -92,73 +93,100 @@ function make_variable_video(var::String,
                              depth_actual::Vector{Float64},
                              iterations::Vector{Int};
                              outname=nothing)
+
     is_speed = (var == "speed")
 
     all_depth_times = Vector{Vector{Float64}}()
     all_depth_data  = Vector{Vector{Matrix{Float32}}}()
 
+    # --- pick depths properly (you hard-coded [75] in your snippet) ---
     for depth in [75]
-        @info "Reading  $depth m"
-        raw_times = Float64[]
-        raw_data  = Matrix{Float32}[]
+        @info "Reading $depth m"
 
+        # ---- pass 1: count total snapshots across iterations for this depth ----
+        total_nt = 0
         for iteration in iterations
+            filepath = output_path *
+                "global_$(depth)_fields_$(resolution)_RYF_iteration$(iteration).jld2"
+            f = jldopen(filepath)
+            ts_keys = keys(f["timeseries/t"]) |> collect
+            total_nt += length(ts_keys)
+            close(f)
+        end
+
+        # ---- preallocate exactly ----
+        raw_data  = Vector{Matrix{Float32}}(undef, total_nt)
+        raw_times = Vector{Float64}(undef, total_nt)
+
+        k = 0  # global frame counter across all iterations
+
+        @time for iteration in iterations
             @show iteration
             filepath = output_path *
                 "global_$(depth)_fields_$(resolution)_RYF_iteration$(iteration).jld2"
 
-            if is_speed
-                    # ---------------------------
-                    # speed = sqrt(u^2 + v^2)
-                    # ---------------------------
-                    has_u = FieldTimeSeries(filepath, "u")
-                    has_v = FieldTimeSeries(filepath, "v")
-            else
-                    raw = FieldTimeSeries(filepath, "$var")
-            end
-
+            # Open JLD2 once per file
             f = jldopen(filepath)
 
-            # timestep keys
-            ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))))
+            # If you truly need sorted timesteps:
+            ts_keys = sort!(parse.(Int, collect(keys(f["timeseries/t"]))))
+
+            # Load field timeseries handles (these may open internally too)
+            if is_speed
+                has_u = FieldTimeSeries(filepath, "u")
+                has_v = FieldTimeSeries(filepath, "v")
+            else
+                raw = FieldTimeSeries(filepath, var)
+            end
 
             for (i, key) in enumerate(ts_keys)
-                tval = f["timeseries/t/$(key)"]
-                push!(raw_times, tval)
+                k += 1
+                raw_times[k] = f["timeseries/t/$(key)"]
+
                 if is_speed
+                    # Pull numeric arrays and compute speed without constructing a new Field
+                    u = interior(has_u[i])[:, :, 1]
+                    v = interior(has_v[i])[:, :, 1]
+                    A = @. sqrt(u*u + v*v)
 
-                    raw_u = has_u[i]
-                    raw_v = has_v[i]
-
-                    A = @at (Center, Center, Nothing) sqrt(raw_u^2 + raw_v^2) |> Field
-                    A = interior(A)[:, :, 1]  # extract 2D slice
-
+                    # store a standalone array (avoid retaining views/references)
+                    raw_data[k] = Array{Float32}(A)
                 else
-                    # ---------------------------
-                    # Normal variable: T, S, u, v, w, ...
-                    # ---------------------------
                     varpath = "timeseries/$var"
-
                     if !haskey(f, varpath)
                         @warn "Variable $var not found in $filepath. Skipping."
+                        k -= 1
                         continue
                     end
+
                     A = interior(raw[i])[:, :, 1]
-
+                    raw_data[k] = Array{Float32}(A)  # copy to detach from backing storage
                 end
-
-                push!(raw_data, A)
             end
 
             close(f)
+
+            # If FieldTimeSeries supports closing, do it here.
+            # (Some implementations don’t; harmless to omit if unsupported)
+            # try close(has_u); close(has_v); catch; end
+            # try close(raw); catch; end
         end
 
-        # Sort times + data
-        order = sortperm(raw_times)
-        push!(all_depth_times, raw_times[order])
-        push!(all_depth_data,  raw_data[order])
-    end
+        # If any frames were skipped, truncate
+        if k < total_nt
+            raw_times = raw_times[1:k]
+            raw_data  = raw_data[1:k]
+        end
 
+        # ---- sort times + data WITHOUT allocating giant new vectors ----
+        order = sortperm(raw_times)
+        permute!(raw_times, order)
+        permute!(raw_data,  order)
+
+        push!(all_depth_times, raw_times)
+        push!(all_depth_data,  raw_data)
+    end
+    # return all_depth_times, all_depth_data
     nd = 1# length(depths)
     Nx, Ny = size(all_depth_data[1][1])
 
@@ -166,7 +194,7 @@ function make_variable_video(var::String,
     # Colormap & clim
     # -------------------------------------------------------------------
     if var == "S"
-        clim = (34.8f0, 35.7f0)
+        clim = (32, 37)
         cmap = :haline
         cx, cy, cz = Tx, Ty, Tz
     elseif var  == "u"
@@ -185,9 +213,8 @@ function make_variable_video(var::String,
         clim = (0f0, 0.7f0)
         cmap = :Blues
         cx, cy, cz = Tx, Ty, Tz
-    else
-        A0 = all_depth_data[1][end]
-        clim = (minimum(A0), maximum(A0))
+    elseif var == "T"
+        clim = (-2,35)
         cmap = :thermal
         cx, cy, cz = Tx, Ty, Tz
     end
@@ -195,16 +222,13 @@ function make_variable_video(var::String,
     # -------------------------------------------------------------------
     # Build figure (2 × 3 grid)
     # -------------------------------------------------------------------
-    fig = Figure(
-    colgap = 0,
-    rowgap = 0,
-    size = (800,800))
+    fig = Figure(size=(750, 800))# colgap=0, rowgap=0, figure_padding=0)
+    gl  = fig[1, 1] = GridLayout()
 
-    land = (grid.immersed_boundary.bottom_height) .≥ 0
+    # FIXED heights for UI rows
+
+    land = (grid.immersed_boundary.bottom_height) .== 0
     land = view(land, :, :, 1)
-    gl = fig[1, 1] = GridLayout()
-
-    positions = [(1,1), (1,2), (1,3), (2,1), (2,2)]
 
     axs = Vector{Axis3}(undef, nd)
     hms = Vector{Surface}(undef, nd)
@@ -212,35 +236,47 @@ function make_variable_video(var::String,
     # Preallocate observable matrices for each depth
     Z = [Observable(zeros(Float32, Nx, Ny)) for _ in 1:nd]
     for k in 1:nd
-        (i, j) = (1,1)#positions[k]
-        Z[k][][land] .= NaN
+        #positions[k]
+        land = (grid.immersed_boundary.bottom_height) .== 0
+        land = view(land, :, :, 1)
 
-        axs[k] = Axis3(gl[i, j], aspect=:data, viewmode = :fit, protrusions = 0)#, width = 300, height = 150)
+        axs[k] = Axis3(gl[2,1], aspect=:data, viewmode = :fit)#, width = 300, height = 150)
+
+        # earthvibes = surface!(axs[k], x, y, z;
+        # color = earth_texture,
+        # shading = NoShading,
+        # backlight = 1.5f0
+        # )
 
         hms[k] = surface!(
             axs[k],
             cx, cy, cz;  
             color=Z[k],                # <-- use observable
             colormap = cmap,
+            nan_color = :darkgray,
             colorrange = clim
         )
 
-        surface!(axs[k], x, y, z;
-        color = earth_texture,
-        shading = NoShading,
-        backlight = 1.5f0
-        )
+        # earthvibes.rasterize = 3
+        # hms[k].rasterize = 3
 
         hidedecorations!(axs[k])
         hidespines!(axs[k])
 
     end
+    # Now row sizes work (rows exist)
 
-    fig_title = Label(fig[0, :], "Loading...", tellwidth = false)
-    Colorbar(gl[2,1], hms[1], label = "$var", vertical = false)
+    fig_title = Label(gl[1,1], "Loading...", tellwidth = false)
+    # fig_title.position[] = Point2f(0.5, 0.98)
+    Colorbar(gl[3,1], hms[1], label = "$var", vertical = false)
+    # rowsize!(gl, 1, Auto(0.15))   # title
+    # rowsize!(gl, 2, Relative(1))  # globe area
+    # rowsize!(gl, 3, Auto(0.15))   # colorbar
+
+    # colsize!(gl, 1, Relative(1))
 
     # colgap!(fig.layout, 1, Relative(-0.2))
-    resize_to_layout!(fig)
+    # resize_to_layout!(fig)
 
     # Output filename
     if isnothing(outname)
@@ -250,44 +286,50 @@ function make_variable_video(var::String,
     # -------------------------------------------------------------------
     # Animation: include year in title
     # -------------------------------------------------------------------
-    times = all_depth_times[1]
-    years = times ./ (365*24*60*60)
+
+    times   = all_depth_times[1]
+    years   = times ./ (365*24*60*60)
     nframes = length(times)
+    @info "Preparing camera motion for $nframes frames..."
+    eighth = Int(ceil(nframes / 8))
 
-    record(fig, outname, 1:nframes; framerate=3) do frame
-        fig_title.text = "Var: $var — Year = $(round(years[frame], digits=2))"
-        half_clg = Int(ceil((nframes - 6)/2.0))
-        qtr_clg = Int(ceil((nframes - 6)/4))
-        eighth_clg = Int(ceil((nframes - 6)/8))
+    h_lat_up1    = LinRange(-90, 0, eighth)
+    h_lat_up2    = LinRange(0, 90, eighth)
+    h_lat_down1  = LinRange(90, 0, eighth)
+    h_lat_down2  = LinRange(0, -90, eighth)
+    h_flat       = LinRange(0, 0, eighth)
+    h_SO         = LinRange(-90, -90, eighth)
+    h_arctic     = LinRange(90, 90, eighth)
 
-        # Precompute the two main halves
-        h_lat_up1   = LinRange(-90, 0, eighth_clg)
-        h_lat_up2 = LinRange(0, 90, eighth_clg)[2:end]
-        h_lat_down1   = LinRange(90, 0, eighth_clg)
-        h_lat_down2 = LinRange(0, -90, eighth_clg)[2:end]
-        h_flat = LinRange(0, 0, qtr_clg)[2:end]
-        # Full sequence with 3-frame tail from the start
-        lat_sequence = vcat(h_lat_down2[end-2:end], h_lat_up1, h_flat, h_lat_up2, h_lat_down1, h_flat, h_lat_down2, h_lat_up1[1:3])
-        # Latitude for current frame
+    lat_sequence = vcat(h_flat, h_lat_down2, h_SO, h_lat_up1, h_flat, h_lat_up2, h_arctic, h_lat_down1)
+    lat_sequence = lat_sequence[1:nframes]  # safety
+
+    az_sequence = LinRange(-180, 180, nframes)
+
+    # Choose which depth to animate (if you were looping over nd before)
+    d = 1  # e.g. first depth
+    @info "Recording video to $outname ..."
+
+    t0 = time()
+
+    Makie.record(fig, outname, 1:nframes; framerate=12) do frame
+        elapsed = time() - t0
+        rate = elapsed / frame
+        remaining = rate * (nframes - frame)
+        @info "Frame $frame/$nframes — ETA $(round(remaining/60, digits=1)) min"
+        flush(stdout)
+        az = az_sequence[frame]
         h_lat = lat_sequence[frame]
         
-        # Step size for the sweep
-        start_az = -190
-        end_az   = 190
-
-        # Main sweep
-        az_main = LinRange(start_az, end_az, nframes)
-
-        # Full azimuth sequence
-        az_sequence = az_main
-        az = az_sequence[frame]
-
+        fig_title.text[] = "Var: $var — Year = $(round(years[frame], digits=2))"
         for d in 1:nd
             Z[d][] = all_depth_data[d][frame] 
+            Z[d][] = ifelse.(land, NaN32, Z[d][])  # mask land
             axs[d].elevation = deg2rad(h_lat)
             axs[d].azimuth   = deg2rad(az)
         end
     end
+
     @info "Saved → $outname"
     return nothing
 end

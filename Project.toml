@@ -20,7 +20,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 CFTime = "0.1.4"
 ClimaOcean = "0.8,0.9"
-Oceananigans = "0.102"
+Oceananigans = "0.104"
 PolygonOps = "0.1.2"
 SparseArrays = "1.10"
 StaticArrays = "1.9.3"

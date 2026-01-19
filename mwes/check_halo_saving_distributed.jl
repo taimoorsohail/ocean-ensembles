@@ -13,35 +13,18 @@ using ClimaOcean
 using ClimaOcean.EN4
 using ClimaOcean.EN4: download_dataset
 using ClimaOcean.DataWrangling.ETOPO
+using JLD2
 
 arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-
-
-function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5, active_cells_map = false) # degrees
-    λp = underlying_grid.conformal_mapping.first_pole_longitude
-    φp = underlying_grid.conformal_mapping.north_poles_latitude
-    φm = underlying_grid.conformal_mapping.southernmost_latitude
-
-    Lz = underlying_grid.Lz
-
-    # We need a bottom height field that ``masks'' the singularities
-    bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
-
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map)
-
-    return grid
-end
 
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-Nx, Ny, Nz = 360, 180, 50
-Lx, Ly = 100, 100
+Nx, Ny, Nz = Integer(360/5), Integer(180/5), Integer(50/5)
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true) # IMPORTANT: WE NEED TO ACCOUNT FOR THIS
+z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true)
 @info "Creating grid"
 
 underlying_grid = TripolarGrid(arch;
@@ -62,14 +45,14 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
 @info "Creating free surface"
-free_surface = SplitExplicitFreeSurface(grid; substeps = 70)
+free_surface = SplitExplicitFreeSurface(grid; substeps = 20)
 
 @info "Creating model"
 
 ocean = ocean_simulation(grid; Δt=10, free_surface, timestepper = :SplitRungeKutta3, radiative_forcing = nothing)
 
-# radiation  = Radiation(arch)
-# atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), include_rivers_and_icebergs=true)
+radiation  = Radiation(arch)
+atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), include_rivers_and_icebergs=true)
 
 # ### Coupled simulation
 
@@ -81,9 +64,9 @@ ocean = ocean_simulation(grid; Δt=10, free_surface, timestepper = :SplitRungeKu
 # flow fields.
 
 @info "Defining coupled model"
-@time coupled_model = OceanSeaIceModel(ocean)
+@time coupled_model = OceanSeaIceModel(ocean; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=60, stop_time=2days)
+simulation = Simulation(coupled_model; Δt=60, stop_iteration=12)
 
 @info "Downloading/checking input data"
 
@@ -112,7 +95,7 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.ocean.model.velocities.w), prettytime(sim.run_wall_time))
 
-add_callback!(simulation, progress_message, IterationInterval(40))
+add_callback!(simulation, progress_message, IterationInterval(1))
 
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
@@ -121,16 +104,16 @@ outputs = merge(tracers, velocities)
 
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
-@time simulation.output_writers[:snapshot] = JLD2Writer(ocean.model, outputs;
+@info "Saving distributed output writers"
+@time ocean.output_writers[:snapshot] = JLD2Writer(ocean.model, outputs;
                                             dir = output_path,
-                                            schedule = TimeInterval(60minutes),
-                                            filename = "test_slice_snapshot_wo_atmosphere",
+                                            schedule = AveragedTimeInterval(10minutes),
+                                            filename = "test_distributed_outputwriters",
                                             indices = (:, :, Nz),
+                                            including = [:grid, :coriolis, :buoyancy, :closure],
                                             with_halos = false,
                                             overwrite_existing = true,
                                             array_type = Array{Float32})
 
 @info "Running simulation"
 run!(simulation)
-
-# @info "Simulation completed in " * prettytime(simulation.run_wall_time)
