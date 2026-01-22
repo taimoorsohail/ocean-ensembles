@@ -41,10 +41,11 @@ if isempty(ARGS)
     target_time_input = readline()
     target_time = parse(Int, target_time_input) * checkpoint_timer
 else
+    @show ARGS
     target_time = checkpoint_timer*parse(Int,ARGS[4]) * 2 + 22days
 end
 @info target_time
-checkpoint_type = "first" # "none", "last", "first"
+checkpoint_type = "last" # "none", "last", "first"
 
 ## Argument is provided by the submission script!
 
@@ -293,7 +294,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=2minutes, stop_time=20days)
+simulation = Simulation(coupled_model; Δt=12minutes, stop_time=20days)
 
 import Oceananigans.Diagnostics: CFL
 (c::CFL)(sim::Simulation) = c(sim.model)
@@ -363,29 +364,28 @@ iteration_number = string(Oceananigans.iteration(simulation))
 
 ################################### START OUTPUTTING ######################################
 #=
-
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
-surface_height = (; surface_height = ocean.model.free_surface.displacement)
-surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.condition, 
-                    S_surf = ocean.model.tracers.S.boundary_conditions.top.condition)
+# surface_height = (; surface_height = ocean.model.free_surface.displacement)
+# surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.condition, 
+#                     S_surf = ocean.model.tracers.S.boundary_conditions.top.condition)
 
-outputs_surf = merge(surface_height, surface_forcing)
+# outputs_surf = merge(surface_height, surface_forcing)
 
 @info "Defining total integral outputs"
-
+#=
 tot_integral = Symbol[]
 tot_integral_outputs = Field[]
 tot_integral_volume_symbols = Symbol[]
 tot_integral_volumes = Field[]
 
-surf_integral = Symbol[]
-surf_integral_outputs = Field[]
-surf_integral_volume_symbols = Symbol[]
-surf_integral_volumes = Field[]
+# surf_integral = Symbol[]
+# surf_integral_outputs = Field[]
+# surf_integral_volume_symbols = Symbol[]
+# surf_integral_volumes = Field[]
 
 vert_integral = Symbol[]
 vert_integral_outputs = Field[]
@@ -393,6 +393,7 @@ vert_integral_volume_symbols = Symbol[]
 vert_integral_volumes = Field[]
 
 for key in keys(outputs)
+    @show key
     f = outputs[key]
     f_copy = deepcopy(f)
     f_tot = Field(Integral(f, dims = (1,2,3)))
@@ -411,26 +412,27 @@ for key in keys(outputs)
     push!(vert_integral_volumes, f_vert_V)
 end
 
-for key in keys(surface_forcing)
-    f_surf = surface_forcing[key]
-    f_surf_copy = deepcopy(f_surf)
-    surf_tot = Field(Integral(f_surf, dims = (1,2,3)))
-    surf_tot_V = Field(Integral(set!(f_surf_copy, 1), dims = (1,2,3)))
-    push!(surf_integral_outputs, surf_tot)
-    push!(surf_integral, Symbol(key, "_surfintegral"))
-    push!(surf_integral_volume_symbols, Symbol(key, "_surfintegral_volume"))
-    push!(surf_integral_volumes, surf_tot_V)
-end
+# for key in keys(surface_forcing)
+#     f_surf = surface_forcing[key]
+#     f_surf_copy = deepcopy(f_surf)
+#     surf_tot = Field(Integral(f_surf, dims = (1,2,3)))
+#     surf_tot_V = Field(Integral(set!(f_surf_copy, 1), dims = (1,2,3)))
+#     push!(surf_integral_outputs, surf_tot)
+#     push!(surf_integral, Symbol(key, "_surfintegral"))
+#     push!(surf_integral_volume_symbols, Symbol(key, "_surfintegral_volume"))
+#     push!(surf_integral_volumes, surf_tot_V)
+# end
 
 cumulative_tuple = NamedTuple{Tuple(tot_integral)}(Tuple(tot_integral_outputs))
-cumulative_surf_tuple = NamedTuple{Tuple(surf_integral)}(Tuple(surf_integral_outputs))
+# cumulative_surf_tuple = NamedTuple{Tuple(surf_integral)}(Tuple(surf_integral_outputs))
 cumulative_vert_tuple = NamedTuple{Tuple(vert_integral)}(Tuple(vert_integral_outputs))
 
 cumulative_tuple_vol = NamedTuple{Tuple(tot_integral_volume_symbols)}(Tuple(tot_integral_volumes))
-cumulative_surf_tuple_vol = NamedTuple{Tuple(surf_integral_volume_symbols)}(Tuple(surf_integral_volumes))
+# cumulative_surf_tuple_vol = NamedTuple{Tuple(surf_integral_volume_symbols)}(Tuple(surf_integral_volumes))
 cumulative_vert_tuple_vol = NamedTuple{Tuple(vert_integral_volume_symbols)}(Tuple(vert_integral_volumes))
 
-global_outputs = merge(cumulative_tuple, cumulative_surf_tuple, cumulative_vert_tuple, cumulative_tuple_vol, cumulative_surf_tuple_vol, cumulative_vert_tuple_vol)
+global_outputs = merge(cumulative_tuple, cumulative_vert_tuple, cumulative_tuple_vol, cumulative_vert_tuple_vol)
+=#
 
 @info "Defining slice outputs"
 
@@ -442,7 +444,7 @@ for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
     slice_level = ind_pln
     push!(symbols_slice, Symbol("plane$(abs(round(slice_level, digits=1)))"))
-
+    @show slice_level
     @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                 dir = output_path,
                                                 schedule = AveragedTimeInterval((365/12)days),
@@ -455,14 +457,14 @@ for (ind, depth) in enumerate(depths)
 
 end
 
-@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, outputs_surf;
-                                            dir = output_path,
-                                            schedule = AveragedTimeInterval((365/12)days),
-                                            filename = "global_forcing_fields_sxtdeg_RYF_iteration" * iteration_number,
-                                            including = [:grid, :coriolis, :buoyancy, :closure],
-                                            with_halos = false,
-                                            overwrite_existing = true,
-                                            array_type = Array{Float32})
+# @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, outputs_surf;
+#                                             dir = output_path,
+#                                             schedule = AveragedTimeInterval((365/12)days),
+#                                             filename = "global_forcing_fields_sxtdeg_RYF_iteration" * iteration_number,
+#                                             including = [:grid, :coriolis, :buoyancy, :closure],
+#                                             with_halos = false,
+#                                             overwrite_existing = true,
+#                                             array_type = Array{Float32})
 
 
 @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
@@ -473,7 +475,6 @@ end
 =#
 ################################### END OUTPUTTING ######################################
 
-#=
 ################################### START CHECKPOINTING ######################################
 
 @info "Saving restarts"
@@ -509,14 +510,14 @@ sea_ice_checkpointer_tracers = merge(
 @time sea_ice.output_writers[:checkpointer_sea_ice] = JLD2Writer(sea_ice.model, sea_ice_checkpointer_tracers;
                                             dir = output_path,
                                             schedule = TimeInterval((365/2)days),
-                                            filename = "sea_ice_checkpointer_vars_iteration" * iteration_number,
+                                            filename = "sea_ice_checkpointer_vars_iteration" * iteration_number * "_rank$(localrank)",
                                             with_halos = false,
                                             overwrite_existing = true)
 
 add_callback!(simulation, save_restart, TimeInterval((365/2)days))
 
 ################################### END CHECKPOINTING ######################################
-=#
+
 restartfiles = glob("ocean_checkpointer_vars_iteration*rank$(localrank)*", output_path)
 
 restart_numbers = map(f -> parse(Int, match(r"ocean_checkpointer_vars_iteration(\d+)", basename(f)).captures[1]), restartfiles)
@@ -594,7 +595,7 @@ if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type
     
     @info "Checkpointers detected; advancing dt and running simulation"
 
-    simulation.Δt = 2minutes
+    simulation.Δt = 12minutes
     simulation.stop_time = target_time
 
     run!(simulation)
@@ -603,7 +604,7 @@ else
 
     run!(simulation)
 
-    simulation.Δt = 2minutes 
+    simulation.Δt = 12minutes 
     simulation.stop_time = target_time
 
     run!(simulation)
