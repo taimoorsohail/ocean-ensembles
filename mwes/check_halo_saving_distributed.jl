@@ -51,7 +51,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
 @info "Creating free surface"
-free_surface = SplitExplicitFreeSurface(grid; substeps = 70)
+free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
 
 @info "Defining closures"
 

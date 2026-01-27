@@ -35,37 +35,39 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 checkpoint_timer = (365/2)days
 checkpoint_intervals = TimeInterval(checkpoint_timer)
+target_time_input = 14
+target_time = target_time_input * checkpoint_timer
+arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 
-if isempty(ARGS)
-    println("No target time provided. Please enter target time:")
-    target_time_input = readline()
-    target_time = parse(Int, target_time_input) * checkpoint_timer
-else
-    @show ARGS
-    target_time = checkpoint_timer*parse(Int,ARGS[4]) * 2 + 22days
-end
+# if isempty(ARGS)
+#     println("No target time provided. Please enter target time:")
+#     target_time_input = readline()
+#     target_time = parse(Int, target_time_input) * checkpoint_timer
+# else
+#     @show ARGS
+#     target_time = checkpoint_timer*parse(Int,ARGS[4]) * 2 + 22days
+# end
 @info target_time
 checkpoint_type = "last" # "none", "last", "first"
-
 ## Argument is provided by the submission script!
 
-if isempty(ARGS)
-    println("No arguments provided. Please enter architecture (CPU/GPU):")
-    arch_input = readline()
-    if arch_input == "GPU"
-        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    elseif arch_input == "CPU"
-        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    else
-        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
-    end
-elseif ARGS[2] == "GPU" 
-    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-elseif ARGS[2] == "CPU"
-    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
-end    
+# if isempty(ARGS)
+#     println("No arguments provided. Please enter architecture (CPU/GPU):")
+#     arch_input = readline()
+#     if arch_input == "GPU"
+#         arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+#     elseif arch_input == "CPU"
+#         arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+#     else
+#         throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
+#     end
+# elseif ARGS[2] == "GPU" 
+#     arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+# elseif ARGS[2] == "CPU"
+#     arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+# else
+#     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
+# end    
 
 total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 localrank = Integer(arch.local_rank)
@@ -507,11 +509,12 @@ sea_ice_checkpointer_tracers = merge(
                                             including = [:grid, :coriolis, :buoyancy, :closure],
                                             overwrite_existing = true)
 
-@time sea_ice.output_writers[:checkpointer_sea_ice] = JLD2Writer(sea_ice.model, sea_ice_checkpointer_tracers;
+@time sea_ice.output_writers[:checkpointer_sea_ice] = JLD2Writer(ocean.model, sea_ice_checkpointer_tracers;
                                             dir = output_path,
                                             schedule = TimeInterval((365/2)days),
-                                            filename = "sea_ice_checkpointer_vars_iteration" * iteration_number * "_rank$(localrank)",
+                                            filename = "sea_ice_checkpointer_vars_iteration" * iteration_number,
                                             with_halos = false,
+                                            including = [:grid],
                                             overwrite_existing = true)
 
 add_callback!(simulation, save_restart, TimeInterval((365/2)days))
