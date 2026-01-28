@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -P v46
 #PBS -q gpuhopper
-#PBS -l walltime=15:00:00
+#PBS -l walltime=5:00:00
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
@@ -31,12 +31,10 @@ fi
 # Log submission countersq
 echo "Run $count of $max"
 
-target=$((count))  
-
 mpi_args=""
 
 mpiexec --bind-to socket --map-by socket -n 4 julia --project \
-  ../RYF_sxtdeg.jl --arch GPU --stop_time $target\
+  ../RYF_sxtdeg.jl --arch GPU\
   > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_h200_$count.stdout \
   2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_h200_$count.stderr
 
