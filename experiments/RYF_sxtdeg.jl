@@ -107,7 +107,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
                                 major_basins = 4)
 
 if total_ranks != 4
-    warning("Masking is only valid for 4 rank runs, not opening Baltic Sea for $(total_ranks) ranks.")
+    error("Masking is only valid for 4 rank runs, not opening Baltic Sea for $(total_ranks) ranks.")
 else
     @info "Applying bathymetry masks"
     # Black + Caspian Seas
@@ -183,7 +183,7 @@ forcing = (; S=FS)
 
 catke_closure = ClimaOcean.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
 
-warning("Using only CATKE, not VerticalScalarDiffusivity, due lack of support for DistributedComputations.")
+@info "Using only CATKE, not VerticalScalarDiffusivity, due lack of support for DistributedComputations."
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
 # ### Ocean simulation
@@ -195,7 +195,7 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 # output number of substeps
 # free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=12minutes)
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=60)
+free_surface = SplitExplicitFreeSurface(grid; substeps=70)
 
 momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
@@ -250,7 +250,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=12minutes)
+simulation = Simulation(coupled_model; Δt=10minutes)
 
 # ### A progress messenger
 #
@@ -308,7 +308,7 @@ surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.cond
                     S_surf = ocean.model.tracers.S.boundary_conditions.top.condition)
 
 outputs_surf = merge(surface_height, surface_forcing)
-
+#=
 @info "Defining total integral outputs"
 
 tot_integral = Symbol[]
@@ -369,7 +369,7 @@ cumulative_surf_tuple_vol = NamedTuple{Tuple(surf_integral_volume_symbols)}(Tupl
 cumulative_vert_tuple_vol = NamedTuple{Tuple(vert_integral_volume_symbols)}(Tuple(vert_integral_volumes))
 
 global_outputs = merge(cumulative_tuple, cumulative_vert_tuple, cumulative_tuple_vol, cumulative_vert_tuple_vol)
-
+=#
 @info "Defining slice outputs"
 
 depths = [0,-100, -500, -1000, -2000]
@@ -377,6 +377,7 @@ depths = [0,-100, -500, -1000, -2000]
 symbols_slice = Symbol[]  # empty vector to store symbols
 
 iteration_number = simulation.model.clock.iteration |> string
+@show iteration_number
 
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
@@ -406,13 +407,13 @@ end
                                             overwrite_existing = true,
                                             array_type = Array{Float32})
 
-@info "Defining all integrals"
+# @info "Defining all integrals"
 
-@time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
-                                            dir = output_path,
-                                            schedule = AveragedTimeInterval((365/48)days),
-                                            filename = "global_tot_integrals_sxtdeg_RYF_iteration" * iteration_number,
-                                            overwrite_existing = true)
+# @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
+#                                             dir = output_path,
+#                                             schedule = AveragedTimeInterval((365/48)days),
+#                                             filename = "global_tot_integrals_sxtdeg_RYF_iteration" * iteration_number,
+#                                             overwrite_existing = true)
 
 ################################### END OUTPUTTING ######################################
 
