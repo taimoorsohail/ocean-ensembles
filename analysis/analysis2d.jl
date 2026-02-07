@@ -10,10 +10,10 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 resolution = "sxtdeg"
 
-grid = create_grid(output_path * "global_75_fields_$(resolution)_RYF_iteration0", [0,1,2,3]; gridtype="TripolarGrid")
+grid = create_grid(output_path * "global_75_fields_$(resolution)_RYF_run0000", [0,1,2,3]; gridtype="TripolarGrid")
 
 files_combined = filter(f -> !occursin("_rank", f),
-                        glob("global_*$(resolution)_RYF_iteration*.jld2", output_path))
+                        glob("global_*$(resolution)_RYF_run*.jld2", output_path))
 
 # --- Extract depth levels (numbers before 'm') ---
 depth_levels = [parse(Int, match(r"global_(\d+)", f).captures[1]) 
@@ -22,8 +22,8 @@ unique_depth_levels = sort(unique(depth_levels))
 depths_actual = abs.(grid.z.cᵃᵃᶠ[unique_depth_levels])
 
 # --- Extract iteration numbers ---
-iterations = [parse(Int, match(r"iteration(\d+)", f).captures[1]) 
-              for f in files_combined if occursin(r"iteration\d+", f)]
+iterations = [parse(Int, match(r"run(\d+)", f).captures[1]) 
+              for f in files_combined if occursin(r"run\d+", f)]
 unique_iterations = sort(unique(iterations))
 
 vars = keys(jldopen(files_combined[1])["timeseries"])
@@ -51,9 +51,10 @@ function make_variable_video(var::String,
         raw_data  = Matrix{Float32}[]
 
         for iteration in iterations
+            run = lpad(string(iteration), 4, '0')
 
             filepath = output_path *
-                "global_$(depth)_fields_$(resolution)_RYF_iteration$(iteration).jld2"
+                "global_$(depth)_fields_$(resolution)_RYF_run$(run).jld2"
 
             if is_speed
                     # ---------------------------

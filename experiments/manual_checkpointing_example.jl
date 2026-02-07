@@ -482,8 +482,6 @@ end
 
 @info "Saving restarts"
 
-
-
 # function save_restart(sim)
 #     localrank = MPI.Comm_rank(MPI.COMM_WORLD)
 #     jldsave(output_path * "ocean_checkpointer_clock_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";

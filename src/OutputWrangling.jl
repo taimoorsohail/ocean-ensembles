@@ -69,8 +69,10 @@ function combine_ranks(prefix, grid)
     iterations    = sort(collect(keys(iter_rank_map)))
 
     for iteration in iterations
+        run = lpad(string(iteration), 4, '0')
+
         ranks = iter_rank_map[iteration]
-        outpath = prefix * "_iteration$(iteration).jld2"
+        outpath = prefix * "_run$(run).jld2"
 
         # --------------------------------------------------------------
         # SKIP IF OUTPUT FILE ALREADY EXISTS
@@ -83,48 +85,59 @@ function combine_ranks(prefix, grid)
         # --------------------------------------------------------------
         # Probe first rank for timestep metadata
         # --------------------------------------------------------------
-        file0 = jldopen(prefix * "_iteration$(iteration)_rank$(ranks[1]).jld2", "r")
+        file0 = jldopen(prefix * "_run$(run)_rank$(ranks[1]).jld2", "r")
 
         if !haskey(file0, "timeseries/t")
             @warn "Skipping iteration $iteration: key 'timeseries/t' not found."
             close(file0)
             continue
         end
-
+        vars = keys(file0["timeseries"])
         tkeys = collect(keys(file0["timeseries/t"]))       # e.g., ["0", "120"]
         iters = sort(parse.(Int, tkeys))                   # numeric sort
         times = Float64[file0["timeseries/t/$(k)"] for k in iters]
 
-        close(file0)
-        @info "Combining ranks $(ranks) for iteration $(iteration)"
+        @info "Combining ranks $(ranks) for iteration $(run)"
 
         # --------------------------------------------------------------
         # Create output FieldTimeSeries (one file, 6 variables)
         # --------------------------------------------------------------
-        @info "Creating u output FieldTimeSeries at $outpath"
-        @time utmp = FieldTimeSeries{Face,   Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="u")
-        @info "Creating v output FieldTimeSeries at $outpath"
-        @time vtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=outpath, name="v")
-        @info "Creating w output FieldTimeSeries at $outpath"
-        @time wtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=outpath, name="w")
-        @info "Creating T output FieldTimeSeries at $outpath"
-        @time Ttmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="T")
-        @info "Creating S output FieldTimeSeries at $outpath"
-        @time Stmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="S")
-        @info "Creating e output FieldTimeSeries at $outpath"
-        @time etmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="e")
+        tmp = []
+        for var in vars
+            @show var
+            if var != "t"
+                @info "Creating $(var) output FieldTimeSeries at $outpath"
+                rawlocs = file0["timeseries/$(var)/serialized/location"]
+                tmp = FieldTimeSeries{rawlocs[1],   rawlocs[2], Nothing}(grid, times; backend=OnDisk(), path=outpath, name=string(var))
+                @info "Stitching $(var) for iteration $(run) → $outpath"
+                @time set_distributed_field_time_series!(tmp, prefix, ranks, iteration, iters, grid)
+            end
+        end
+
+        close(file0)
+
+        # @info "Creating v output FieldTimeSeries at $outpath"
+        # @time vtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=outpath, name="v")
+        # @info "Creating w output FieldTimeSeries at $outpath"
+        # @time wtmp = FieldTimeSeries{Center, Face,   Nothing}(grid, times; backend=OnDisk(), path=outpath, name="w")
+        # @info "Creating T output FieldTimeSeries at $outpath"
+        # @time Ttmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="T")
+        # @info "Creating S output FieldTimeSeries at $outpath"
+        # @time Stmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="S")
+        # @info "Creating e output FieldTimeSeries at $outpath"
+        # @time etmp = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=OnDisk(), path=outpath, name="e")
 
         # --------------------------------------------------------------
         # Worker: stitch ranks into a global field (FAST)
         # --------------------------------------------------------------
         # function stitch!(fts, prefix, ranks, iteration, iters, grid)
         #     Nx, Ny, Nz, Hx, Hy, Hz, nx, ny, Lz, z_faces =
-        #         grid_metrics(prefix * "_iteration$(iteration)", ranks)
+        #         grid_metrics(prefix * "_run$(run)", ranks)
 
         #     field = Field{location(fts)...}(grid)
 
         #     # open ALL rank files ONCE
-        #     rfiles = Dict(r => jldopen(prefix * "_iteration$(iteration)_rank$(r).jld2", "r")
+        #     rfiles = Dict(r => jldopen(prefix * "_run$(run)_rank$(r).jld2", "r")
         #                   for r in ranks)
 
         #     try
@@ -148,25 +161,23 @@ function combine_ranks(prefix, grid)
         # --------------------------------------------------------------
         # Build each variable (minimising open files and allocations)
         # --------------------------------------------------------------
-        @info "Stitching u for iteration $(iteration) → $outpath"
-        @time set_distributed_field_time_series!(utmp, prefix, ranks, iteration, iters, grid)
-        @info "Stitching v for iteration $(iteration) → $outpath"
-        @time set_distributed_field_time_series!(vtmp, prefix, ranks, iteration, iters, grid)
-        @info "Stitching w for iteration $(iteration) → $outpath"
-        @time set_distributed_field_time_series!(wtmp, prefix, ranks, iteration, iters, grid)
-        @info "Stitching T for iteration $(iteration) → $outpath"
-        @time set_distributed_field_time_series!(Ttmp, prefix, ranks, iteration, iters, grid)
-        @info "Stitching S for iteration $(iteration) → $outpath"
-        @time set_distributed_field_time_series!(Stmp, prefix, ranks, iteration, iters, grid)
-        @info "Stitching e for iteration $(iteration) → $outpath"
-        @time set_distributed_field_time_series!(etmp, prefix, ranks, iteration, iters, grid)
+        # @info "Stitching v for iteration $(run) → $outpath"
+        # @time set_distributed_field_time_series!(vtmp, prefix, ranks, iteration, iters, grid)
+        # @info "Stitching w for iteration $(run) → $outpath"
+        # @time set_distributed_field_time_series!(wtmp, prefix, ranks, iteration, iters, grid)
+        # @info "Stitching T for iteration $(run) → $outpath"
+        # @time set_distributed_field_time_series!(Ttmp, prefix, ranks, iteration, iters, grid)
+        # @info "Stitching S for iteration $(run) → $outpath"
+        # @time set_distributed_field_time_series!(Stmp, prefix, ranks, iteration, iters, grid)
+        # @info "Stitching e for iteration $(run) → $outpath"
+        # @time set_distributed_field_time_series!(etmp, prefix, ranks, iteration, iters, grid)
 
-        @info "Finished writing iteration $(iteration) → $outpath"
+        @info "Finished writing iteration $(run) → $outpath"
 
         # --------------------------------------------------------------
         # CRITICAL: Explicitly close all output JLD2 file handles
         # --------------------------------------------------------------
-        @info "Closing output files for iteration $(iteration) → $outpath"
+        @info "Closing output files for iteration $(run) → $outpath"
         # close(utmp.output)
         # close(vtmp.output)
         # close(wtmp.output)
@@ -177,21 +188,22 @@ function combine_ranks(prefix, grid)
         # --------------------------------------------------------------
         # Release MMAP buffers (prevents SystemError: msync errors)
         # --------------------------------------------------------------
-        @info "Releasing MMAP buffers for iteration $(iteration) → $outpath"
+        @info "Releasing MMAP buffers for iteration $(run) → $outpath"
         GC.gc()
     end
 
     return nothing
 end
 
-function set_distributed_field_time_series!(fts, prefix, ranks, iteration, iters, grid) 
-    Nx, Ny, Nz, Hx, Hy, Hz, nx, ny, Lz, z_faces = grid_metrics(prefix * "_iteration$(iteration)", ranks) 
+function set_distributed_field_time_series!(fts, prefix, ranks, iteration, iters, grid)
+    run = lpad(string(iteration), 4, '0')
+    Nx, Ny, Nz, Hx, Hy, Hz, nx, ny, Lz, z_faces = grid_metrics(prefix * "_run$(run)", ranks) 
     field = Field{location(fts)...}(grid) 
     Ny = size(fts, 2) # loop over timesteps FIRST 
     for (idx, iter) in enumerate(iters) # fresh field for this timestep (critical!) 
         field = Field{location(fts)...}(grid) # fill the global domain rank-by-rank 
         for rank in ranks 
-            file = jldopen(prefix * "_iteration$(iteration)_rank$(rank).jld2") # shape typically (Nx_local, Ny_local, Nz_local) 
+            file = jldopen(prefix * "_run$(run)_rank$(rank).jld2") # shape typically (Nx_local, Ny_local, Nz_local) 
             data = file["timeseries/$(fts.name)/$(iter)"][:, :, :] # y-range for rank 
             irange = ny * rank + 1 : ny * (rank + 1) # fill full vertical column (use ":" in last dim) 
             interior(field, :, irange, :) .= data 
@@ -203,9 +215,9 @@ end
 
 function identify_combination_targets(prefix, output_path; type = "iterrank")
     if type == "iterrank"
-        file_pattern = prefix * "_iteration*_rank*"
+        file_pattern = prefix * "_run*_rank*"
         files = glob(file_pattern, output_path)
-        pattern = Regex("^" * prefix * "_iteration(\\d+)_rank(\\d+)\\.jld2")
+        pattern = Regex("^" * prefix * "_run(\\d+)_rank(\\d+)\\.jld2")
         iter_rank_map = Dict{Int, Vector{Int}}()
 
         for file in files
@@ -220,9 +232,9 @@ function identify_combination_targets(prefix, output_path; type = "iterrank")
         return iter_rank_map
 
     elseif type == "iter"
-        @show file_pattern = prefix * "_iteration*"
-        @show files = glob(file_pattern, output_path)
-        @show pattern = Regex("^" * prefix * "_iteration(\\d+)\\.jld2")
+        file_pattern = prefix * "_run*"
+        files = glob(file_pattern, output_path)
+        pattern = Regex("^" * prefix * "_run(\\d+)\\.jld2")
 
         iter_map = Dict{Int, Vector{Int}}()
 
@@ -245,7 +257,7 @@ function combine_iters(prefix, prefix_out; remove_split_files = false)
     combined = Dict{String, Any}()
 
     for iteration in iterations
-        filename = prefix * "_iteration$(iteration).jld2"
+        filename = prefix * "run$(run).jld2"
         println("Reading $filename")
 
         jldopen(filename, "r") do file
@@ -270,7 +282,7 @@ function combine_iters(prefix, prefix_out; remove_split_files = false)
     # # Optionally remove originals
     # if remove_split_files
     #     for iteration in iterations
-    #         rm(prefix * "_iteration$(iteration).jld2")
+    #         rm(prefix * "_run$(run).jld2")
     #     end
     # end
 end

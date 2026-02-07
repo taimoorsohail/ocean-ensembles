@@ -183,7 +183,6 @@ forcing = (; S=FS)
 
 catke_closure = ClimaOcean.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
 
-@info "Using only CATKE, not VerticalScalarDiffusivity, due lack of support for DistributedComputations."
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
 # ### Ocean simulation
@@ -209,7 +208,7 @@ tracer_advection   = WENO(order = 7)
                          free_surface,
                          forcing = forcing,
                          radiative_forcing = nothing,
-                         closure = catke_closure)
+                         closure)
 
 # ### Initial condition
 
@@ -276,6 +275,7 @@ function progress(sim)
             maximum(abs, (w)))
 
     step_time = 1e-9 * (time_ns() - wall_time[])
+    wall_progress = time_ns() * 1e-9
 
     msg1 = @sprintf("time: %s, iteration: %d, Δt: %s,", prettytime(sim), Oceananigans.iteration(sim), prettytime(sim.Δt))
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
@@ -283,9 +283,10 @@ function progress(sim)
     msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
     msg6 = @sprintf("extrema(η): (%.2f, %.2f) m, ", ηrange...)
     msg7 = @sprintf("wall time: %s \n", prettytime(step_time))
+    msg5 = @sprintf("Wall clock time: %s \n", prettytime(wall_progress))
     msg8 = @sprintf("SYPD: %.2f \n", (10*sim.Δt)/step_time/365)
 
-    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7 * msg8
+    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7 * msg5 * msg8
 
     wall_time[] = time_ns()
 
@@ -308,76 +309,71 @@ surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.cond
                     S_surf = ocean.model.tracers.S.boundary_conditions.top.condition)
 
 outputs_surf = merge(surface_height, surface_forcing)
-#=
+
 @info "Defining total integral outputs"
 
 tot_integral = Symbol[]
 tot_integral_outputs = Field[]
-tot_integral_volume_symbols = Symbol[]
-tot_integral_volumes = Field[]
 
 surf_integral = Symbol[]
 surf_integral_outputs = Field[]
-surf_integral_volume_symbols = Symbol[]
-surf_integral_volumes = Field[]
 
 vert_integral = Symbol[]
 vert_integral_outputs = Field[]
-vert_integral_volume_symbols = Symbol[]
-vert_integral_volumes = Field[]
 
 for key in keys(outputs)
     @show key
     f = outputs[key]
-    f_copy = deepcopy(f)
     f_tot = Field(Integral(f, dims = (1,2,3)))
-    f_tot_V = Field(Integral(set!(f_copy, 1), dims = (1,2,3)))
     f_vert = Field(Integral(f, dims = (1,2)))
-    f_vert_V = Field(Integral(set!(f_copy, 1), dims = (1,2)))
 
     push!(tot_integral_outputs, f_tot)
     push!(tot_integral, Symbol(key, "_totintegral"))
-    push!(tot_integral_volume_symbols, Symbol(key, "_totintegral_volume"))
-    push!(tot_integral_volumes, f_tot_V)
 
     push!(vert_integral_outputs, f_vert)
     push!(vert_integral, Symbol(key, "_vertintegral"))
-    push!(vert_integral_volume_symbols, Symbol(key, "_vertintegral_volume"))
-    push!(vert_integral_volumes, f_vert_V)
 end
-@info "Defining surface integral outputs"
 
-for key in keys(surface_forcing)
-    f_surf = surface_forcing[key]
-    f_surf_copy = deepcopy(f_surf)
-    surf_tot = Field(Integral(f_surf, dims = (1,2,3)))
-    surf_tot_V = Field(Integral(set!(f_surf_copy, 1), dims = (1,2,3)))
-    push!(surf_integral_outputs, surf_tot)
-    push!(surf_integral, Symbol(key, "_surfintegral"))
-    push!(surf_integral_volume_symbols, Symbol(key, "_surfintegral_volume"))
-    push!(surf_integral_volumes, surf_tot_V)
-end
+V_ccc = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
+V_fcc = KernelFunctionOperation{Face, Center, Center}(Oceananigans.Operators.Vᶠᶜᶜ, grid)
+V_cfc = KernelFunctionOperation{Center, Face, Center}(Oceananigans.Operators.Vᶜᶠᶜ, grid)
+
+@info "Defining total volume integrals"
+
+totint_vol_c = sum(V_ccc, dims = (1,2,3))
+totint_vol_x = sum(V_fcc, dims = (1,2,3))
+totint_vol_y = sum(V_cfc, dims = (1,2,3))
+
+tot_integral_volumes = [totint_vol_c, totint_vol_x, totint_vol_y]
+tot_integral_volume_symbols = [:total_volume_c, :total_volume_x, :total_volume_y]
+
+@info "Defining vertical volume integrals"
+
+vertint_vol_c = sum(V_ccc, dims = (1,2))
+vertint_vol_x = sum(V_fcc, dims = (1,2))
+vertint_vol_y = sum(V_cfc, dims = (1,2))
+
+vert_integral_volumes = [vertint_vol_c, vertint_vol_x, vertint_vol_y]
+vert_integral_volume_symbols = [:vert_volume_c, :vert_volume_x, :vert_volume_y]
 
 @info "Defining integral tuples"
 
 cumulative_tuple = NamedTuple{Tuple(tot_integral)}(Tuple(tot_integral_outputs))
-cumulative_surf_tuple = NamedTuple{Tuple(surf_integral)}(Tuple(surf_integral_outputs))
 cumulative_vert_tuple = NamedTuple{Tuple(vert_integral)}(Tuple(vert_integral_outputs))
 
 cumulative_tuple_vol = NamedTuple{Tuple(tot_integral_volume_symbols)}(Tuple(tot_integral_volumes))
-cumulative_surf_tuple_vol = NamedTuple{Tuple(surf_integral_volume_symbols)}(Tuple(surf_integral_volumes))
 cumulative_vert_tuple_vol = NamedTuple{Tuple(vert_integral_volume_symbols)}(Tuple(vert_integral_volumes))
 
-global_outputs = merge(cumulative_tuple, cumulative_vert_tuple, cumulative_tuple_vol, cumulative_vert_tuple_vol)
-=#
+global_outputs = merge(cumulative_tuple, cumulative_vert_tuple,
+                       cumulative_tuple_vol, cumulative_vert_tuple_vol)
+                       
 @info "Defining slice outputs"
 
 depths = [0,-100, -500, -1000, -2000]
 
 symbols_slice = Symbol[]  # empty vector to store symbols
 
-iteration_number = simulation.model.clock.iteration |> string
-@show iteration_number
+@show run_id = lpad(ARGS[4], 4, '0')
 
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
@@ -385,50 +381,52 @@ for (ind, depth) in enumerate(depths)
     push!(symbols_slice, Symbol("plane$(abs(round(slice_level, digits=1)))"))
     @show slice_level
     @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
-                                                dir = output_path,
-                                                schedule = AveragedTimeInterval((365/12)days),
-                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_iteration" * iteration_number,
-                                                indices = (:, :, ind_pln),
-                                                with_halos = false,
-                                                including = [:grid, :coriolis, :buoyancy, :closure],
-                                                overwrite_existing = true,
-                                                array_type = Array{Float32})
+                                                                dir = output_path,
+                                                                schedule = AveragedTimeInterval((365/12)days),
+                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id,
+                                                                indices = (:, :, ind_pln),
+                                                                with_halos = false,
+                                                                including = [:grid, :coriolis, :buoyancy, :closure],
+                                                                overwrite_existing = true,
+                                                                array_type = Array{Float32})
 
 end
 
 @info "Defining surface fields"
 
 @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, outputs_surf;
-                                            dir = output_path,
-                                            schedule = AveragedTimeInterval((365/12)days),
-                                            filename = "global_forcing_fields_sxtdeg_RYF_iteration" * iteration_number,
-                                            including = [:grid, :coriolis, :buoyancy, :closure],
-                                            with_halos = false,
-                                            overwrite_existing = true,
-                                            array_type = Array{Float32})
+                                              dir = output_path,
+                                              schedule = AveragedTimeInterval((365/12)days),
+                                              filename = "global_forcing_fields_sxtdeg_RYF_run" * run_id,
+                                              including = [:grid, :coriolis, :buoyancy, :closure],
+                                              with_halos = false,
+                                              overwrite_existing = true,
+                                              array_type = Array{Float32})
 
-# @info "Defining all integrals"
+@info "Defining all integrals"
 
-# @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
-#                                             dir = output_path,
-#                                             schedule = AveragedTimeInterval((365/48)days),
-#                                             filename = "global_tot_integrals_sxtdeg_RYF_iteration" * iteration_number,
-#                                             overwrite_existing = true)
+@time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
+                                                   dir = output_path,
+                                                   schedule = AveragedTimeInterval((365/48)days),
+                                                   filename = "global_tot_integrals_sxtdeg_RYF_run" * run_id,
+                                                   overwrite_existing = true)
 
 ################################### END OUTPUTTING ######################################
 
 ################################### START CHECKPOINTING ######################################
 
-@info "Saving checkpoint"
-
 @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
-                                                              schedule = WallTimeInterval(5hours),  
+                                                              schedule = TimeInterval((365/12)days),  
                                                               dir = output_path, 
                                                               prefix="RYF_sxtdeg_checkpoint_rank$localrank",
-                                                              overwrite_existing = true)
+                                                              overwrite_existing = true,
+                                                              cleanup = false)
 
 ################################### END CHECKPOINTING ######################################
 
 @info "Running Simulation"
+
+simulation.Δt = 10minutes
+simulation.stop_time = parse(Int,ARGS[4]) * 13 * (365/12)days
 
 run!(simulation, pickup=true, checkpoint_at_end=true)

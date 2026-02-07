@@ -9,14 +9,14 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 resolution = "sxtdeg"
 nframes = nothing
 # Example: get all matching files in a folder
-files = glob("global_*fields*$(resolution)*_RYF_iteration*.jld2", output_path)
+files = glob("global_*fields*$(resolution)*_RYF_run*.jld2", output_path)
 
 # Collect prefixes here
 prefixes = String[]
 
 for file in files
     fname = basename(file)
-    prefix = replace(fname, r"_iteration.*" => "")
+    prefix = replace(fname, r"_run.*" => "")
     push!(prefixes, joinpath(output_path, prefix))
 end
 
@@ -29,10 +29,9 @@ iter_rank_map = identify_combination_targets(basename(unique_prefixes[1]), dirna
 iterations = sort(collect(keys(iter_rank_map)))
 ranks = iter_rank_map[iterations[1]]
 
-@show iterations
-@show ranks
+run0 = lpad(string(iterations[1]), 4, '0')
 
-grid = create_grid(unique_prefixes[1] * "_iteration$(iterations[1])", ranks; gridtype = "TripolarGrid")
+grid = create_grid(unique_prefixes[1] * "_run$(run0)", ranks; gridtype = "TripolarGrid")
 
 @info "Grid created."
 
