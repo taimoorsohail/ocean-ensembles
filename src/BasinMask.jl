@@ -1,6 +1,6 @@
 module BasinMask
 
-    using ClimaOcean
+    using NumericalEarth
     using CUDA: @allowscalar
     using Oceananigans
     using Oceananigans.Fields: instantiate, location

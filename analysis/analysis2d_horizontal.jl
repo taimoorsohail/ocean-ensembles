@@ -5,12 +5,12 @@ using OceanEnsembles
 using Oceananigans: @at
 using Oceananigans
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-resolution = "sxtdeg"
+resolution = "onedeg"
 
-grid = create_grid(output_path * "global_75_fields_$(resolution)_RYF_run0000", [0,1,2,3]; gridtype="TripolarGrid")
+grid = create_grid(output_path * "global_75_fields_$(resolution)_RYF_run0001"; gridtype="TripolarGrid")
 
 files_combined = filter(f -> !occursin("_rank", f),
                         glob("global_*$(resolution)_RYF_run*.jld2", output_path))
@@ -26,7 +26,7 @@ iterations = [parse(Int, match(r"run(\d+)", f).captures[1])
               for f in files_combined if occursin(r"run\d+", f)]
 unique_iterations = sort(unique(iterations))
 
-vars = keys(jldopen(files_combined[1])["timeseries"])
+vars = keys(jldopen(files_combined[1])["timeseries"])[1]
 
 files = sort(files_combined; rev=true)
 
@@ -160,7 +160,8 @@ function make_variable_video(var::String,
         hms[k] = heatmap!(
             axs[k],
             Z[k];                  # <-- use observable
-            colormap = cmap
+            colormap = cmap,
+            colorrange = (2,15)
         )
 
 
@@ -173,7 +174,7 @@ function make_variable_video(var::String,
 
     # Output filename
     if isnothing(outname)
-        outname = figdir * "$(var).mp4"
+        outname = figdir * "$(var)_$(resolution).mp4"
     end
 
     # -------------------------------------------------------------------
@@ -183,7 +184,7 @@ function make_variable_video(var::String,
     years = times ./ (365*24*60*60)
     nframes = length(times)
 
-    record(fig, outname, 1:nframes; framerate=12) do frame
+    record(fig, outname, 1:nframes; framerate=6) do frame
         fig_title.text = "Var: $var — Year = $(round(years[frame], digits=2))"
 
         for d in 1:nd
@@ -203,5 +204,5 @@ vars = ["T", "S", "u", "v","speed"]
 for var in vars
     @info "Processing $var..."
     make_variable_video(var, unique_depth_levels, depths_actual, unique_iterations;
-                        outname = figdir * "$(var)_all_depths.mp4")
+                        outname = figdir * "$(var)_$(resolution)_all_depths.mp4")
 end

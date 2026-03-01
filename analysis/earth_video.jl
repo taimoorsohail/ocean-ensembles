@@ -1,4 +1,4 @@
-using ClimaOcean
+using NumericalEarth
 using Oceananigans
 using Oceananigans.Units
 using OceanEnsembles

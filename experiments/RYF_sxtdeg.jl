@@ -4,12 +4,12 @@ using CUDA: @allowscalar
 MPI.Init()
 atexit(MPI.Finalize)  
 
-using ClimaOcean
+using NumericalEarth
 
-using ClimaOcean.EN4
-using ClimaOcean.ECCO
-using ClimaOcean.EN4: download_dataset
-using ClimaOcean.DataWrangling.ETOPO
+using NumericalEarth.EN4
+using NumericalEarth.ECCO
+using NumericalEarth.EN4: download_dataset
+using NumericalEarth.DataWrangling.ETOPO
 
 using ClimaSeaIce
 using ClimaSeaIce.SeaIceThermodynamics: IceWaterThermalEquilibrium
@@ -99,15 +99,15 @@ underlying_grid = TripolarGrid(arch;
 @info "Defining bottom bathymetry"
 
 ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
-ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
+NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                 minimum_depth = 15,
                                 interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
                                 major_basins = 4)
 
-if total_ranks != 4
-    error("Masking is only valid for 4 rank runs, not opening Baltic Sea for $(total_ranks) ranks.")
+if total_ranks != 4 || Nx != Integer(360*6) || Ny != Integer(180*6)
+    @warn "Masking is only valid for 4 rank runs at 1080 x 2160, not opening Baltic Sea for $(total_ranks) ranks."
 else
     @info "Applying bathymetry masks"
     # Black + Caspian Seas
@@ -181,7 +181,7 @@ forcing = (; S=FS)
 
 @info "Defining closures"
 
-catke_closure = ClimaOcean.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
+catke_closure = NumericalEarth.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
 
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
@@ -195,7 +195,6 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 # free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=12minutes)
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=70)
-
 momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
 
@@ -429,4 +428,8 @@ end
 simulation.Δt = 10minutes
 simulation.stop_time = parse(Int,ARGS[4]) * 13 * (365/12)days
 
-run!(simulation, pickup=true, checkpoint_at_end=true)
+if parse(Int,ARGS[4]) > 1
+    run!(simulation, pickup=true, checkpoint_at_end=true)
+else
+    run!(simulation, pickup=false, checkpoint_at_end=true)
+end
