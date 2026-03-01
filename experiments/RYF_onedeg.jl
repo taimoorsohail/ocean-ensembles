@@ -399,6 +399,26 @@ end
                                               overwrite_existing = true,
                                               array_type = Array{Float32})
 
+@info "Defining sea-ice surface fields"
+
+sea_ice_surface_outputs = (
+    ice_thickness = sea_ice.model.ice_thickness,
+    ice_concentration = sea_ice.model.ice_concentration,
+    top_surface_temperature = sea_ice.model.ice_thermodynamics.top_surface_temperature,
+    u_ice = sea_ice.model.velocities.u,
+    v_ice = sea_ice.model.velocities.v,
+    w_ice = sea_ice.model.velocities.w
+)
+
+@time sea_ice.output_writers[:sea_ice_surface] = JLD2Writer(sea_ice.model, sea_ice_surface_outputs;
+                                                            dir = output_path,
+                                                            schedule = AveragedTimeInterval((365/12)days),
+                                                            filename = "global_sea_ice_surface_onedeg_RYF_run" * run_id,
+                                                            including = [:grid],
+                                                            with_halos = false,
+                                                            overwrite_existing = true,
+                                                            array_type = Array{Float32})
+
 @info "Defining all integrals"
 
 @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;

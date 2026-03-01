@@ -21,7 +21,7 @@ function forcing_files(path::AbstractString)
 end
 
 function load_forcing_timeseries(files::Vector{String})
-    isempty(files) && error("No forcing files found for run0001/run0002 in $output_path.")
+    isempty(files) && error("No forcing files found in $output_path.")
 
     vars = jldopen(files[1], "r") do f
         filter(k -> k != "t", collect(keys(f["timeseries"])))
@@ -56,19 +56,22 @@ function load_forcing_timeseries(files::Vector{String})
 end
 
 function colormap_and_limits(var::String, data::Vector{Matrix{Float32}})
-    stacked_min = minimum(minimum, data)
-    stacked_max = maximum(maximum, data)
+    n = 0
+    μ = 0.0
+    m2 = 0.0
 
-    if var == "S_surf"
-        return :viridis, (34.8f0, 35.8f0)
-    elseif var == "T_surf"
-        return :thermal, (stacked_min, stacked_max)
-    elseif var == "surface_height"
-        bound = max(abs(stacked_min), abs(stacked_max))
-        return :balance, (-bound, bound)
-    else
-        return :viridis, (stacked_min, stacked_max)
+    for A in data
+        for x in A
+            n += 1
+            δ = x - μ
+            μ += δ / n
+            m2 += δ * (x - μ)
+        end
     end
+
+    σ = n > 1 ? sqrt(m2 / (n - 1)) : 0.0
+    σ = max(σ, eps(Float64))
+    return :balance, (-σ, σ)
 end
 
 function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolution)_all_runs.mp4", framerate = 6)
@@ -98,7 +101,7 @@ function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolutio
     years = time ./ (365 * 24 * 60 * 60)
 
     record(fig, outname, 1:nframes; framerate) do frame
-        title.text = "Forcing fields ($(basename(files[1])) \u2192 $(basename(files[end]))) | year=$(round(years[frame], digits=2))"
+        title.text = "Global surface forcing fields (divergent scale, ±1σ) | Year = $(round(years[frame], digits=2))"
         for var in vars
             observables[var][] = all_data[var][frame]
         end
@@ -107,6 +110,9 @@ function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolutio
     @info "Saved animation to $outname"
     return outname
 end
+
+make_forcing_animation()
+
 
 if abspath(PROGRAM_FILE) == @__FILE__
     make_forcing_animation()
