@@ -301,8 +301,12 @@ velocities = ocean.model.velocities
 outputs = merge(tracers, velocities)
 
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
+ao_fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.condition, 
-                    S_surf = ocean.model.tracers.S.boundary_conditions.top.condition)
+                    S_surf = ocean.model.tracers.S.boundary_conditions.top.condition,
+                    total_heat_flux = ao_fluxes.total_heat_flux,
+                    total_freshwater_flux = ao_fluxes.total_freshwater_flux,
+                    total_freshwater_flux_with_salt_equiv = ao_fluxes.total_freshwater_flux_with_salt_equiv)
 
 outputs_surf = merge(surface_height, surface_forcing)
 

@@ -7,7 +7,7 @@ using JLD2
 using Glob
 
 outputpath = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+fig_dir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 resolution = "onedeg"
 
@@ -43,18 +43,9 @@ vars_totint = ["T_totintegral",
  "u_totintegral",
  "v_totintegral",
  "w_totintegral"]
-#  vars_vertint = ["T_vertintegral",
-#  "S_vertintegral",
-#  "e_vertintegral",
-#  "u_vertintegral",
-#  "v_vertintegral",
-#  "w_vertintegral"]
  vols_totint = ["total_volume_c",
  "total_volume_x",
  "total_volume_y"]
-#  vols_vertint = ["vert_volume_c",
-#  "vert_volume_x",
-#  "vert_volume_y"]
  time = ["t"]
 
 vars = vcat(vars_totint, vols_totint, time)
@@ -183,9 +174,11 @@ lines!(ax1, time_in_years, 1035*1000*totint[vars[1]], label = "OHC")
 lines!(ax2, time_in_years, totint[vars[1]]./totint[vars[7]], label = "Mean Temperature")
 lines!(ax3, time_in_years, (1.3358605008598876e18.-totint[vars[2]])./(35), label = "OSC")
 lines!(ax4, time_in_years, totint[vars[2]]./totint[vars[7]], label = "Mean Salinity")
-lines!(ax5, time_in_years, 0.5*(totint[vars[4]].^2+totint[vars[5]].^2+totint[vars[6]].^2), label = "Total KE")
-lines!(ax6, surface_time_in_years, surface_height_mean, label = "Σ(SSH*A/ΣA)")
+lines!(ax5, time_in_years, 0.5*(totint[vars[4]].^2+totint[vars[5]].^2+totint[vars[6]].^2), label = "Total KE analog")
+lines!(ax6, surface_time_in_years[2:end], surface_height_mean[2:end], label = "GMSL (m)")
 
-save(figdir * "integrated_props_$(resolution).png", fig, px_per_unit=3)
+save(fig_dir * "integrated_props_$(resolution).png", fig, px_per_unit=3)
 
 ### Now we work on the heat budget!
+
+

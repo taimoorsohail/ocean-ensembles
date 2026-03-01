@@ -5,6 +5,16 @@ using Glob
 const output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
 const figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 const resolution = "onedeg"
+const SELECTED_VARS = [
+    "total_heat_flux",
+    "total_freshwater_flux",
+    "total_freshwater_flux_with_salt_equiv",
+]
+const VAR_TITLES = Dict(
+    "total_heat_flux" => "Total Heat Flux (W m⁻²)",
+    "total_freshwater_flux" => "Mass Flux (kg m⁻² s⁻¹)",
+    "total_freshwater_flux_with_salt_equiv" => "Mass Flux + Salt Equivalent (kg m⁻² s⁻¹)",
+)
 
 function run_id(path::AbstractString)
     m = match(r"run(\d+)", basename(path))
@@ -79,7 +89,9 @@ function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolutio
     @info "Using files:\n$(join(files, '\n'))"
 
     vars, all_time, all_data = load_forcing_timeseries(files)
-    length(vars) == 3 || @warn "Expected 3 forcing fields, found $(length(vars)): $vars"
+    missing = setdiff(SELECTED_VARS, vars)
+    isempty(missing) || error("Missing required flux variables: $(join(missing, \", \")). Available: $(join(vars, \", \"))")
+    vars = SELECTED_VARS
 
     nframes = length(all_data[vars[1]])
     nframes == 0 && error("No timesteps found in forcing files.")
@@ -89,7 +101,7 @@ function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolutio
 
     observables = Dict{String, Observable{Matrix{Float32}}}()
     for (i, var) in enumerate(vars)
-        ax = Axis(fig[1, i], title = var)
+        ax = Axis(fig[1, i], title = get(VAR_TITLES, var, var))
         observables[var] = Observable(all_data[var][1])
         cmap, clim = colormap_and_limits(var, all_data[var])
         hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim)
