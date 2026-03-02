@@ -52,16 +52,18 @@ coupled_model = OceanSeaIceModel(ocean, sea_ice;
 
 ao_fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 
-flux_outputs = (; total_heat_flux = ao_fluxes.total_heat_flux,
-                 total_freshwater_flux = ao_fluxes.total_freshwater_flux,
-                 total_freshwater_flux_with_salt_equiv = ao_fluxes.total_freshwater_flux_with_salt_equiv)
+flux_outputs = (; ocean_temperature_flux = ao_fluxes.ocean_temperature_flux,
+                 sea_ice_temperature_flux = ao_fluxes.sea_ice_temperature_flux,
+                 ocean_salinity_flux = ao_fluxes.ocean_salinity_flux,
+                 sea_ice_salinity_flux = ao_fluxes.sea_ice_salinity_flux)
 
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
 surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.condition,
                     S_surf = ocean.model.tracers.S.boundary_conditions.top.condition,
-                    total_heat_flux = ao_fluxes.total_heat_flux,
-                    total_freshwater_flux = ao_fluxes.total_freshwater_flux,
-                    total_freshwater_flux_with_salt_equiv = ao_fluxes.total_freshwater_flux_with_salt_equiv)
+                    T_surf_ocean = ao_fluxes.ocean_temperature_flux,
+                    T_surf_sea_ice = ao_fluxes.sea_ice_temperature_flux,
+                    S_surf_ocean = ao_fluxes.ocean_salinity_flux,
+                    S_surf_sea_ice = ao_fluxes.sea_ice_salinity_flux)
 outputs_surf = merge(surface_height, surface_forcing)
 
 simulation = Simulation(coupled_model;

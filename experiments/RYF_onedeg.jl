@@ -304,9 +304,10 @@ surface_height = (; surface_height = ocean.model.free_surface.displacement)
 ao_fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
 surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.condition, 
                     S_surf = ocean.model.tracers.S.boundary_conditions.top.condition,
-                    total_heat_flux = ao_fluxes.total_heat_flux,
-                    total_freshwater_flux = ao_fluxes.total_freshwater_flux,
-                    total_freshwater_flux_with_salt_equiv = ao_fluxes.total_freshwater_flux_with_salt_equiv)
+                    T_surf_ocean = ao_fluxes.ocean_temperature_flux,
+                    T_surf_sea_ice = ao_fluxes.sea_ice_temperature_flux,
+                    S_surf_ocean = ao_fluxes.ocean_salinity_flux,
+                    S_surf_sea_ice = ao_fluxes.sea_ice_salinity_flux)
 
 outputs_surf = merge(surface_height, surface_forcing)
 
@@ -410,9 +411,7 @@ sea_ice_surface_outputs = (
     ice_concentration = sea_ice.model.ice_concentration,
     top_surface_temperature = sea_ice.model.ice_thermodynamics.top_surface_temperature,
     u_ice = sea_ice.model.velocities.u,
-    v_ice = sea_ice.model.velocities.v,
-    w_ice = sea_ice.model.velocities.w
-)
+    v_ice = sea_ice.model.velocities.v)
 
 @time sea_ice.output_writers[:sea_ice_surface] = JLD2Writer(sea_ice.model, sea_ice_surface_outputs;
                                                             dir = output_path,
