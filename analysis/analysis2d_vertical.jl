@@ -166,12 +166,12 @@ end
 time_day = times ./ (3600 * 24)
 time_in_years = time_day ./ 365
 
-fig = Figure(size = (800, 600))
+fig = Figure(size = (1100, 700))
 ax1 = Axis(fig[1, 1], title = "OHC", xlabel = "Time (years)", ylabel = "Depth (m)")
 ax2 = Axis(fig[2, 1], title = "Mean Temperature", xlabel = "Time (years)", ylabel = "Depth (m)")
-ax3 = Axis(fig[1, 2], title = "OSC", xlabel = "Time (years)", ylabel = "Depth (m)")
-ax4 = Axis(fig[2, 2], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Depth (m)")
-ax5 = Axis(fig[3, :], title = "KE analog", xlabel = "Time (years)", ylabel = "Depth (m)")
+ax3 = Axis(fig[1, 3], title = "OSC", xlabel = "Time (years)", ylabel = "Depth (m)")
+ax4 = Axis(fig[2, 3], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Depth (m)")
+ax5 = Axis(fig[3, 1:3], title = "KE analog", xlabel = "Time (years)", ylabel = "Depth (m)")
 
 # --- pick "first year" indices robustly ---
 t0 = minimum(time_in_years)
@@ -185,8 +185,6 @@ function mean_ignore_nan(A; dims=1)
     n = sum(good; dims=dims)
     return s ./ n
 end
-
-
 
 # --- helper: anomaly from first-year mean, computed per depth (dims=1 -> time) ---
 anom_firstyear(A) = A .- mean_ignore_nan(A[base_idx, :], dims=1)
@@ -206,11 +204,17 @@ Sbara = anom_firstyear(Sbar)
 KEa   = anom_firstyear(KE)
 
 # --- plot anomalies ---
-heatmap!(ax1, time_in_years, Lz, OHCa,  label = "OHC anomaly (vs first-year mean)", colormap=:bwr)
-heatmap!(ax2, time_in_years, Lz, Tbara, label = "Mean Temperature anomaly (vs first-year mean)", colormap=:bwr)
-heatmap!(ax3, time_in_years, Lz, OSCa,  label = "OSC anomaly (vs first-year mean)", colormap=:bwr)
-heatmap!(ax4, time_in_years, Lz, Sbara, label = "Mean Salinity anomaly (vs first-year mean)", colormap=:bwr)
-heatmap!(ax5, time_in_years, Lz, KEa,   label = "Total KE anomaly (vs first-year mean)", colormap=:bwr)
+hm1 = heatmap!(ax1, time_in_years, Lz, OHCa,  label = "OHC anomaly (vs first-year mean)", colormap=:bwr)
+hm2 = heatmap!(ax2, time_in_years, Lz, Tbara, label = "Mean Temperature anomaly (vs first-year mean)", colormap=:bwr)
+hm3 = heatmap!(ax3, time_in_years, Lz, OSCa,  label = "OSC anomaly (vs first-year mean)", colormap=:bwr)
+hm4 = heatmap!(ax4, time_in_years, Lz, Sbara, label = "Mean Salinity anomaly (vs first-year mean)", colormap=:bwr)
+hm5 = heatmap!(ax5, time_in_years, Lz, KEa,   label = "Total KE anomaly (vs first-year mean)", colormap=:bwr)
+
+Colorbar(fig[1, 2], hm1, label = "OHC anomaly")
+Colorbar(fig[2, 2], hm2, label = "T anomaly")
+Colorbar(fig[1, 4], hm3, label = "OSC anomaly")
+Colorbar(fig[2, 4], hm4, label = "S anomaly")
+Colorbar(fig[3, 4], hm5, label = "KE anomaly")
 
 function final_times_from_files(tot_files)
     final_iters = Int[]

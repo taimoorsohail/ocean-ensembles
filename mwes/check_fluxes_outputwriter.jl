@@ -1,12 +1,12 @@
 using CUDA
 using Oceananigans
 
-using ClimaOcean
+using NumericalEarth
 
-using ClimaOcean.EN4
-using ClimaOcean.ECCO
-using ClimaOcean.EN4: download_dataset
-using ClimaOcean.DataWrangling.ETOPO
+using NumericalEarth.EN4
+using NumericalEarth.ECCO
+using NumericalEarth.EN4: download_dataset
+using NumericalEarth.DataWrangling.ETOPO
 
 using ClimaSeaIce
 using ClimaSeaIce.SeaIceThermodynamics: IceWaterThermalEquilibrium
@@ -25,7 +25,7 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 # Argument is provided by the submission script!
 
-arch = GPU()
+arch = CPU()
 
 # ### ECCO files
 @info "Downloading/checking input data"
@@ -64,7 +64,7 @@ underlying_grid = TripolarGrid(arch;
 @info "Defining bottom bathymetry"
 
 ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
-ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
+NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                 minimum_depth = 15,
@@ -76,7 +76,7 @@ ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
 
 @info "Defining closures"
 
-catke_closure = ClimaOcean.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
+catke_closure = NumericalEarth.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
 
 closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
@@ -192,87 +192,23 @@ velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
+@info "Defining surface outputs"
+
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
-surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.condition, 
-                    S_surf = ocean.model.tracers.S.boundary_conditions.top.condition)
-
-outputs_surf = merge(surface_height, surface_forcing)
-
-@info "Defining total integral outputs"
-
-tot_integral = Symbol[]
-tot_integral_outputs = Field[]
-
-surf_integral = Symbol[]
-surf_integral_outputs = Field[]
-
-vert_integral = Symbol[]
-vert_integral_outputs = Field[]
-
-for key in keys(outputs)
-    @show key
-    f = outputs[key]
-    f_tot = Field(Integral(f, dims = (1,2,3)))
-    f_vert = Field(Integral(f, dims = (1,2)))
-
-    push!(tot_integral_outputs, f_tot)
-    push!(tot_integral, Symbol(key, "_totintegral"))
-
-    push!(vert_integral_outputs, f_vert)
-    push!(vert_integral, Symbol(key, "_vertintegral"))
-end
-
-@info "Defining surface integral outputs"
-
-for key in keys(surface_forcing)
-    f_surf = surface_forcing[key]
-    surf_tot = Field(Integral(f_surf, dims = (1,2,3)))
-    push!(surf_integral_outputs, surf_tot)
-    push!(surf_integral, Symbol(key, "_surfintegral"))
-end
-
-V_ccc = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
-V_fcc = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶠᶜᶜ, grid)
-V_cfc = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶠᶜ, grid)
-
-@info "Defining total volume integrals"
-totint_vol_c = Field(Integral(V_ccc, dims = (1,2,3)))
-totint_vol_x = Field(Integral(V_fcc, dims = (1,2,3)))
-totint_vol_y = Field(Integral(V_cfc, dims = (1,2,3)))
-
-tot_integral_volumes = [totint_vol_c, totint_vol_x, totint_vol_y]
-tot_integral_volume_symbols = [:total_volume_c, :total_volume_x, :total_volume_y]
-
-@info "Defining vertical volume integrals"
-vertint_vol_c = Field(Integral(V_ccc, dims = (1,2)))
-vertint_vol_x = Field(Integral(V_fcc, dims = (1,2)))
-vertint_vol_y = Field(Integral(V_cfc, dims = (1,2)))
-
-vert_integral_volumes = [vertint_vol_c, vertint_vol_x, vertint_vol_y]
-vert_integral_volume_symbols = [:vert_volume_c, :vert_volume_x, :vert_volume_y]
-
-@info "Defining integral tuples"
-
-cumulative_tuple = NamedTuple{Tuple(tot_integral)}(Tuple(tot_integral_outputs))
-cumulative_vert_tuple = NamedTuple{Tuple(vert_integral)}(Tuple(vert_integral_outputs))
-
-cumulative_tuple_vol = NamedTuple{Tuple(tot_integral_volume_symbols)}(Tuple(tot_integral_volumes))
-cumulative_vert_tuple_vol = NamedTuple{Tuple(vert_integral_volume_symbols)}(Tuple(vert_integral_volumes))
-
-global_outputs = merge(cumulative_tuple, cumulative_vert_tuple,
-                       cumulative_tuple_vol, cumulative_vert_tuple_vol)
+flux_outputs = InterfaceFluxOutputs(coupled_model; isolate_sea_ice = true)
+outputs_surf = merge(surface_height, flux_outputs)
 
 @info "Defining all integrals"
 
-@time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
+@time ocean.output_writers[:fluxes] = JLD2Writer(ocean.model, outputs_surf;
                                             dir = output_path,
                                             schedule = IterationInterval(1),
-                                            filename = "test_integration",
+                                            filename = "test_fluxes",
                                             overwrite_existing = true)
 
 ################################### END OUTPUTTING ######################################
 
 @info "Running Simulation"
-simulation.stop_iteration = 10 
+simulation.stop_iteration = 100 
 
 run!(simulation)

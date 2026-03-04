@@ -178,9 +178,13 @@ forcing = (; S=FS)
 
 @info "Defining closures"
 
+@inline νhb(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, λ) = Oceananigans.Operators.Az(i, j, k, grid, ℓx, ℓy, ℓz)^2 / λ
+
+horizontal_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters=40days)
+
 catke_closure = NumericalEarth.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
 
-closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
+closure = (catke_closure, horizontal_viscosity, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -301,15 +305,8 @@ velocities = ocean.model.velocities
 outputs = merge(tracers, velocities)
 
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
-ao_fluxes = coupled_model.interfaces.atmosphere_ocean_interface.fluxes
-surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.condition, 
-                    S_surf = ocean.model.tracers.S.boundary_conditions.top.condition,
-                    T_surf_ocean = ao_fluxes.ocean_temperature_flux,
-                    T_surf_sea_ice = ao_fluxes.sea_ice_temperature_flux,
-                    S_surf_ocean = ao_fluxes.ocean_salinity_flux,
-                    S_surf_sea_ice = ao_fluxes.sea_ice_salinity_flux)
-
-outputs_surf = merge(surface_height, surface_forcing)
+flux_outputs = InterfaceFluxOutputs(coupled_model; isolate_sea_ice = true)
+outputs_surf = merge(surface_height, flux_outputs)
 
 @info "Defining total integral outputs"
 

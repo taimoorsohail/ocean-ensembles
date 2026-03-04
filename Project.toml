@@ -4,6 +4,7 @@ uuid = "e9aca8d1-80c0-42f9-8837-1cb698c59cf0"
 [deps]
 CFTime = "179af706-886a-5703-950a-314cd64e0468"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Conda = "8f4d0f93-b110-5947-807f-2305c1781a2d"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
@@ -19,7 +20,8 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 CFTime = "0.1.4"
-NumericalEarth = "0.1.3"
+CairoMakie = "0.15.8"
+NumericalEarth = "0.2"
 Oceananigans = "0.104,0.105"
 PolygonOps = "0.1.2"
 SparseArrays = "1.10"
