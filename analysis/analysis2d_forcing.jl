@@ -1,0 +1,239 @@
+using CairoMakie
+using JLD2
+using Glob
+
+const output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
+const figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+const resolution = "onedeg"
+const SECONDS_PER_YEAR = 365 * 24 * 60 * 60
+const COLOR_SIGMA_MULTIPLE = 3.0
+const MAX_COLOR_SAMPLES = 1_000_000
+const MAX_COLOR_FRAMES = 240
+const SURFACE_VAR = "surface_height"
+const SWAPPABLE_PAIRS = Dict(
+    :surface_tracers => ["T_surf", "S_surf"],
+    :fluxes => ["total_heat_flux", "total_freshwater_flux", "ocean_heat_flux", "ocean_freshwater_flux", "sea_ice_heat_flux", "sea_ice_freshwater_flux"])
+# Current default: surface height + T_surf + S_surf.
+# To switch later, set e.g. ACTIVE_PAIR = :fluxes
+const ACTIVE_PAIR = :surface_tracers
+const VAR_TITLES = Dict(
+    "surface_height" => "Surface Height (m)",
+    "total_heat_flux" => "Total Heat Flux (W m⁻²)",
+    "total_freshwater_flux" => "Total Mass Flux (kg m⁻² s⁻¹)",
+    "ocean_heat_flux" => "Ocean Heat Flux (W m⁻²)",
+    "ocean_freshwater_flux" => "Ocean Mass Flux (kg m⁻² s⁻¹)", 
+    "sea_ice_heat_flux" => "Sea Ice Heat Flux (W m⁻²)", 
+    "sea_ice_freshwater_flux" => "Sea Ice Mass Flux (kg m⁻² s⁻¹)"
+)
+
+function run_id(path::AbstractString)
+    m = match(r"run(\d+)", basename(path))
+    return m === nothing ? -1 : parse(Int, m.captures[1])
+end
+
+function forcing_files(path::AbstractString)
+    files = glob("global_forcing_fields_*_RYF_run*.jld2", path)
+    files = filter(files) do f
+        !occursin("_rank", f) && occursin("forcing_field", f) && run_id(f) >= 0
+    end
+    sort!(files; by = run_id)
+    return files
+end
+
+struct FrameRef
+    file::String
+    key::Int
+    time::Float64
+end
+
+mutable struct RunningStats
+    n::Int
+    mean::Float64
+    m2::Float64
+end
+
+RunningStats() = RunningStats(0, 0.0, 0.0)
+
+@inline function extract_2d(raw)
+    if ndims(raw) == 2
+        return raw
+    elseif ndims(raw) == 3
+        return view(raw, :, :, 1)
+    end
+    return nothing
+end
+
+function copy_2d_to!(dest::Matrix{Float32}, raw)
+    src = extract_2d(raw)
+    src === nothing && return false
+    size(dest) == size(src) || return false
+
+    @inbounds for i in eachindex(dest, src)
+        dest[i] = Float32(src[i])
+    end
+    return true
+end
+
+function collect_frame_refs(files::Vector{String}, vars::Vector{String})
+    isempty(files) && error("No forcing files found in $output_path.")
+    frames = FrameRef[]
+    used_files = 0
+
+    for file in files
+        @info "Scanning $file"
+        jldopen(file, "r") do f
+            haskey(f, "timeseries/t") || return
+            ts_available = filter(k -> k != "t", collect(keys(f["timeseries"])))
+            missing = setdiff(vars, ts_available)
+            if !isempty(missing)
+                @warn "Skipping file because required variables are missing." file missing
+                return
+            end
+
+            ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))))
+            for key in ts_keys
+                tval = Float64(f["timeseries/t/$key"])
+                push!(frames, FrameRef(file, key, tval))
+            end
+            used_files += 1
+        end
+    end
+
+    used_files == 0 && error("No valid forcing files contained all required variables: $(join(vars, ", ")).")
+    isempty(frames) && error("No timesteps found in forcing files.")
+    sort!(frames; by = frame -> frame.time)
+    return frames
+end
+
+function allocate_frame_buffers(vars::Vector{String}, first_frame::FrameRef)
+    buffers = Dict{String, Matrix{Float32}}()
+    jldopen(first_frame.file, "r") do f
+        for var in vars
+            raw = f["timeseries/$var/$(first_frame.key)"]
+            src = extract_2d(raw)
+            src === nothing && error("Unsupported array rank for variable=$var in $(first_frame.file), key=$(first_frame.key).")
+            A = Matrix{Float32}(undef, size(src)...)
+            copy_2d_to!(A, raw) || error("Failed to initialize frame buffer for variable=$var.")
+            buffers[var] = A
+        end
+    end
+    return buffers
+end
+
+@inline function update_stats!(stats::RunningStats, A::Matrix{Float32}, stride::Int)
+    @inbounds for i in 1:stride:length(A)
+        x = Float64(A[i])
+        stats.n += 1
+        δ = x - stats.mean
+        stats.mean += δ / stats.n
+        stats.m2 += δ * (x - stats.mean)
+    end
+end
+
+function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String}, buffers::Dict{String, Matrix{Float32}})
+    frame_step = max(1, cld(length(frames), MAX_COLOR_FRAMES))
+    sampled_count = cld(length(frames), frame_step)
+
+    stats = Dict{String, RunningStats}(var => RunningStats() for var in vars)
+    strides = Dict{String, Int}()
+    for var in vars
+        total_values = sampled_count * length(buffers[var])
+        strides[var] = max(1, cld(total_values, MAX_COLOR_SAMPLES))
+    end
+
+    current_file = ""
+    handle = nothing
+    try
+        for i in 1:frame_step:length(frames)
+            frame = frames[i]
+            if frame.file != current_file
+                handle !== nothing && close(handle)
+                handle = jldopen(frame.file, "r")
+                current_file = frame.file
+            end
+
+            for var in vars
+                ok = copy_2d_to!(buffers[var], handle["timeseries/$var/$(frame.key)"])
+                ok || error("Inconsistent array shape for variable=$var in $(frame.file), key=$(frame.key).")
+                update_stats!(stats[var], buffers[var], strides[var])
+            end
+        end
+    finally
+        handle !== nothing && close(handle)
+    end
+
+    limits = Dict{String, Tuple{Symbol, Tuple{Float32, Float32}}}()
+    for var in vars
+        s = stats[var]
+        σ = s.n > 1 ? sqrt(s.m2 / (s.n - 1)) : 0.0
+        σ = max(σ, eps(Float64))
+        kσ = Float32(COLOR_SIGMA_MULTIPLE * σ)
+        limits[var] = (:balance, (-kσ, kσ))
+    end
+
+    return limits
+end
+
+function load_frame!(buffers::Dict{String, Matrix{Float32}}, file, vars::Vector{String}, key::Int)
+    for var in vars
+        ok = copy_2d_to!(buffers[var], file["timeseries/$var/$key"])
+        ok || error("Inconsistent array shape for variable=$var at key=$key.")
+    end
+end
+
+function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolution)_all_runs.mp4", framerate = 6)
+    files = forcing_files(output_path)
+    @info "Using files:\n$(join(files, '\n'))"
+
+    haskey(SWAPPABLE_PAIRS, ACTIVE_PAIR) || error("ACTIVE_PAIR=$(ACTIVE_PAIR) not found. Valid options: $(join(string.(collect(keys(SWAPPABLE_PAIRS))), ", "))")
+    selected_vars = vcat([SURFACE_VAR], SWAPPABLE_PAIRS[ACTIVE_PAIR])
+    frames = collect_frame_refs(files, selected_vars)
+    buffers = allocate_frame_buffers(selected_vars, frames[1])
+    colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
+
+    nframes = length(frames)
+
+    fig = Figure(size = (1800, 700))
+    title = Label(fig[0, :], "Loading...", tellwidth = false)
+
+    observables = Dict{String, Observable{Matrix{Float32}}}()
+    for (i, var) in enumerate(selected_vars)
+        ax = Axis(fig[1, i], title = get(VAR_TITLES, var, var))
+        observables[var] = Observable(copy(buffers[var]))
+        cmap, clim = colormap_limits[var]
+        hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim)
+        Colorbar(fig[2, i], hm, vertical = false)
+    end
+    resize_to_layout!(fig)
+
+    years = [frame.time for frame in frames] ./ SECONDS_PER_YEAR
+
+    current_file = Ref("")
+    handle = Ref{Any}(nothing)
+    try
+        record(fig, outname, 1:nframes; framerate) do frame_index
+            frame = frames[frame_index]
+            if frame.file != current_file[]
+                handle[] !== nothing && close(handle[])
+                handle[] = jldopen(frame.file, "r")
+                current_file[] = frame.file
+            end
+
+            load_frame!(buffers, handle[], selected_vars, frame.key)
+            title.text = "Global surface forcing fields (divergent scale, ±1σ) | Year = $(round(years[frame_index], digits=2))"
+            for var in selected_vars
+                copyto!(observables[var][], buffers[var])
+                notify(observables[var])
+            end
+        end
+    finally
+        handle[] !== nothing && close(handle[])
+    end
+
+    @info "Saved animation to $outname"
+    return outname
+end
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    make_forcing_animation()
+end

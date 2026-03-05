@@ -1,5 +1,6 @@
 [CUDA_Runtime_jll]
-version = "12.6"
+__clear__ = ["local"]
+version = "12.3"
 
 [MPIPreferences]
 __clear__ = ["preloads_env_switch"]

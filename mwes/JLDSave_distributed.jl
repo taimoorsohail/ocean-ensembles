@@ -21,7 +21,7 @@ using JLD2
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 
-arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
+arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
 
 function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5, active_cells_map = false) # degrees
     λp = underlying_grid.conformal_mapping.first_pole_longitude
@@ -88,41 +88,73 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
 
 add_callback!(simulation, progress_message, IterationInterval(40))
 
+checkpoint_intervals = IterationInterval(40)
+##################### CHECKPOINTING (COMMENTED OUT) #####################
+function save_restart(sim)
+    @info @sprintf("Saving checkpoint file")
+    @info sim.model.architecture
+    if sim.model.architecture === nothing
+        error("sim.model.architecture is not initialized; cannot determine local rank")
+    end
+    localrank = Integer(sim.model.architecture.local_rank)
+    @info "Local rank: " * string(localrank)
+    @info "Saving filename" * output_path * "checkpoint_sxtdeg_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2"
+
+    jldsave(output_path * "checkpoint_sxtdeg_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";
+    u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),
+    v = on_architecture(CPU(), (sim.model.ocean.model.velocities.v)),
+    w = on_architecture(CPU(), (sim.model.ocean.model.velocities.w)),
+    T = on_architecture(CPU(), (sim.model.ocean.model.tracers.T)),
+    S = on_architecture(CPU(), (sim.model.ocean.model.tracers.S)),
+    e = on_architecture(CPU(), (sim.model.ocean.model.tracers.e)),
+    η = on_architecture(CPU(), (sim.model.ocean.model.free_surface.η)),
+    U = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.U)),
+    V = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.V)),
+
+    h = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thickness)),
+    ℵ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_concentration)),
+    σ₁₁ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₁)),
+    σ₂₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₂₂)),
+    σ₁₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₂)),
+    Tu = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.top_surface_temperature)),
+    Gʰ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.thermodynamic_tendency)),
+    u_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.u)),
+    v_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.v)),
+    clock = sim.model.ocean.model.clock)
+
+    restartfiles = glob("jldsave_test_iteration*rank$(localrank)*", output_path)
+    @info "restart files: " * string(restartfiles)
+    # Extract the numeric suffix from each filename
+    restart_numbers = map(f -> parse(Int, match(r"jldsave_test_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+    @info "Restart numbers: " * string(restart_numbers)
+    sorted_restart_numbers = sort(unique(restart_numbers))
+
+    # Keep only the last 50 iteration numbers
+    if length(sorted_restart_numbers) < 50
+        keep = sorted_restart_numbers
+    else
+        # Keep the last 50 iterations
+        @info "Keeping last 50 restart files: " * string(sorted_restart_numbers[end-49:end])
+        @info "Removing older restart files"
+        keep = sorted_restart_numbers[end-49:end]
+    end
+    
+    # Loop through and remove all older files for this rank
+    for number in sorted_restart_numbers
+        if number ∉ keep
+            filename = output_path * "jldsave_test_iteration$(number)_rank$(localrank).jld2"
+            if isfile(filename)
+                @info "Removing old restart file: $filename"
+                rm(filename; force = true)
+            end
+        end
+    end
+    @info "Done for rank $(localrank)"
+end
+
+add_callback!(simulation, save_restart, checkpoint_intervals)
+
+##################### CHECKPOINTING (COMMENTED OUT) #####################
+
 @info "Running simulation"
 run!(simulation)
-
-##################### CHECKPOINTING (COMMENTED OUT) #####################
-# function save_restart(sim)
-#     localrank = MPI.Comm_rank(MPI.COMM_WORLD)
-#     jldsave(output_path * "ocean_checkpointer_clock_iteration" * string(sim.model.clock.iteration) * "_rank$(localrank).jld2";
-#     clock = sim.model.ocean.model.clock)
-# end
-
-# ocean_checkpointer_tracers = merge(
-#     ocean.model.velocities,
-#     ocean.model.tracers,
-#     ocean.model.free_surface.barotropic_velocities,
-#     (; η = simulation.model.ocean.model.free_surface.η)
-# )
-# sea_ice_checkpointer_tracers = merge(  
-#                                 (ice_thickness = sea_ice.model.ice_thickness,
-#                                 ice_concentration = sea_ice.model.ice_concentration,
-#                                 top_surface_temperature = sea_ice.model.ice_thermodynamics.top_surface_temperature),
-#                                 sea_ice.model.dynamics.auxiliaries.fields, 
-#                                 sea_ice.model.velocities)
-
-# iteration_number = string(simulation.model.clock.iteration)
-# @time ocean.output_writers[:checkpointer] = JLD2Writer(ocean.model, ocean_checkpointer_tracers;
-#                                             dir = output_path,
-#                                             schedule = IterationInterval(40),
-#                                             filename = "ocean_checkpointer_vars_iteration" * iteration_number,
-#                                             overwrite_existing = true)
-
-# @time sea_ice.output_writers[:checkpointer] = JLD2Writer(sea_ice.model, sea_ice_checkpointer_tracers;
-#                                             dir = output_path,
-#                                             schedule = IterationInterval(40),
-#                                             filename = "sea_ice_checkpointer_vars_iteration" * iteration_number,
-#                                             overwrite_existing = true)
-
-##################### CHECKPOINTING (COMMENTED OUT) #####################
-

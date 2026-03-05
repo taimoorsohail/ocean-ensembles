@@ -27,7 +27,7 @@ Manifest.toml
 *.jld2
 *.nc
 *.zip
-
+*.nsys-rep
 ## Text files
 *.tab
 *.history
@@ -36,7 +36,7 @@ Manifest.toml
 *.o*
 *.e*
 experiments/run_logs/*
-
+experiments/submission_scripts/*.nsys*
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/

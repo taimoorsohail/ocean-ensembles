@@ -1,16 +1,15 @@
 using MPI
 using CUDA
 using CUDA: @allowscalar
-
 MPI.Init()
 atexit(MPI.Finalize)  
 
-using ClimaOcean
+using NumericalEarth
 
-using ClimaOcean.EN4
-using ClimaOcean.ECCO
-using ClimaOcean.EN4: download_dataset
-using ClimaOcean.DataWrangling.ETOPO
+using NumericalEarth.EN4
+using NumericalEarth.ECCO
+using NumericalEarth.EN4: download_dataset
+using NumericalEarth.DataWrangling.ETOPO
 
 using ClimaSeaIce
 using ClimaSeaIce.SeaIceThermodynamics: IceWaterThermalEquilibrium
@@ -34,21 +33,7 @@ data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-checkpoint_timer = 365days
-checkpoint_intervals = TimeInterval(checkpoint_timer)
-
-
-if isempty(ARGS)
-    println("No target time provided. Please enter target time:")
-    target_time_input = readline()
-    target_time = parse(Int, target_time_input) * checkpoint_timer
-else
-    target_time = checkpoint_timer*parse(Int,ARGS[4])
-end
-@info target_time
-checkpoint_type = "last" # "none", "last", "first"
-
-## Argument is provided by the submission script!
+# Argument is provided by the submission script!
 
 if isempty(ARGS)
     println("No arguments provided. Please enter architecture (CPU/GPU):")
@@ -60,7 +45,7 @@ if isempty(ARGS)
     else
         throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
     end
-elseif ARGS[2] == "GPU"
+elseif ARGS[2] == "GPU" 
     arch = GPU()
 elseif ARGS[2] == "CPU"
     arch = CPU()
@@ -68,42 +53,7 @@ else
     throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
 end    
 
-#total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
-
 @info "Using architecture: " * string(arch)
-
-restartfiles = glob("checkpoint_onedeg_iteration*", output_path)
-
-# Extract the numeric suffix from each filename
-restart_numbers = map(f -> parse(Int, match(r"checkpoint_onedeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
-
-if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
-    # Extract the numeric suffix from each filename
-
-    # Get the file with the maximum number
-    if checkpoint_type == "last"
-        clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
-    elseif checkpoint_type == "first"
-        clock_vars = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
-    end
-
-    iteration_checkpoint = deepcopy(clock_vars["clock"].iteration)
-    time_checkpoint = deepcopy(clock_vars["clock"].time)
-    last_Δt_checkpoint = deepcopy(clock_vars["clock"].last_Δt)   
-
-    @info "Moving simulation to " * string(iteration_checkpoint) * " iterations"
-    @info "Moving simulation to " * string(prettytime(time_checkpoint))
-    @info "Moving simulation last_dt to " * string(last_Δt_checkpoint)
-
-    close(clock_vars)
-else
-    @info "No valid checkpoint found. Starting from scratch."
-    time_checkpoint = 0.0
-end
-
-if time_checkpoint == target_time
-    error("Terminating simulation at target time.")
-end
 
 # ### Download necessary files to run the code
 
@@ -132,33 +82,80 @@ Nz = Integer(75)
 
 @info "Defining vertical z faces"
 depth = -6000.0 # Depth of the ocean in meters
-z_faces = ExponentialCoordinate(Nz, depth, 0)
+z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true) # IMPORTANT: WE NEED TO ACCOUNT FOR THIS
 
-const z_surf = z_faces(Nz)
-
-@info "Top grid cell is " * string(abs(round(z_faces(Nz)))) * "m thick"
-
-# z_faces = Oceananigans.Grids.MutableVerticalDiscretization(z_faces)
+const z_surf = z_faces.cᵃᵃᶠ(Nz)
+@info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
 
 @info "Defining tripolar grid"
-
 underlying_grid = TripolarGrid(arch;
-                               size = (Nx, Ny, Nz),
-                               z = z_faces,
-                               halo = (7, 7, 7))
+                            size = (Nx, Ny, Nz),
+                            z = z_faces,
+                            halo = (7, 7, 7))
 
 @info "Defining bottom bathymetry"
 
 ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
-ClimaOcean.DataWrangling.download_dataset(ETOPOmetadata)
+NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
-                                  minimum_depth = 15,
-                                  interpolation_passes = 75, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
-				                  major_basins = 2)
-view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
+                                minimum_depth = 15,
+                                interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                major_basins = 4)
 
-@info "Defining grid"
+if Nx != Integer(360*6) || Ny != Integer(180*6)
+    @warn "Masking is only valid for 4 rank runs at 1080 x 2160, not opening Baltic Sea."
+else
+    @info "Applying bathymetry masks"
+    # Black + Caspian Seas
+    xs1 = [755, 1010, 1010, 755]
+    # We split the y-polygon because it stretches across two ranks [unique to 4 rank run :(]
+    ys1_1 = [800,  790,  809,  809]
+    ys1_2 = [810,  810,  920,  920]
+
+    # Baltic Sea / Danish Straits
+    xs2 = [679, 670-9, 679, 688+9]
+    ys2 = [872-10, 875+6, 882+5, 875+6]
+
+    nys1_1 = ys1_1/ny
+    ys1_1_floor = floor.(nys1_1)
+
+    nys1_2 = ys1_2/ny
+    ys1_2_floor = floor.(nys1_2)
+
+    nys2 = ys2/ny
+    ys2_floor = floor.(nys2)
+
+    length(unique(ys1_1_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_1_floor))")
+
+    length(unique(ys1_2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_2_floor))")
+
+    length(unique(ys2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys2_floor))")
+
+    if localrank == Integer(unique(ys1_1_floor)[1])
+        bh = interior(bottom_height)[:,:,1]
+        ys1_1 = [ys1_1[1], ys1_1[2], ys1_1[3]+2, ys1_1[4]+2]
+        mask_blacksea_caspian_1 = section_mask(xs1, Int.(ys1_1 .- ny * localrank), ones(length(xs1)), underlying_grid)
+        idx = (CuArray(mask_blacksea_caspian_1) .== 1) .& (bh .<= 0)
+        bh[idx] .= 0;
+        interior(bottom_height) .= bh
+    end 
+
+    if localrank == Integer(unique(ys1_2_floor)[1])
+        bh = interior(bottom_height)[:,:,1]
+        mask_blacksea_caspian_2 = section_mask(xs1, Int.(ys1_2 .- ny * localrank), ones(length(xs1)), underlying_grid)
+        idx = (CuArray(mask_blacksea_caspian_2) .== 1) .& (bh .<= 0)
+        bh[idx] .= 0;
+        interior(bottom_height) .= bh
+    end
+    if localrank == Integer(unique(ys2_floor)[1])
+        bh = interior(bottom_height)[:,:,1]
+        mask_danish_strait = section_mask(xs2, Int.(ys2 .- ny * localrank), ones(length(xs2)).*2, underlying_grid)
+        idx = (CuArray(mask_danish_strait) .== 2) .& (bh .>= 0) .& (bh .<= 3)
+        bh[idx] .= -10;
+        interior(bottom_height) .= bh
+    end
+end
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
@@ -168,7 +165,7 @@ view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
 
 @info "Defining restoring rate"
 
-restoring_rate  = 1 / 18days
+restoring_rate  = 1 / 30days
 @inline mask(x, y, z, t) = z ≥ z_surf - 1
 
 FS = DatasetRestoring(salinity, grid; mask, rate=restoring_rate, time_indices_in_memory = 10)
@@ -181,9 +178,13 @@ forcing = (; S=FS)
 
 @info "Defining closures"
 
-eddy_closure = Oceananigans.TurbulenceClosures.IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
-catke_closure = ClimaOcean.OceanSimulations.default_ocean_closure()  #RiBasedVerticalDiffusivity()
-closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4), eddy_closure)
+@inline νhb(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, λ) = Oceananigans.Operators.Az(i, j, k, grid, ℓx, ℓy, ℓz)^2 / λ
+
+horizontal_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters=40days)
+
+catke_closure = NumericalEarth.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
+
+closure = (catke_closure, horizontal_viscosity, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -191,10 +192,14 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4), eddy_clos
 # mode.
 
 @info "Defining free surface"
+# output number of substeps
+# free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=12minutes)
 
-free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=45minutes)
-momentum_advection = WENOVectorInvariant(order = 5)
-tracer_advection   = WENO(order = 5)
+free_surface = SplitExplicitFreeSurface(grid; substeps=70)
+momentum_advection = WENOVectorInvariant()
+tracer_advection   = WENO(order = 7)
+
+@info "Defining ocean model"
 
 @time ocean = ocean_simulation(grid; Δt=1minutes,
                          momentum_advection,
@@ -202,6 +207,7 @@ tracer_advection   = WENO(order = 5)
                          timestepper = :SplitRungeKutta3,
                          free_surface,
                          forcing = forcing,
+                         radiative_forcing = nothing,
                          closure)
 
 # ### Initial condition
@@ -243,23 +249,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=20minutes, stop_time=60days)
-
-# ### Restarting the simulation
-if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
-    simulation.model.ocean.model.clock.iteration = iteration_checkpoint
-    simulation.model.ocean.model.clock.time = time_checkpoint
-    simulation.model.sea_ice.model.clock.iteration = iteration_checkpoint
-    simulation.model.sea_ice.model.clock.time = time_checkpoint
-    simulation.model.atmosphere.clock.iteration = iteration_checkpoint
-    simulation.model.atmosphere.clock.time = time_checkpoint
-    simulation.model.clock.iteration = iteration_checkpoint
-    simulation.model.clock.time = time_checkpoint
-    time_step!(atmosphere, 0)
-    simulation.model.atmosphere.clock.iteration -= 1
-    simulation.model.ocean.model.clock.last_Δt = last_Δt_checkpoint
-    simulation.model.sea_ice.model.clock.last_Δt = last_Δt_checkpoint
-end
+simulation = Simulation(coupled_model; Δt=10minutes)
 
 # ### A progress messenger
 #
@@ -269,10 +259,10 @@ end
 
 wall_time = Ref(time_ns())
 
-callback_interval = TimeInterval(1days)
+callback_interval = IterationInterval(10)
 
 function progress(sim)
-    η = sim.model.ocean.model.free_surface.η
+    η = sim.model.ocean.model.free_surface.displacement
     u, v, w = sim.model.ocean.model.velocities
     T, S = sim.model.ocean.model.tracers
 
@@ -285,6 +275,7 @@ function progress(sim)
             maximum(abs, (w)))
 
     step_time = 1e-9 * (time_ns() - wall_time[])
+    wall_progress = time_ns() * 1e-9
 
     msg1 = @sprintf("time: %s, iteration: %d, Δt: %s,", prettytime(sim), Oceananigans.iteration(sim), prettytime(sim.Δt))
     msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
@@ -292,9 +283,11 @@ function progress(sim)
     msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
     msg6 = @sprintf("extrema(η): (%.2f, %.2f) m, ", ηrange...)
     msg7 = @sprintf("wall time: %s \n", prettytime(step_time))
+    msg5 = @sprintf("Wall clock time: %s \n", prettytime(wall_progress))
+    msg8 = @sprintf("SYPD: %.2f \n", (10*sim.Δt)/step_time/365)
 
-    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7
-    
+    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7 * msg5 * msg8
+
     wall_time[] = time_ns()
 
     return nothing
@@ -302,401 +295,158 @@ end
 
 add_callback!(simulation, progress, callback_interval)
 
-# #### REGRIDDING ####
+################################### START OUTPUTTING ######################################
 
-# @info "Defining destination underlying grid"
-# underlying_destination_grid = LatitudeLongitudeGrid(arch;
-#                              size = (Nx, Ny, Nz),
-#                              halo = (7, 7, 7),
-#                              z = z_faces,
-#                              latitude  = (-80, 90),
-#                              longitude = (0, 360))
-
-# @info "Interpolating bottom bathymetry"
-
-# @time bottom_height = regrid_bathymetry(underlying_destination_grid, ETOPOmetadata;
-#                                   minimum_depth = 15,
-#                                   interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
-# 				                  major_basins = 2)
-# # view(bottom_height, 73:78, 88:89, 1) .= -1000 # open Gibraltar strait
-                                  
-# @info "Defining destination grid"
-
-# @time destination_grid = ImmersedBoundaryGrid(underlying_destination_grid, GridFittedBottom(bottom_height); active_cells_map=true)
-
-# destination_field = Field{Center, Center, Center}(destination_grid)
-# source_field = Field{Center, Center, Center}(grid)
-
-# @info "Defining regridder weights"
-# W_bilin = @allowscalar regridder_weights(source_field, destination_field; method = "bilinear")
-# W_cons = @allowscalar regridder_weights(source_field, destination_field; method = "conservative")
-
-# @info "Defining outputs - bilinearly interpolated"
-
-# tracers = ocean.model.tracers
-# velocities = ocean.model.velocities
-
-# outputs = merge(tracers, velocities)
-# output_names_bilin = Symbol[]
-# outputs_bilin = Field[]
-# output_names_cons = Symbol[]
-# outputs_cons = Field[]
-
-# for key in keys(tracers)
-#     @info "Regridding output: " * string(key)
-#     f = outputs[key]
-#     f_dst_bilin = regrid_tracers!(f, destination_field, W_bilin)                       
-#     push!(outputs_bilin, f_dst_bilin)
-#     push!(output_names_bilin, Symbol(key, "_bilinear"))
-#     f_dst_cons = regrid_tracers!(f, destination_field, W_cons)                       
-#     push!(outputs_cons, f_dst_cons)
-#     push!(output_names_cons, Symbol(key, "_conservative"))
-# end
-
-# #### VERTICAL INTEGRALS ####
-# @info "Defining vertical integral outputs"
-
-# vertical_integral_conservative = Symbol[]
-# vertical_integral_conservative_outputs = Field[]
-# tot_integral_conservative = Symbol[]
-# tot_integral_conservative_outputs = Field[]
-# avg_conservative = Symbol[]
-# avg_conservative_outputs = Field[]
-
-# for key in keys(conservative_tuple)
-#     f = conservative_tuple[key]
-#     f_int = CumulativeIntegral(f, dims = 3)
-#     f_tot = Integral(f, dims = (1,2,3))
-#     f_avg = Average(f, dims = (1,2,3))
-#     push!(tot_integral_conservative_outputs, f_tot)
-#     push!(tot_integral_conservative, Symbol(key, "_totintegral"))
-#     push!(avg_conservative_outputs, f_avg)
-#     push!(avg_conservative, Symbol(key, "_avg"))
-#     push!(vertical_integral_conservative_outputs, f_int)
-#     push!(vertical_integral_conservative, Symbol(key, "_cumintegral"))
-# end
-
-# bilinear_tuple = NamedTuple{Tuple(output_names_bilin)}(Tuple(outputs_bilin))
-# conservative_tuple = NamedTuple{Tuple(output_names_cons)}(Tuple(outputs_cons))
-# vertical_integral_tuple = NamedTuple{Tuple(vertical_integral_conservative)}(Tuple(vertical_integral_conservative_outputs))
-# cumulative_tuple = NamedTuple{Tuple(tot_integral_conservative)}(Tuple(tot_integral_conservative_outputs))
-# average_tuple = NamedTuple{Tuple(avg_conservative)}(Tuple(avg_conservative_outputs))
-
-# global_outputs = merge(cumulative_tuple, average_tuple)
-# #### OUTPUTS ####
-# iteration_number = string(Oceananigans.iteration(simulation))
-
-# @info "Defining slice outputs"
-
-# depths = [0,-100, -500, -1000, -2000]
-
-# symbols_slice = Symbol[]  # empty vector to store symbols
-# symbols_cumint = Symbol[]  # empty vector to store symbols
-
-# for (ind, depth) in enumerate(depths)
-#     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
-#     push!(symbols_slice, Symbol("plane_$(abs(round(pln, digits=1)))m"))
-#     push!(symbols_cumint, Symbol("integrated_$(abs(round(pln, digits=1)))m"))
-
-#     @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, conservative_tuple;
-#                                                 dir = output_path,
-#                                                 schedule = TimeInterval(1days),
-#                                                 filename = "global_*" * string(round(pln)) * "m_fields_onedeg_iteration" * iteration_number,
-#                                                 indices = (:, :, ind_pln),
-#                                                 with_halos = false,
-#                                                 overwrite_existing = true,
-#                                                 array_type = Array{Float32})
-
-#     @time simulation.output_writers[symbols_cumint[ind]] = JLD2Writer(ocean.model, vertical_integral_tuple;
-#                                                 dir = output_path,
-#                                                 schedule = TimeInterval(1days),
-#                                                 filename = "global_*" * string(round(pln)) * "m_integral_onedeg_iteration" * iteration_number,
-#                                                 overwrite_existing = true)
-                                            
-#     end
-
-# @time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
-#                                             dir = output_path,
-#                                             schedule = TimeInterval(1days),
-#                                             filename = "global_tot_integrals_onedeg_iteration" * iteration_number,
-#                                             overwrite_existing = true)
-
-
-
-#### TRACERS ####
-
-# @info "Defining tracer outputs - conservatively regridded"
-
-# volmask = CenterField(destination_grid)
-# set!(volmask, 1)
-# wmask = ZFaceField(destination_grid)
-
-# @info "Defining condition masks"
-
-# Atlantic_mask = basin_mask(destination_grid, "atlantic", volmask);
-# IPac_mask = basin_mask(destination_grid, "indo-pacific", volmask);
-# glob_mask = Atlantic_mask .|| IPac_mask;
-
-# tracer_volmask = [Ax, Δz, volmask]
-# masks_centers = [repeat(glob_mask, 1, 1, size(volmask)[3]),
-#          repeat(Atlantic_mask, 1, 1, size(volmask)[3]),
-#          repeat(IPac_mask, 1, 1, size(volmask)[3])]
-# masks_wfaces = [repeat(glob_mask, 1, 1, size(wmask)[3]),
-#          repeat(Atlantic_mask, 1, 1, size(wmask)[3]),
-#          repeat(IPac_mask, 1, 1, size(wmask)[3])]
-
-# masks = [
-#             [masks_centers[1], masks_wfaces[1]],  # Global
-#             [masks_centers[2], masks_wfaces[2]],  # Atlantic
-#             [masks_centers[3], masks_wfaces[3]]   # IPac
-#         ]
-
-# suffixes = ["_global_", "_atl_", "_ipac_"]
-# tracer_names = Symbol[]
-# tracer_outputs = Reduction[]
-
-# @info "Tracers"
-# @time ocean_tracer_content!(tracer_names, tracer_outputs; outputs=tracers, dims = (3));
-
-# tracer_tuple = NamedTuple{Tuple(tracer_names)}(Tuple(tracer_outputs))
-
-
-# # for j in 1:3
-# #     # @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W_cons, outputs=tracers, operator = tracer_volmask[2], dims = (1, 2), condition = masks[j][1], suffix = suffixes[j]*"depth");
-# #     # @time ocean_tracer_content!(tracer_names, tracer_outputs; dst_field = destination_field, weights = W_cons, outputs=tracers, operator = tracer_volmask[3], dims = (1, 2, 3), condition = masks[j][1], suffix = suffixes[j]*"tot");
-# # end
-
-# @info "Merging tracer tuples"
-
-
-# #### VELOCITIES ####
-# @info "Velocities"
-
-# transport_volmask_operators = [Ax, Ay, Az]
-# transport_names = Symbol[]
-# transport_outputs = ReducedField[]
-# for j in 1:3
-#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1), condition = masks[j], suffix = suffixes[j]*"zonal")
-#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2), condition = masks[j], suffix = suffixes[j]*"depth")
-#     @time volume_transport!(transport_names, transport_outputs; outputs = velocities, operators = transport_volmask_operators, dims = (1,2,3), condition = masks[j], suffix = suffixes[j]*"tot")
-# end
-
-# @info "Merging velocity tuples"
-
-# transport_tuple = NamedTuple{Tuple(transport_names)}(Tuple(transport_outputs))
-
-# @info "Defining output writers"
-
-
-# @time simulation.output_writers[:transport] = JLD2Writer(ocean.model, transport_tuple;
-#                                                           dir = output_path,
-#                                                           schedule = TimeInterval(1days),
-#                                                           filename = "mass_transport_onedeg_iteration" * iteration_number,
-#                                                           overwrite_existing = true)
-
-
-
-# @time simulation.output_writers[:ocean_tracer_content] = JLD2Writer(ocean.model, tracer_tuple;
-#                                                           dir = output_path,
-#                                                           schedule = TimeInterval(1days),
-#                                                           filename = "ocean_tracer_content_onedeg_iteration" * iteration_number,
-#                                                           overwrite_existing = true)
+@info "Defining output variables"
 
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
+surface_height = (; surface_height = ocean.model.free_surface.displacement)
+flux_outputs = InterfaceFluxOutputs(coupled_model; isolate_sea_ice = true)
+outputs_surf = merge(surface_height, flux_outputs)
+
+@info "Defining total integral outputs"
+
 tot_integral = Symbol[]
 tot_integral_outputs = Field[]
-avg = Symbol[]
-avg_outputs = Field[]
+
+surf_integral = Symbol[]
+surf_integral_outputs = Field[]
+
+vert_integral = Symbol[]
+vert_integral_outputs = Field[]
 
 for key in keys(outputs)
+    @show key
     f = outputs[key]
     f_tot = Field(Integral(f, dims = (1,2,3)))
-    f_avg = Field(Average(f, dims = (1,2,3)))
+    f_vert = Field(Integral(f, dims = (1,2)))
+
     push!(tot_integral_outputs, f_tot)
     push!(tot_integral, Symbol(key, "_totintegral"))
-    push!(avg_outputs, f_avg)
-    push!(avg, Symbol(key, "_avg"))
+
+    push!(vert_integral_outputs, f_vert)
+    push!(vert_integral, Symbol(key, "_vertintegral"))
 end
 
+V_ccc = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
+V_fcc = KernelFunctionOperation{Face, Center, Center}(Oceananigans.Operators.Vᶠᶜᶜ, grid)
+V_cfc = KernelFunctionOperation{Center, Face, Center}(Oceananigans.Operators.Vᶜᶠᶜ, grid)
+
+@info "Defining total volume integrals"
+
+totint_vol_c = sum(V_ccc, dims = (1,2,3))
+totint_vol_x = sum(V_fcc, dims = (1,2,3))
+totint_vol_y = sum(V_cfc, dims = (1,2,3))
+
+tot_integral_volumes = [totint_vol_c, totint_vol_x, totint_vol_y]
+tot_integral_volume_symbols = [:total_volume_c, :total_volume_x, :total_volume_y]
+
+@info "Defining vertical volume integrals"
+
+vertint_vol_c = sum(V_ccc, dims = (1,2))
+vertint_vol_x = sum(V_fcc, dims = (1,2))
+vertint_vol_y = sum(V_cfc, dims = (1,2))
+
+vert_integral_volumes = [vertint_vol_c, vertint_vol_x, vertint_vol_y]
+vert_integral_volume_symbols = [:vert_volume_c, :vert_volume_x, :vert_volume_y]
+
+@info "Defining integral tuples"
+
 cumulative_tuple = NamedTuple{Tuple(tot_integral)}(Tuple(tot_integral_outputs))
-average_tuple = NamedTuple{Tuple(avg)}(Tuple(avg_outputs))
+cumulative_vert_tuple = NamedTuple{Tuple(vert_integral)}(Tuple(vert_integral_outputs))
 
-global_outputs = merge(cumulative_tuple, average_tuple)
+cumulative_tuple_vol = NamedTuple{Tuple(tot_integral_volume_symbols)}(Tuple(tot_integral_volumes))
+cumulative_vert_tuple_vol = NamedTuple{Tuple(vert_integral_volume_symbols)}(Tuple(vert_integral_volumes))
 
-iteration_number = string(Oceananigans.iteration(simulation))
-
+global_outputs = merge(cumulative_tuple, cumulative_vert_tuple,
+                       cumulative_tuple_vol, cumulative_vert_tuple_vol)
+                       
 @info "Defining slice outputs"
 
 depths = [0,-100, -500, -1000, -2000]
 
 symbols_slice = Symbol[]  # empty vector to store symbols
 
+@show run_id = lpad(ARGS[4], 4, '0')
+
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
-    slice_level = abs(z_faces(ind_pln))
-    push!(symbols_slice, Symbol("plane_$(abs(round(slice_level, digits=1)))m"))
-
-    @time simulation.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
-                                                dir = output_path,
-                                                schedule = TimeInterval(31days),
-                                                filename = "global_" * string(Integer(round(slice_level))) * "m_fields_onedeg_RYF_iteration" * iteration_number,
-                                                indices = (:, :, ind_pln),
-                                                with_halos = false,
-                                                overwrite_existing = true,
-                                                array_type = Array{Float32})
+    slice_level = ind_pln
+    push!(symbols_slice, Symbol("plane$(abs(round(slice_level, digits=1)))"))
+    @show slice_level
+    @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
+                                                                dir = output_path,
+                                                                schedule = AveragedTimeInterval((365/12)days),
+                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_onedeg_RYF_run" * run_id,
+                                                                indices = (:, :, ind_pln),
+                                                                with_halos = false,
+                                                                including = [:grid, :coriolis, :buoyancy, :closure],
+                                                                overwrite_existing = true,
+                                                                array_type = Array{Float32})
 
 end
 
-@time simulation.output_writers[:global_diags] = JLD2Writer(ocean.model, global_outputs;
-                                            dir = output_path,
-                                            schedule = TimeInterval(1days),
-                                            filename = "global_tot_integrals_onedeg_RYF_iteration" * iteration_number,
-                                            overwrite_existing = true)
+@info "Defining surface fields"
 
+@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, outputs_surf;
+                                              dir = output_path,
+                                              schedule = AveragedTimeInterval((365/12)days),
+                                              filename = "global_forcing_fields_onedeg_RYF_run" * run_id,
+                                              including = [:grid, :coriolis, :buoyancy, :closure],
+                                              with_halos = false,
+                                              overwrite_existing = true,
+                                              array_type = Array{Float32})
 
-#### CHECKPOINTING ####
-# if checkpoint_type != "none"
-#     @info "Removing all checkpoints"
-#     for f in restartfiles
-#         if isfile(f)
-#             @info "Removing old restart file: $f"
-#             rm(f; force = true)
-#         end
-#     end
-# end
+@info "Defining sea-ice surface fields"
 
-@info "Saving restart"
+sea_ice_surface_outputs = (
+    ice_thickness = sea_ice.model.ice_thickness,
+    ice_concentration = sea_ice.model.ice_concentration,
+    top_surface_temperature = sea_ice.model.ice_thermodynamics.top_surface_temperature,
+    u_ice = sea_ice.model.velocities.u,
+    v_ice = sea_ice.model.velocities.v)
 
-function save_restart(sim)
-    @info @sprintf("Saving checkpoint file")
+@time sea_ice.output_writers[:sea_ice_surface] = JLD2Writer(sea_ice.model, sea_ice_surface_outputs;
+                                                            dir = output_path,
+                                                            schedule = AveragedTimeInterval((365/12)days),
+                                                            filename = "global_sea_ice_surface_onedeg_RYF_run" * run_id,
+                                                            including = [:grid],
+                                                            with_halos = false,
+                                                            overwrite_existing = true,
+                                                            array_type = Array{Float32})
 
-    jldsave(output_path * "checkpoint_onedeg_iteration" * string(sim.model.clock.iteration) * ".jld2";
-    u = on_architecture(CPU(), (sim.model.ocean.model.velocities.u)),
-    v = on_architecture(CPU(), (sim.model.ocean.model.velocities.v)),
-    w = on_architecture(CPU(), (sim.model.ocean.model.velocities.w)),
-    T = on_architecture(CPU(), (sim.model.ocean.model.tracers.T)),
-    S = on_architecture(CPU(), (sim.model.ocean.model.tracers.S)),
-    e = on_architecture(CPU(), (sim.model.ocean.model.tracers.e)),
-    η = on_architecture(CPU(), (sim.model.ocean.model.free_surface.η)),
-    U = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.U)),
-    V = on_architecture(CPU(), (sim.model.ocean.model.free_surface.barotropic_velocities.V)),
+@info "Defining all integrals"
 
-    h = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thickness)),
-    ℵ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_concentration)),
-    σ₁₁ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₁)),
-    σ₂₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₂₂)),
-    σ₁₂ = on_architecture(CPU(), (sim.model.sea_ice.model.dynamics.auxiliaries.fields.σ₁₂)),
-    Tu = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.top_surface_temperature)),
-    Gʰ = on_architecture(CPU(), (sim.model.sea_ice.model.ice_thermodynamics.thermodynamic_tendency)),
-    u_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.u)),
-    v_ice = on_architecture(CPU(), (sim.model.sea_ice.model.velocities.v)),
-    clock = sim.model.ocean.model.clock)
+@time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
+                                                   dir = output_path,
+                                                   schedule = AveragedTimeInterval((365/48)days),
+                                                   filename = "global_tot_integrals_onedeg_RYF_run" * run_id,
+                                                   overwrite_existing = true)
 
-    restartfiles = glob("checkpoint_onedeg_iteration*", output_path)
+################################### END OUTPUTTING ######################################
 
-    # Extract the numeric suffix from each filename
-    restart_numbers = map(f -> parse(Int, match(r"checkpoint_onedeg_iteration(\d+)", basename(f)).captures[1]), restartfiles)
+################################### START CHECKPOINTING ######################################
 
-    sorted_restart_numbers = sort(unique(restart_numbers))
+@time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
+                                                              schedule = TimeInterval((365/12)days),  
+                                                              dir = output_path, 
+                                                              prefix="RYF_onedeg_checkpoint",
+                                                              overwrite_existing = true,
+                                                              cleanup = false)
 
-    # Keep only the last 50 iteration numbers
-    if length(sorted_restart_numbers) < 50
-        keep = sorted_restart_numbers
-    else
-        # Keep the last 50 iterations
-        @info "Keeping last 50 restart files: " * string(sorted_restart_numbers[end-49:end])
-        @info "Removing older restart files"
-        keep = sorted_restart_numbers[end-49:end]
-    end
-    
-    # Loop through and remove all older files for this rank
-    for number in sorted_restart_numbers
-        if number ∉ keep
-            filename = output_path * "checkpoint_onedeg_iteration$(number).jld2"
-            if isfile(filename)
-                @info "Removing old restart file: $filename"
-                rm(filename; force = true)
-            end
-        end
-    end
-end
+################################### END CHECKPOINTING ######################################
 
-add_callback!(simulation, save_restart, checkpoint_intervals)
+@info "Running Simulation"
 
+simulation.Δt = 10minutes
+simulation.stop_time = parse(Int,ARGS[4]) * 13 * (365/12)days
 
-if !isempty(restart_numbers) && maximum(restart_numbers) != 0 && checkpoint_type != "none"
-    if checkpoint_type == "last"
-        @info "Restarting from last checkpoint at iteration " * string(maximum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_onedeg_iteration" * string(maximum(restart_numbers)) * ".jld2")
-    elseif checkpoint_type == "first"
-        @info "Restarting from first checkpoint at iteration " * string(minimum(restart_numbers))
-        fields_loaded = jldopen(output_path * "checkpoint_onedeg_iteration" * string(minimum(restart_numbers)) * ".jld2")
-    end
-
-    T_field = fields_loaded["T"]
-    S_field = fields_loaded["S"]
-    e_field = fields_loaded["e"]
-    u_field = fields_loaded["u"]
-    v_field = fields_loaded["v"]
-    w_field = fields_loaded["w"]
-    η_field = fields_loaded["η"]
-    U_field = fields_loaded["U"]
-    V_field = fields_loaded["V"]
-
-    h_field = fields_loaded["h"]
-    ℵ_field = fields_loaded["ℵ"]
-    σ₁₁_field =  fields_loaded["σ₁₁"]
-    σ₂₂_field =  fields_loaded["σ₂₂"]
-    σ₁₂_field =  fields_loaded["σ₁₂"]
-    Tu_field = fields_loaded["Tu"]
-    Gʰ_field = fields_loaded["Gʰ"]
-    u_ice_field = fields_loaded["u_ice"]
-    v_ice_field = fields_loaded["v_ice"]
-
-    close(fields_loaded)
-
-    set!(ocean.model, 
-    T = (T_field),
-    S = (S_field),
-    e = (e_field),
-    u = (u_field),
-    v = (v_field),
-    w = (w_field),
-    η = (η_field))
-
-    set!(ocean.model.free_surface.barotropic_velocities,
-    U = (U_field),
-    V = (V_field))
-    
-    set!(sea_ice.model, 
-    h = (h_field),
-    ℵ = (ℵ_field))
-    
-    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₁, σ₁₁_field)
-    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₂₂, σ₂₂_field)
-    set!(sea_ice.model.dynamics.auxiliaries.fields.σ₁₂, σ₁₂_field)
-    set!(sea_ice.model.ice_thermodynamics.top_surface_temperature, Tu_field)
-    set!(sea_ice.model.ice_thermodynamics.thermodynamic_tendency, Gʰ_field)
-    set!(sea_ice.model.velocities.u, u_ice_field)
-    set!(sea_ice.model.velocities.v, v_ice_field)
-    
-    @info "Running simulation"
-
-    simulation.Δt = 20minutes
-    simulation.stop_time = target_time
-
-    run!(simulation)
+if parse(Int,ARGS[4]) > 1
+    run!(simulation, pickup=true, checkpoint_at_end=true)
 else
-    @info "Running simulation"
-
-    run!(simulation)
-
-    simulation.Δt = 20minutes 
-    simulation.stop_time = target_time
-
-    run!(simulation)
+    run!(simulation, pickup=false, checkpoint_at_end=true)
 end

@@ -10,22 +10,7 @@ using Oceananigans.DistributedComputations
 using Printf
 using Dates
 
-arch = CPU()#Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
-
-function memory_status(arch::Union{Distributed{<:GPU}, <:GPU})
-    free, total = CUDA.memory_info()
-    used = total - free
-    used_GiB, free_GiB, total_GiB = used / 2^30, free / 2^30, total / 2^30
-    @show arch.local_rank, used_GiB, free_GiB, total_GiB
-end
-
-function memory_status(arch::Union{Distributed{<:CPU}, <:CPU})
-    total = Sys.total_memory()
-    free  = Sys.free_memory()
-    used  = total - free
-    used_GiB, free_GiB, total_GiB = used / 2^30, free / 2^30, total / 2^30
-    @show arch.local_rank, used_GiB, free_GiB, total_GiB
-end
+arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=false)
 
 function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5, active_cells_map = false) # degrees
     λp = underlying_grid.conformal_mapping.first_pole_longitude
@@ -74,51 +59,51 @@ Lx, Ly = 100, 100
 depth = -6000.0 # Depth of the ocean in meters
 z_faces = ExponentialDiscretization(Nz, depth, 0) 
 
-memory_status(arch)
+
 
 @info "Creating grid"
 
-# underlying_grid = TripolarGrid(arch;
-#                     size = (Nx, Ny, Nz),
-#                     z = z_faces,
-#                     halo = (6, 6, 3))
+underlying_grid = TripolarGrid(arch;
+                    size = (Nx, Ny, Nz),
+                    z = z_faces,
+                    halo = (6, 6, 3))
 
-underlying_grid = LatitudeLongitudeGrid(arch,
-                                        size = (Nx, Ny, Nz),
-                                        z = z_faces,
-                                        halo = (6, 6, 3),
-                                        longitude = (0, 360),
-                                        latitude = (-70, 70))
+# underlying_grid = LatitudeLongitudeGrid(arch,
+#                                         size = (Nx, Ny, Nz),
+#                                         z = z_faces,
+#                                         halo = (6, 6, 3),
+#                                         longitude = (0, 360),
+#                                         latitude = (-70, 70))
 
 
-memory_status(arch)
-
+ 
 @info "Defining grid"
 
-grid = immersed_latlon_grid(underlying_grid; active_cells_map=true)
-@show grid
-
-memory_status(arch)
+grid = analytical_immersed_tripolar_grid(underlying_grid; active_cells_map=true)
 
 @info "Creating free surface"
 free_surface = SplitExplicitFreeSurface(grid; substeps = 70)
 
-memory_status(arch)
-
 @info "Creating model"
 
-ocean_model = HydrostaticFreeSurfaceModel(; grid, free_surface, timestepper = :SplitRungeKutta3)
+ocean_model = HydrostaticFreeSurfaceModel(; grid, free_surface, timestepper = :SplitRungeKutta3, tracers=(:T,))
 
-memory_status(arch)
+set!(ocean_model, T = (λ, φ , z) -> φ)
 
 @info "Creating simulation"
 
-simulation = Simulation(ocean_model; Δt=10, verbose=false, stop_time=2hours)
+simulation = Simulation(ocean_model; Δt=10, verbose=false, stop_iteration=2)
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 
-memory_status(arch)
+simulation.output_writers[:test_writer] = JLD2Writer(ocean_model, (; ocean_model.tracers.T);
+                                                dir = output_path,
+                                                schedule = IterationInterval(1),
+                                                filename = "test_rank_stitching",
+                                                indices = (:, :, Nz),
+                                                with_halos = true,
+                                                overwrite_existing = true,
+                                                array_type = Array{Float32})
 
-wizard = TimeStepWizard(cfl=1, max_change=1.1, max_Δt=1minutes)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # Nice progress messaging is helpful:
 
@@ -127,7 +112,7 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-add_callback!(simulation, progress_message, IterationInterval(40))
+add_callback!(simulation, progress_message, IterationInterval(1))
 @info "Running simulation"
 run!(simulation)
 

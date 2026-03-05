@@ -1,23 +1,23 @@
 #!/bin/bash
 #PBS -P v46
-#PBS -q gpuvolta
+#PBS -q dgxa100
 #PBS -l walltime=12:00:00
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
-#PBS -l ncpus=48
+#PBS -l ncpus=64
 #PBS -l ngpus=4
 #PBS -l jobfs=10GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_RYF1_6dg
+#PBS -N a100_RYF1_6dg
 
 # Output logs
-#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/a100_RYF1_6dg.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/a100_RYF1_6dg.e
 
 # === Setup resubmission ===
-script_name='1_6deg_GPU_submit.sh'
+script_name='a100_1_6deg_submit.sh'
 
 # Set default values of count and max
 if [ -z $count ]; then
@@ -35,10 +35,10 @@ target=$((count * 7))
 
 mpi_args=""
 
-mpiexec --report-bindings --bind-to socket --map-by socket -n 4 julia --project \
+mpiexec --bind-to socket --map-by socket -n 4 julia --project \
   ../RYF_sxtdeg.jl --arch GPU --stop_time $target\
-  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_$count.stdout \
-  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_$count.stderr
+  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/a100_RYF1_6dg_$count.stdout \
+  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/a100_RYF1_6dg_$count.stderr
 
 ((count++))
 

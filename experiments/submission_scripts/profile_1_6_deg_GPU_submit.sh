@@ -5,12 +5,12 @@
 #PBS -l mem=150GB
 #PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
 #PBS -l wd
-#PBS -l ncpus=48
-#PBS -l ngpus=4
-#PBS -l jobfs=10GB
+#PBS -l ncpus=36
+#PBS -l ngpus=3
+#PBS -l jobfs=180GB
 #PBS -W umask=027
 #PBS -j n 
-#PBS -N GPU_RYF1_6dg
+#PBS -N RYF1_6dg_profiles
 
 # Output logs
 #PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg.o
@@ -33,19 +33,21 @@ echo "Run $count of $max"
 
 target=$((count * 7))  
 
-mpi_args=""
-
-mpiexec --report-bindings --bind-to socket --map-by socket -n 4 julia --project \
-  ../RYF_sxtdeg.jl --arch GPU --stop_time $target\
-  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_$count.stdout \
-  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_$count.stderr
-
+# Run 3 MPI ranks, one per GPU, each with its own nsys profile output
+mpiexec -np 3 bash -c '
+  nsys profile \
+    --trace=cuda,mpi \
+    --force-overwrite true \
+    --output=my_profile${OMPI_COMM_WORLD_RANK} \
+    julia --project --check-bounds=no ../RYF_sxtdeg.jl --arch GPU --stop 2 \
+    > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_sxtdeg.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_sxtdeg.stderr
+'
 ((count++))
 
 if [ $count -le $max ]; then
     echo "Resubmitting model"
     cd $PBS_O_WORKDIR
-    qsub -v count=$count, max=$max $script_name
+    qsub -v count=$count,max=$max $script_name
 else
     echo "Last submission; $count of $max"
 fi
