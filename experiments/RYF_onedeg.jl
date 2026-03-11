@@ -401,6 +401,17 @@ end
                                               overwrite_existing = true,
                                               array_type = Array{Float32})
 
+@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, outputs_surf;
+                                              dir = output_path,
+                                              schedule = AveragedTimeInterval((365/12)days),
+                                              filename = "global_forcing_fields_onedeg_RYF_run" * run_id,
+                                              including = [:grid, :coriolis, :buoyancy, :closure],
+                                              with_halos = false,
+                                              overwrite_existing = true,
+                                              array_type = Array{Float32})
+
+
+
 @info "Defining sea-ice surface fields"
 
 sea_ice_surface_outputs = (
