@@ -297,15 +297,55 @@ add_callback!(simulation, progress, callback_interval)
 
 ################################### START OUTPUTTING ######################################
 
-@info "Defining output variables"
+ARGS = ["", "", "", "20"]
 
+heat_flux = net_ocean_heat_flux(coupled_model)
+fw_flux = net_ocean_freshwater_flux(coupled_model)
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
+# @info "Regridding output variables"
+
+# dst_grid = LatitudeLongitudeGrid(size=(Nx, Ny, Nz),
+#                                  longitude=(-180, 180),
+#                                  latitude=(-90, 90),
+#                                  z=z_faces)
+
+# u_latlon = XFaceField(dst_grid)
+# v_latlon = YFaceField(dst_grid)
+# w_latlon = ZFaceField(dst_grid)
+# T_latlon = CenterField(dst_grid)
+# S_latlon = CenterField(dst_grid)
+# HF_latlon = Field{Center, Center, Nothing}(dst_grid)
+# FW_latlon = Field{Center, Center, Nothing}(dst_grid)
+# η_latlon  = Field{Center, Center, Nothing}(dst_grid)  # or ZFaceField(..., indices=(:, :, Nz+1)) for true η location
+# @time Rvel = ConservativeRegridding.VelocityLineIntegralRegridder(u_latlon, v_latlon, velocities.u, velocities.v)
+# @time Rtrac = ConservativeRegridding.Regridder(dst_grid, underlying_grid)
+
+# ConservativeRegridding.regrid_velocity_transport!(u_latlon, v_latlon, Rvel, velocities.u, velocities.v)
+# function regrid_horiz_levels!(dst, src, R)
+#     @assert size(dst, 3) == size(src, 3)
+#     for k in 1:size(src, 3)
+#         ConservativeRegridding.regrid!(vec(interior(dst, :, :, k)),
+#                                        R,
+#                                        vec(interior(src, :, :, k)))
+#     end
+#     fill_halo_regions!(dst)
+#     return nothing
+# end
+
+# regrid_horiz_levels!(w_latlon, ocean.model.velocities.w, Rtrac)
+# regrid_horiz_levels!(T_latlon, ocean.model.tracers.T, Rtrac)
+# regrid_horiz_levels!(S_latlon, ocean.model.tracers.S, Rtrac)
+# ConservativeRegridding.regrid!(vec(interior(HF_latlon, :, :, 1)), Rtrac, vec(interior(heat_flux, :, :, 1)))
+# ConservativeRegridding.regrid!(vec(interior(FW_latlon, :, :, 1)), Rtrac, vec(interior(fw_flux,   :, :, 1)))
+# ConservativeRegridding.regrid!(vec(interior(η_latlon,  :, :, 1)), Rtrac, vec(interior(ocean.model.free_surface.displacement,     :, :, 1)))
+
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
-flux_outputs = InterfaceFluxOutputs(coupled_model; isolate_sea_ice = true)
+flux_outputs = (fw_flux = fw_flux, heat_flux = heat_flux)
+
 outputs_surf = merge(surface_height, flux_outputs)
 
 @info "Defining total integral outputs"
@@ -400,16 +440,6 @@ end
                                               with_halos = false,
                                               overwrite_existing = true,
                                               array_type = Array{Float32})
-
-@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, outputs_surf;
-                                              dir = output_path,
-                                              schedule = AveragedTimeInterval((365/12)days),
-                                              filename = "global_forcing_fields_onedeg_RYF_run" * run_id,
-                                              including = [:grid, :coriolis, :buoyancy, :closure],
-                                              with_halos = false,
-                                              overwrite_existing = true,
-                                              array_type = Array{Float32})
-
 
 
 @info "Defining sea-ice surface fields"

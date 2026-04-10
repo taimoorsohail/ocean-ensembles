@@ -2,13 +2,14 @@ using CairoMakie
 using JLD2
 using Glob
 
-const output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
-const figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
-const resolution = "onedeg"
+const OUTPUT_PATH = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+const FIGDIR = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60
 const COLOR_SIGMA_MULTIPLE = 3.0
 const MAX_COLOR_SAMPLES = 1_000_000
 const MAX_COLOR_FRAMES = 240
+const PROGRESS_UPDATES = 20
 const SURFACE_VAR = "surface_height"
 const SWAPPABLE_PAIRS = Dict(
     :surface_tracers => ["T_surf", "S_surf"],
@@ -26,13 +27,22 @@ const VAR_TITLES = Dict(
     "sea_ice_freshwater_flux" => "Sea Ice Mass Flux (kg m⁻² s⁻¹)"
 )
 
+@inline function report_progress_step(i::Int, total::Int; label::AbstractString)
+    stride = max(1, cld(total, PROGRESS_UPDATES))
+    if i == 1 || i == total || i % stride == 0
+        pct = round(100 * i / total; digits = 1)
+        @info label progress = "$(i)/$(total)" percent = pct
+    end
+    return nothing
+end
+
 function run_id(path::AbstractString)
     m = match(r"run(\d+)", basename(path))
     return m === nothing ? -1 : parse(Int, m.captures[1])
 end
 
 function forcing_files(path::AbstractString)
-    files = glob("global_forcing_fields_*_RYF_run*.jld2", path)
+    files = glob("global_forcing_fields_$(RESOLUTION)*_RYF_run*.jld2", path)
     files = filter(files) do f
         !occursin("_rank", f) && occursin("forcing_field", f) && run_id(f) >= 0
     end
@@ -75,12 +85,14 @@ function copy_2d_to!(dest::Matrix{Float32}, raw)
 end
 
 function collect_frame_refs(files::Vector{String}, vars::Vector{String})
-    isempty(files) && error("No forcing files found in $output_path.")
+    isempty(files) && error("No forcing files found in $OUTPUT_PATH.")
     frames = FrameRef[]
     used_files = 0
 
-    for file in files
-        @info "Scanning $file"
+    @info "Collecting frame references" file_count = length(files)
+
+    for (file_index, file) in enumerate(files)
+        @info "Scanning file" file_index total_files = length(files) file
         jldopen(file, "r") do f
             haskey(f, "timeseries/t") || return
             ts_available = filter(k -> k != "t", collect(keys(f["timeseries"])))
@@ -90,18 +102,21 @@ function collect_frame_refs(files::Vector{String}, vars::Vector{String})
                 return
             end
 
-            ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))))
+            ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))) )
             for key in ts_keys
                 tval = Float64(f["timeseries/t/$key"])
                 push!(frames, FrameRef(file, key, tval))
             end
             used_files += 1
         end
+
+        report_progress_step(file_index, length(files); label = "File scan")
     end
 
     used_files == 0 && error("No valid forcing files contained all required variables: $(join(vars, ", ")).")
     isempty(frames) && error("No timesteps found in forcing files.")
     sort!(frames; by = frame -> frame.time)
+    @info "Finished collecting frame references" valid_files = used_files frames = length(frames)
     return frames
 end
 
@@ -117,6 +132,7 @@ function allocate_frame_buffers(vars::Vector{String}, first_frame::FrameRef)
             buffers[var] = A
         end
     end
+    @info "Allocated frame buffers" vars dimensions = Dict(var => size(buffers[var]) for var in keys(buffers))
     return buffers
 end
 
@@ -134,6 +150,8 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
     frame_step = max(1, cld(length(frames), MAX_COLOR_FRAMES))
     sampled_count = cld(length(frames), frame_step)
 
+    @info "Sampling colormap limits" sampled_frames = sampled_count total_frames = length(frames) frame_step
+
     stats = Dict{String, RunningStats}(var => RunningStats() for var in vars)
     strides = Dict{String, Int}()
     for var in vars
@@ -143,8 +161,10 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
 
     current_file = ""
     handle = nothing
+    sample_indices = 1:frame_step:length(frames)
+
     try
-        for i in 1:frame_step:length(frames)
+        for (sample_index, i) in enumerate(sample_indices)
             frame = frames[i]
             if frame.file != current_file
                 handle !== nothing && close(handle)
@@ -157,6 +177,8 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
                 ok || error("Inconsistent array shape for variable=$var in $(frame.file), key=$(frame.key).")
                 update_stats!(stats[var], buffers[var], strides[var])
             end
+
+            report_progress_step(sample_index, sampled_count; label = "Colormap sampling")
         end
     finally
         handle !== nothing && close(handle)
@@ -171,6 +193,7 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
         limits[var] = (:balance, (-kσ, kσ))
     end
 
+    @info "Finished colormap limit sampling"
     return limits
 end
 
@@ -181,17 +204,22 @@ function load_frame!(buffers::Dict{String, Matrix{Float32}}, file, vars::Vector{
     end
 end
 
-function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolution)_all_runs.mp4", framerate = 6)
-    files = forcing_files(output_path)
-    @info "Using files:\n$(join(files, '\n'))"
+function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTION)_all_runs.mp4", framerate = 6)
+    @info "Starting forcing animation build" output = outname framerate
+
+    files = forcing_files(OUTPUT_PATH)
+    @info "Using forcing files" count = length(files)
 
     haskey(SWAPPABLE_PAIRS, ACTIVE_PAIR) || error("ACTIVE_PAIR=$(ACTIVE_PAIR) not found. Valid options: $(join(string.(collect(keys(SWAPPABLE_PAIRS))), ", "))")
     selected_vars = vcat([SURFACE_VAR], SWAPPABLE_PAIRS[ACTIVE_PAIR])
+    @info "Selected variables" selected_vars
+
     frames = collect_frame_refs(files, selected_vars)
     buffers = allocate_frame_buffers(selected_vars, frames[1])
     colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
 
     nframes = length(frames)
+    @info "Preparing figure and render loop" nframes
 
     fig = Figure(size = (1800, 700))
     title = Label(fig[0, :], "Loading...", tellwidth = false)
@@ -210,6 +238,8 @@ function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolutio
 
     current_file = Ref("")
     handle = Ref{Any}(nothing)
+    @info "Starting MP4 render" outname
+
     try
         record(fig, outname, 1:nframes; framerate) do frame_index
             frame = frames[frame_index]
@@ -225,12 +255,14 @@ function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolutio
                 copyto!(observables[var][], buffers[var])
                 notify(observables[var])
             end
+
+            report_progress_step(frame_index, nframes; label = "Frame render")
         end
     finally
         handle[] !== nothing && close(handle[])
     end
 
-    @info "Saved animation to $outname"
+    @info "Saved animation" outname nframes
     return outname
 end
 

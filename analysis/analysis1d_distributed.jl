@@ -5,7 +5,7 @@ using JLD2
 using Glob
 using OceanEnsembles
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/sxtdeg_old/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 keys_interest = ["T_totintegral",
@@ -26,6 +26,7 @@ files_surface = filter(f -> !occursin("_rank", f),
 prefixes = String[]
 
 for file in files
+    @info file
     fname = basename(file)
     prefix = replace(fname, r"_run.*" => "")
     push!(prefixes, joinpath(output_path, prefix))
@@ -47,7 +48,6 @@ T_int_z_iters = Vector{Array{Float64,3}}()
 S_int_z_iters = Vector{Array{Float64,3}}()
 V_int_z_iters = Vector{Array{Float64,3}}()
 V_int_iters = Vector{Matrix{Float64}}()
-
 
 depth = []
 
@@ -219,10 +219,23 @@ allranks_S_z_int = sum(S_z_all, dims=2)[:,1,:]
 allranks_S_z_int_anomaly = allranks_S_z_int .- allranks_S_z_int[1,:]'
 allranks_V_z_int = sum(V_z_all, dims=2)[:,1,:]
 
-heatmap!(ax1, time_in_years, depth[1], 1035*1000*allranks_T_z_int_anomaly, label = "OHC", colorrange = (-1e20, 1e20), colormap = :bwr)
+heatmap!(ax1, time_in_years, depth[1], 1035*1000*allranks_T_z_int_anomaly, label = "OHC", colorrange = (-1e21, 1e21), colormap = :bwr)
 heatmap!(ax2, time_in_years, depth[1], 1035*1000*allranks_T_z_int_anomaly./allranks_V_z_int, label = "Mean Temperature")
-heatmap!(ax3, time_in_years, depth[1], allranks_S_z_int_anomaly./(35*1035), label = "OSC", colorrange = (-1e8, 1e8), colormap = :bwr)
+heatmap!(ax3, time_in_years, depth[1], allranks_S_z_int_anomaly./(35*1035), label = "OSC", colorrange = (-1e10, 1e10), colormap = :bwr)
 heatmap!(ax4, time_in_years, depth[1], allranks_S_z_int_anomaly./allranks_V_z_int, label = "Mean Salinity")
 heatmap!(ax5, time_in_years, depth[1], allranks_V_z_int, label = "Total Volume")
 
+ylims!(ax1, -1000, 0)
+ylims!(ax2, -1000, 0)
+ylims!(ax3, -1000, 0)
+ylims!(ax4, -1000, 0)
+ylims!(ax5, -1000, 0)
+
 save(figdir * "integrated_props_z_$(resolution).png", fig, px_per_unit=3)
+
+# fig = Figure(size = (800, 600))
+# ax1 = Axis(fig[1, 1], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
+# lines!(ax1, depth[1], 1035*1000*allranks_T_z_int_anomaly[16,:])
+# xlims!(ax1, 0, -1000)
+# ylims!(ax1, -1e20, 1e20)
+# save(figdir * "test_temp_profile.png", fig, px_per_unit=3)

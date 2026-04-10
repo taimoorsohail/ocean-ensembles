@@ -80,7 +80,7 @@ download_dataset(salinity)
 
 Nx = Integer(360*6)
 Ny = Integer(180*6)
-ny = Ny/total_ranks
+ny = div(Ny, total_ranks)
 Nz = Integer(75)
 
 @info "Defining vertical z faces"
@@ -105,7 +105,6 @@ NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
                                 minimum_depth = 15,
                                 interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
                                 major_basins = 4)
-
 if total_ranks != 4 || Nx != Integer(360*6) || Ny != Integer(180*6)
     @warn "Masking is only valid for 4 rank runs at 1080 x 2160, not opening Baltic Sea for $(total_ranks) ranks."
 else
@@ -113,53 +112,53 @@ else
     # Black + Caspian Seas
     xs1 = [755, 1010, 1010, 755]
     # We split the y-polygon because it stretches across two ranks [unique to 4 rank run :(]
-    ys1_1 = [800,  790,  809,  809]
-    ys1_2 = [810,  810,  920,  920]
+    ys1_1 = [800, 790, 810, 810]
+    ys1_2 = [811, 811, 920, 920]
 
     # Baltic Sea / Danish Straits
     xs2 = [679, 670-9, 679, 688+9]
     ys2 = [872-10, 875+6, 882+5, 875+6]
 
-    nys1_1 = ys1_1/ny
-    ys1_1_floor = floor.(nys1_1)
+    rank_from_global_y(y) = div(y - 1, ny)
 
-    nys1_2 = ys1_2/ny
-    ys1_2_floor = floor.(nys1_2)
+    ys1_1_rank = rank_from_global_y.(ys1_1)
+    ys1_2_rank = rank_from_global_y.(ys1_2)
+    ys2_rank = rank_from_global_y.(ys2)
 
-    nys2 = ys2/ny
-    ys2_floor = floor.(nys2)
+    length(unique(ys1_1_rank)) == 1 || error("Mask vertices for ys1_1 must lie in one rank")
+    length(unique(ys1_2_rank)) == 1 || error("Mask vertices for ys1_2 must lie in one rank")
+    length(unique(ys2_rank)) == 1 || error("Mask vertices for ys2 must lie in one rank")
 
-    length(unique(ys1_1_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_1_floor))")
-
-    length(unique(ys1_2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_2_floor))")
-
-    length(unique(ys2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys2_floor))")
-
-    if localrank == Integer(unique(ys1_1_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        ys1_1 = [ys1_1[1], ys1_1[2], ys1_1[3]+2, ys1_1[4]+2]
-        mask_blacksea_caspian_1 = section_mask(xs1, Int.(ys1_1 .- ny * localrank), ones(length(xs1)), underlying_grid)
+    if localrank == Integer(unique(ys1_1_rank)[1])
+        bh = interior(bottom_height)[:, :, 1]
+        ys1_1_local = Int.(ys1_1 .- ny * localrank)
+        @assert minimum(ys1_1_local) ≥ 1 && maximum(ys1_1_local) ≤ ny
+        mask_blacksea_caspian_1 = section_mask(xs1, ys1_1_local, fill(1, length(xs1)), underlying_grid)
         idx = (CuArray(mask_blacksea_caspian_1) .== 1) .& (bh .<= 0)
-        bh[idx] .= 0;
-        interior(bottom_height) .= bh
-    end 
-
-    if localrank == Integer(unique(ys1_2_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        mask_blacksea_caspian_2 = section_mask(xs1, Int.(ys1_2 .- ny * localrank), ones(length(xs1)), underlying_grid)
-        idx = (CuArray(mask_blacksea_caspian_2) .== 1) .& (bh .<= 0)
-        bh[idx] .= 0;
+        bh[idx] .= 0
         interior(bottom_height) .= bh
     end
-    if localrank == Integer(unique(ys2_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        mask_danish_strait = section_mask(xs2, Int.(ys2 .- ny * localrank), ones(length(xs2)).*2, underlying_grid)
+
+    if localrank == Integer(unique(ys1_2_rank)[1])
+        bh = interior(bottom_height)[:, :, 1]
+        ys1_2_local = Int.(ys1_2 .- ny * localrank)
+        @assert minimum(ys1_2_local) ≥ 1 && maximum(ys1_2_local) ≤ ny
+        mask_blacksea_caspian_2 = section_mask(xs1, ys1_2_local, fill(1, length(xs1)), underlying_grid)
+        idx = (CuArray(mask_blacksea_caspian_2) .== 1) .& (bh .<= 0)
+        bh[idx] .= 0
+        interior(bottom_height) .= bh
+    end
+
+    if localrank == Integer(unique(ys2_rank)[1])
+        bh = interior(bottom_height)[:, :, 1]
+        ys2_local = Int.(ys2 .- ny * localrank)
+        @assert minimum(ys2_local) ≥ 1 && maximum(ys2_local) ≤ ny
+        mask_danish_strait = section_mask(xs2, ys2_local, fill(2, length(xs2)), underlying_grid)
         idx = (CuArray(mask_danish_strait) .== 2) .& (bh .>= 0) .& (bh .<= 3)
-        bh[idx] .= -10;
+        bh[idx] .= -10
         interior(bottom_height) .= bh
     end
 end
-
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
 ### Restoring
@@ -426,7 +425,7 @@ end
 @info "Running Simulation"
 
 simulation.Δt = 10minutes
-simulation.stop_time = parse(Int,ARGS[4]) * 13 * (365/12)days
+simulation.stop_time = parse(Int,ARGS[4]) * 11 * (365/12)days
 
 if parse(Int,ARGS[4]) > 1
     run!(simulation, pickup=true, checkpoint_at_end=true)

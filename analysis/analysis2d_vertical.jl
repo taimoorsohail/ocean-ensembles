@@ -4,10 +4,10 @@ using Statistics
 using JLD2
 using Glob
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-resolution = "onedeg"
+resolution = "sxtdeg"
 
 # Example: get all matching files in a folder
 files = glob("global_tot*$(resolution)_RYF_run*.jld2", output_path)
@@ -28,7 +28,6 @@ for iteration in unique_iterations
     else
         @warn "No files found for iteration: $iteration"
     end
-
 end
 
 times = Float64[]
