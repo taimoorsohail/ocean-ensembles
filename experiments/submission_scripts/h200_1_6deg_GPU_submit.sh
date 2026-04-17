@@ -13,8 +13,8 @@
 #PBS -N GPU_RYF1_6dg
 
 # Output logs
-#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dgh200.o
-#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dgh200.e
+#PBS -o /g/data/v46/txs156/ocean-ensembles-2/experiments/run_logs/GPU_RYF1_6dgh200.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles-2/experiments/run_logs/GPU_RYF1_6dgh200.e
 
 # === Setup resubmission ===
 script_name='h200_1_6deg_GPU_submit.sh'
@@ -35,8 +35,8 @@ mpi_args=""
 
 mpiexec --bind-to socket --map-by socket -n 4 julia --project \
   ../RYF_sxtdeg.jl --arch GPU --time $count\
-  > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_h200_$count.stdout \
-  2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/GPU_RYF1_6dg_h200_$count.stderr
+  > /g/data/v46/txs156/ocean-ensembles-2/experiments/run_logs/GPU_RYF1_6dg_h200_$count.stdout \
+  2> /g/data/v46/txs156/ocean-ensembles-2/experiments/run_logs/GPU_RYF1_6dg_h200_$count.stderr
 
 ((count++))
 
