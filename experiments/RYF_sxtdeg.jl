@@ -29,9 +29,9 @@ using Printf
 using Glob 
 using JLD2
 
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+data_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/data/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/outputs/")
+figdir = expanduser("/g/data/v46/txs156/ocean-ensembles-2/figures/")
 
 # Argument is provided by the submission script!
 
