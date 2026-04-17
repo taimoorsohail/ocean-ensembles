@@ -1,0 +1,1169 @@
+]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +cldemote.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512fp16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512ifma.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +tsxldtrk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +ptwrite.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vpopcntdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-int8.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avxvnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdiri.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +serialize.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vpclmulqdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +uintr.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-tile.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +gfni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sha.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdir64b.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +wbnoinvd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +enqcmd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pconfig.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bitalg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi2.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +rdpid.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +shstk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vaes.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +waitpkg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sgx.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +cldemote.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512fp16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512ifma.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +tsxldtrk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +ptwrite.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vpopcntdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-int8.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avxvnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdiri.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +serialize.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vpclmulqdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +uintr.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-tile.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +gfni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sha.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdir64b.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +wbnoinvd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +enqcmd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pconfig.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bitalg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi2.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +rdpid.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +shstk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vaes.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +waitpkg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sgx.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +cldemote.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512fp16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512ifma.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +tsxldtrk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +ptwrite.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vpopcntdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-int8.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avxvnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdiri.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +serialize.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vpclmulqdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +uintr.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-tile.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +gfni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sha.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdir64b.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +wbnoinvd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +enqcmd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pconfig.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bitalg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi2.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +rdpid.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +shstk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vaes.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +waitpkg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sgx.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +cldemote.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512fp16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512ifma.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +tsxldtrk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +ptwrite.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vpopcntdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-int8.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avxvnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdiri.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +serialize.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vpclmulqdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +uintr.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-tile.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +gfni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sha.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdir64b.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +wbnoinvd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +enqcmd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pconfig.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bitalg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi2.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +rdpid.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +shstk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vaes.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +waitpkg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sgx.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Top grid cell is 3.0m thick
+[ Info: Top grid cell is 3.0m thick
+[ Info: Top grid cell is 3.0m thick
+[ Info: Grid dimensions: Nx = 2160, Ny = 1080, Nz = 75
+[ Info: Grid dimensions: Nx = 2160, Ny = 1080, Nz = 75
+[ Info: Defining tripolar grid
+[ Info: Defining tripolar grid
+[ Info: Grid dimensions: Nx = 2160, Ny = 1080, Nz = 75
+[ Info: Defining tripolar grid
+[ Info: Top grid cell is 3.0m thick
+[ Info: Grid dimensions: Nx = 2160, Ny = 1080, Nz = 75
+[ Info: Defining tripolar grid
+[ Info: Defining bottom bathymetry
+[ Info: Defining bottom bathymetry
+[ Info: Defining bottom bathymetry
+[ Info: Defining bottom bathymetry
+[ Info: Loading cached bathymetry from /g/data/e14/txs156/.julia/scratchspaces/904d977b-046a-4731-8b86-9235c0d1ef02/bathymetry_cache/bathymetry_2160x1080_0.0_360.0_-81.18424433710543_90.0_ea2d7e8f.jld2
+ 58.836325 seconds (853.86 M allocations: 58.024 GiB, 10.54% gc time, 48.95% compilation time: 5% of which was recompilation)
+ 58.892577 seconds (864.45 M allocations: 58.572 GiB, 10.32% gc time, 58.48% compilation time: 6% of which was recompilation)
+ 59.917274 seconds (855.63 M allocations: 58.108 GiB, 9.83% gc time, 49.13% compilation time: 5% of which was recompilation)
+ 59.852946 seconds (853.86 M allocations: 58.024 GiB, 8.71% gc time, 46.64% compilation time: 5% of which was recompilation)
+ 45.547394 seconds (21.49 M allocations: 11.786 GiB, 75.05% gc time, 20.96% compilation time: <1% of which was recompilation)
+[ Info: Defining restoring rate
+ 45.748535 seconds (20.90 M allocations: 6.796 GiB, 76.86% gc time, 20.38% compilation time: <1% of which was recompilation)
+[ Info: Defining restoring rate
+ 48.570435 seconds (21.49 M allocations: 13.360 GiB, 73.71% gc time, 20.01% compilation time: <1% of which was recompilation)
+[ Info: Defining restoring rate
+ 48.917056 seconds (21.02 M allocations: 13.142 GiB, 71.66% gc time, 18.91% compilation time: <1% of which was recompilation)
+[ Info: Defining restoring rate
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining free surface
+[ Info: Defining free surface
+[ Info: Defining free surface
+[ Info: Defining free surface
+[ Info: Defining ocean model
+[ Info: Defining ocean model
+[ Info: Defining ocean model
+[ Info: Defining ocean model
+288.968425 seconds (1.11 G allocations: 87.168 GiB, 17.11% gc time, 67.24% compilation time: <1% of which was recompilation)
+288.955519 seconds (1.12 G allocations: 81.099 GiB, 17.50% gc time, 68.45% compilation time: <1% of which was recompilation)
+288.991758 seconds (1.12 G allocations: 87.512 GiB, 17.01% gc time, 66.07% compilation time: <1% of which was recompilation)
+[ Info: Initialising with EN4
+288.965347 seconds (1.11 G allocations: 88.741 GiB, 17.30% gc time, 67.21% compilation time: <1% of which was recompilation)
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Creating sea ice model
+[ Info: Creating sea ice model
+[ Info: Creating sea ice model
+[ Info: Creating sea ice model
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+┌ Warning: `end_date` (1990-12-31T21:00:00) is after the last date in the dataset 1990-12-31T00:00:00
+└ @ NumericalEarth.DataWrangling /g/data/v46/txs156/NumericalEarth.jl/src/DataWrangling/metadata.jl:379
+┌ Warning: `end_date` (1990-12-31T21:00:00) is after the last date in the dataset 1990-12-31T00:00:00
+└ @ NumericalEarth.DataWrangling /g/data/v46/txs156/NumericalEarth.jl/src/DataWrangling/metadata.jl:379
+┌ Warning: `end_date` (1990-12-31T21:00:00) is after the last date in the dataset 1990-12-31T00:00:00
+└ @ NumericalEarth.DataWrangling /g/data/v46/txs156/NumericalEarth.jl/src/DataWrangling/metadata.jl:379
+┌ Warning: `end_date` (1990-12-31T21:00:00) is after the last date in the dataset 1990-12-31T00:00:00
+└ @ NumericalEarth.DataWrangling /g/data/v46/txs156/NumericalEarth.jl/src/DataWrangling/metadata.jl:379
+┌ Warning: `end_date` (1990-12-31T21:00:00) is after the last date in the dataset 1990-12-31T00:00:00
+└ @ NumericalEarth.DataWrangling /g/data/v46/txs156/NumericalEarth.jl/src/DataWrangling/metadata.jl:379
+┌ Warning: `end_date` (1990-12-31T21:00:00) is after the last date in the dataset 1990-12-31T00:00:00
+└ @ NumericalEarth.DataWrangling /g/data/v46/txs156/NumericalEarth.jl/src/DataWrangling/metadata.jl:379
+┌ Warning: `end_date` (1990-12-31T21:00:00) is after the last date in the dataset 1990-12-31T00:00:00
+└ @ NumericalEarth.DataWrangling /g/data/v46/txs156/NumericalEarth.jl/src/DataWrangling/metadata.jl:379
+┌ Warning: `end_date` (1990-12-31T21:00:00) is after the last date in the dataset 1990-12-31T00:00:00
+└ @ NumericalEarth.DataWrangling /g/data/v46/txs156/NumericalEarth.jl/src/DataWrangling/metadata.jl:379
+[ Info: Defining coupled model
+[ Info: Defining coupled model
+[ Info: Defining coupled model
+[ Info: Defining coupled model
+ 84.565371 seconds (38.08 M allocations: 1.881 GiB, 1.01% gc time, 91.32% compilation time: <1% of which was recompilation)
+ 84.536907 seconds (38.11 M allocations: 1.883 GiB, 1.02% gc time, 91.38% compilation time: <1% of which was recompilation)
+┌ Warning: This simulation will run forever as stop iteration = stop time = wall time limit = Inf.
+└ @ Oceananigans.Simulations /g/data/v46/txs156/Oceananigans.jl/src/Simulations/simulation.jl:84
+┌ Warning: This simulation will run forever as stop iteration = stop time = wall time limit = Inf.
+└ @ Oceananigans.Simulations /g/data/v46/txs156/Oceananigans.jl/src/Simulations/simulation.jl:84
+ 85.421392 seconds (38.07 M allocations: 1.889 GiB, 1.00% gc time, 91.67% compilation time: <1% of which was recompilation)
+ 85.290754 seconds (38.08 M allocations: 1.889 GiB, 1.10% gc time, 91.26% compilation time: <1% of which was recompilation)
+┌ Warning: This simulation will run forever as stop iteration = stop time = wall time limit = Inf.
+└ @ Oceananigans.Simulations /g/data/v46/txs156/Oceananigans.jl/src/Simulations/simulation.jl:84
+┌ Warning: This simulation will run forever as stop iteration = stop time = wall time limit = Inf.
+└ @ Oceananigans.Simulations /g/data/v46/txs156/Oceananigans.jl/src/Simulations/simulation.jl:84
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining messenger
+[ Info: Defining output variables
+[ Info: Defining output variables
+[ Info: Defining output variables
+[ Info: Defining output variables
+[ Info: Defining total integral outputs
+[ Info: Defining total integral outputs
+[ Info: Defining total integral outputs
+[ Info: Defining total integral outputs
+key = :T
+key = :T
+key = :T
+key = :T
+key = :S
+key = :S
+key = :S
+key = :S
+key = :e
+key = :e
+key = :e
+key = :e
+key = :u
+key = :u
+key = :u
+key = :u
+key = :v
+key = :v
+key = :v
+key = :v
+key = :w
+key = :w
+key = :w
+key = :w
+[ Info: Defining total volume integrals
+[ Info: Defining total volume integrals
+[ Info: Defining total volume integrals
+[ Info: Defining total volume integrals
+[ Info: Defining vertical volume integrals
+[ Info: Defining vertical volume integrals
+[ Info: Defining vertical volume integrals
+[ Info: Defining vertical volume integrals
+[ Info: Defining integral tuples
+[ Info: Defining integral tuples
+[ Info: Defining integral tuples
+[ Info: Defining integral tuples
+[ Info: Defining slice outputs
+run_id = lpad(ARGS[4], 4, '0') = "0001"
+[ Info: Defining slice outputs
+run_id = lpad(ARGS[4], 4, '0') = "0001"
+[ Info: Defining slice outputs
+run_id = lpad(ARGS[4], 4, '0') = "0001"
+slice_level = 75
+[ Info: Defining slice outputs
+run_id = lpad(ARGS[4], 4, '0') = "0001"
+slice_level = 75
+slice_level = 75
+slice_level = 75
+ 13.529319 seconds (13.23 M allocations: 672.356 MiB, 1.27% gc time, 98.68% compilation time: <1% of which was recompilation)
+slice_level = 56
+  0.001312 seconds (1.27 k allocations: 1.834 MiB)
+slice_level = 36
+  0.000865 seconds (1.27 k allocations: 1.834 MiB)
+slice_level = 26
+  0.000854 seconds (1.27 k allocations: 1.834 MiB)
+slice_level = 16
+  0.000786 seconds (1.27 k allocations: 1.834 MiB)
+[ Info: Defining surface fields
+ 13.442543 seconds (12.90 M allocations: 655.557 MiB, 1.14% gc time, 98.90% compilation time: <1% of which was recompilation)
+slice_level = 56
+  2.143047 seconds (2.18 M allocations: 111.587 MiB, 99.95% compilation time)
+ 13.502397 seconds (12.57 M allocations: 640.568 MiB, 1.04% gc time, 99.01% compilation time: <1% of which was recompilation)
+slice_level = 56
+  0.001324 seconds (1.37 k allocations: 3.199 MiB)
+slice_level = 36
+  0.001039 seconds (1.37 k allocations: 3.199 MiB)
+slice_level = 26
+  0.001008 seconds (1.37 k allocations: 3.199 MiB)
+slice_level = 16
+  0.001025 seconds (1.37 k allocations: 3.199 MiB)
+[ Info: Defining surface fields
+  2.851426 seconds (729.17 k allocations: 38.107 MiB, 99.90% compilation time)
+slice_level = 36
+ 13.367034 seconds (12.57 M allocations: 640.587 MiB, 0.54% gc time, 99.04% compilation time: <1% of which was recompilation)
+slice_level = 56
+  0.001461 seconds (1.37 k allocations: 3.199 MiB)
+slice_level = 36
+  0.001161 seconds (1.37 k allocations: 3.198 MiB)
+slice_level = 26
+  0.001037 seconds (1.37 k allocations: 3.199 MiB)
+slice_level = 16
+  0.061184 seconds (1.39 k allocations: 3.199 MiB, 97.62% gc time)
+[ Info: Defining surface fields
+  2.196353 seconds (2.18 M allocations: 115.107 MiB, 99.92% compilation time)
+  2.224767 seconds (2.18 M allocations: 115.104 MiB, 99.92% compilation time)
+  2.844534 seconds (729.12 k allocations: 38.042 MiB, 99.90% compilation time)
+slice_level = 26
+  2.851895 seconds (729.14 k allocations: 38.083 MiB, 99.90% compilation time)
+slice_level = 16
+  2.848966 seconds (729.15 k allocations: 38.058 MiB, 99.90% compilation time)
+[ Info: Defining surface fields
+  2.137703 seconds (1.97 M allocations: 101.419 MiB, 99.93% compilation time)
+ 33.882216 seconds (1.41 M allocations: 72.410 MiB, 63.16% compilation time)
+ 30.718841 seconds (1.41 M allocations: 72.672 MiB, 0.20% gc time, 73.40% compilation time)
+ 21.398814 seconds (1.41 M allocations: 72.680 MiB, 99.98% compilation time)
+ 29.316461 seconds (1.41 M allocations: 72.672 MiB, 75.42% compilation time)
+ 66.684612 seconds (9.35 M allocations: 466.792 MiB, 0.11% gc time, 99.56% compilation time)
+ 66.684870 seconds (9.35 M allocations: 466.790 MiB, 0.17% gc time, 99.73% compilation time)
+ 66.685533 seconds (9.33 M allocations: 465.532 MiB, 0.17% gc time, 96.09% compilation time)
+  0.024442 seconds (38.82 k allocations: 1.886 MiB, 99.20% compilation time)
+  0.024779 seconds (38.82 k allocations: 1.886 MiB, 99.42% compilation time)
+[ Info: Running Simulation
+  0.025328 seconds (38.82 k allocations: 1.886 MiB, 99.29% compilation time)
+[ Info: Running Simulation
+[ Info: Running Simulation
+ 66.820103 seconds (9.35 M allocations: 466.861 MiB, 0.38% gc time, 97.36% compilation time)
+  0.025423 seconds (38.83 k allocations: 1.887 MiB, 99.29% compilation time)
+[ Info: Running Simulation
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+[ Info: Initializing simulation...
+┌ Info: time: 0 seconds, iteration: 0, Δt: 10 minutes,max|u|: (0.00e+00, 0.00e+00, 0.00e+00) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (40.69, 5.11) g/kg, extrema(η): (0.00, 0.00) m, wall time: 7.807 minutes 
+│ Wall clock time: 72.148 days 
+└ SYPD: 0.04 
+┌ Info: time: 0 seconds, iteration: 0, Δt: 10 minutes,max|u|: (0.00e+00, 0.00e+00, 0.00e+00) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (40.69, 5.11) g/kg, extrema(η): (0.00, 0.00) m, wall time: 7.807 minutes 
+│ Wall clock time: 72.148 days 
+└ SYPD: 0.04 
+┌ Info: time: 0 seconds, iteration: 0, Δt: 10 minutes,max|u|: (0.00e+00, 0.00e+00, 0.00e+00) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (40.69, 5.11) g/kg, extrema(η): (0.00, 0.00) m, wall time: 7.807 minutes 
+│ Wall clock time: 72.148 days 
+└ SYPD: 0.04 
+┌ Info: time: 0 seconds, iteration: 0, Δt: 10 minutes,max|u|: (0.00e+00, 0.00e+00, 0.00e+00) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (40.69, 5.11) g/kg, extrema(η): (0.00, 0.00) m, wall time: 7.807 minutes 
+│ Wall clock time: 72.148 days 
+└ SYPD: 0.04 
+[ Info:     ... simulation initialization complete (1.799 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (1.805 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (1.779 minutes)
+[ Info: Executing initial time step...
+[ Info:     ... simulation initialization complete (4.295 minutes)
+[ Info: Executing initial time step...
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+┌ Warning: error ArgumentError("a group or dataset named grid is already present within this group") thrown when trying to serialize the grid at serialized/grid
+└ @ Oceananigans.OutputWriters /g/data/v46/txs156/Oceananigans.jl/src/OutputWriters/jld2_writer.jl:234
+[ Info:     ... initial time step complete (8.659 minutes).
+[ Info:     ... initial time step complete (11.174 minutes).
+[ Info:     ... initial time step complete (11.166 minutes).
+[ Info:     ... initial time step complete (11.165 minutes).
+┌ Info: time: 1.667 hours, iteration: 10, Δt: 10 minutes,max|u|: (2.63e+00, 3.65e+00, 9.06e-02) m s⁻¹, extrema(T): (31.21, -1.88) ᵒC, extrema(S): (40.69, 5.11) g/kg, extrema(η): (1.42, -4.72) m, wall time: 12.189 minutes 
+│ Wall clock time: 72.156 days 
+└ SYPD: 0.02 
+┌ Info: time: 1.667 hours, iteration: 10, Δt: 10 minutes,max|u|: (2.63e+00, 3.65e+00, 9.06e-02) m s⁻¹, extrema(T): (31.21, -1.88) ᵒC, extrema(S): (40.69, 5.11) g/kg, extrema(η): (1.42, -4.72) m, wall time: 12.189 minutes 
+│ Wall clock time: 72.156 days 
+└ SYPD: 0.02 
+┌ Info: time: 1.667 hours, iteration: 10, Δt: 10 minutes,max|u|: (2.63e+00, 3.65e+00, 9.06e-02) m s⁻¹, extrema(T): (31.21, -1.88) ᵒC, extrema(S): (40.69, 5.11) g/kg, extrema(η): (1.42, -4.72) m, wall time: 12.189 minutes 
+│ Wall clock time: 72.156 days 
+└ SYPD: 0.02 
+┌ Info: time: 1.667 hours, iteration: 10, Δt: 10 minutes,max|u|: (2.63e+00, 3.65e+00, 9.06e-02) m s⁻¹, extrema(T): (31.21, -1.88) ᵒC, extrema(S): (40.69, 5.11) g/kg, extrema(η): (1.42, -4.72) m, wall time: 12.189 minutes 
+│ Wall clock time: 72.156 days 
+└ SYPD: 0.02 
+┌ Info: time: 3.333 hours, iteration: 20, Δt: 10 minutes,max|u|: (4.85e+00, 6.33e+00, 1.23e-01) m s⁻¹, extrema(T): (31.15, -1.88) ᵒC, extrema(S): (40.71, 5.11) g/kg, extrema(η): (1.95, -2.69) m, wall time: 8.177 seconds 
+│ Wall clock time: 72.156 days 
+└ SYPD: 2.01 
+┌ Info: time: 3.333 hours, iteration: 20, Δt: 10 minutes,max|u|: (4.85e+00, 6.33e+00, 1.23e-01) m s⁻¹, extrema(T): (31.15, -1.88) ᵒC, extrema(S): (40.71, 5.11) g/kg, extrema(η): (1.95, -2.69) m, wall time: 8.177 seconds 
+│ Wall clock time: 72.156 days 
+└ SYPD: 2.01 
+┌ Info: time: 3.333 hours, iteration: 20, Δt: 10 minutes,max|u|: (4.85e+00, 6.33e+00, 1.23e-01) m s⁻¹, extrema(T): (31.15, -1.88) ᵒC, extrema(S): (40.71, 5.11) g/kg, extrema(η): (1.95, -2.69) m, wall time: 8.177 seconds 
+│ Wall clock time: 72.156 days 
+└ SYPD: 2.01 
+┌ Info: time: 3.333 hours, iteration: 20, Δt: 10 minutes,max|u|: (4.85e+00, 6.33e+00, 1.23e-01) m s⁻¹, extrema(T): (31.15, -1.88) ᵒC, extrema(S): (40.71, 5.11) g/kg, extrema(η): (1.95, -2.69) m, wall time: 8.177 seconds 
+│ Wall clock time: 72.156 days 
+└ SYPD: 2.01 
+┌ Info: time: 5 hours, iteration: 30, Δt: 10 minutes,max|u|: (5.00e+00, 6.37e+00, 1.08e-01) m s⁻¹, extrema(T): (31.19, -1.88) ᵒC, extrema(S): (40.77, 5.11) g/kg, extrema(η): (2.58, -3.03) m, wall time: 8.089 seconds 
+│ Wall clock time: 72.156 days 
+└ SYPD: 2.03 
+┌ Info: time: 5 hours, iteration: 30, Δt: 10 minutes,max|u|: (5.00e+00, 6.37e+00, 1.08e-01) m s⁻¹, extrema(T): (31.19, -1.88) ᵒC, extrema(S): (40.77, 5.11) g/kg, extrema(η): (2.58, -3.03) m, wall time: 8.089 seconds 
+│ Wall clock time: 72.156 days 
+└ SYPD: 2.03 
+┌ Info: time: 5 hours, iteration: 30, Δt: 10 minutes,max|u|: (5.00e+00, 6.37e+00, 1.08e-01) m s⁻¹, extrema(T): (31.19, -1.88) ᵒC, extrema(S): (40.77, 5.11) g/kg, extrema(η): (2.58, -3.03) m, wall time: 8.089 seconds 
+│ Wall clock time: 72.156 days 
+└ SYPD: 2.03 
+┌ Info: time: 5 hours, iteration: 30, Δt: 10 minutes,max|u|: (5.00e+00, 6.37e+00, 1.08e-01) m s⁻¹, extrema(T): (31.19, -1.88) ᵒC, extrema(S): (40.77, 5.11) g/kg, extrema(η): (2.58, -3.03) m, wall time: 8.089 seconds 
+│ Wall clock time: 72.156 days 
+└ SYPD: 2.03 
+┌ Info: time: 6.667 hours, iteration: 40, Δt: 10 minutes,max|u|: (6.12e+00, 5.76e+00, 1.39e-01) m s⁻¹, extrema(T): (31.28, -1.88) ᵒC, extrema(S): (42.64, 5.11) g/kg, extrema(η): (2.53, -3.48) m, wall time: 8.240 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.99 
+┌ Info: time: 6.667 hours, iteration: 40, Δt: 10 minutes,max|u|: (6.12e+00, 5.76e+00, 1.39e-01) m s⁻¹, extrema(T): (31.28, -1.88) ᵒC, extrema(S): (42.64, 5.11) g/kg, extrema(η): (2.53, -3.48) m, wall time: 8.240 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.99 
+┌ Info: time: 6.667 hours, iteration: 40, Δt: 10 minutes,max|u|: (6.12e+00, 5.76e+00, 1.39e-01) m s⁻¹, extrema(T): (31.28, -1.88) ᵒC, extrema(S): (42.64, 5.11) g/kg, extrema(η): (2.53, -3.48) m, wall time: 8.240 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.99 
+┌ Info: time: 6.667 hours, iteration: 40, Δt: 10 minutes,max|u|: (6.12e+00, 5.76e+00, 1.39e-01) m s⁻¹, extrema(T): (31.28, -1.88) ᵒC, extrema(S): (42.64, 5.11) g/kg, extrema(η): (2.53, -3.48) m, wall time: 8.240 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.99 
+┌ Info: time: 8.333 hours, iteration: 50, Δt: 10 minutes,max|u|: (6.87e+00, 4.77e+00, 1.59e-01) m s⁻¹, extrema(T): (31.30, -1.88) ᵒC, extrema(S): (41.96, 5.11) g/kg, extrema(η): (4.03, -3.00) m, wall time: 8.373 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.96 
+┌ Info: time: 8.333 hours, iteration: 50, Δt: 10 minutes,max|u|: (6.87e+00, 4.77e+00, 1.59e-01) m s⁻¹, extrema(T): (31.30, -1.88) ᵒC, extrema(S): (41.96, 5.11) g/kg, extrema(η): (4.03, -3.00) m, wall time: 8.373 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.96 
+┌ Info: time: 8.333 hours, iteration: 50, Δt: 10 minutes,max|u|: (6.87e+00, 4.77e+00, 1.59e-01) m s⁻¹, extrema(T): (31.30, -1.88) ᵒC, extrema(S): (41.96, 5.11) g/kg, extrema(η): (4.03, -3.00) m, wall time: 8.373 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.96 
+┌ Info: time: 8.333 hours, iteration: 50, Δt: 10 minutes,max|u|: (6.87e+00, 4.77e+00, 1.59e-01) m s⁻¹, extrema(T): (31.30, -1.88) ᵒC, extrema(S): (41.96, 5.11) g/kg, extrema(η): (4.03, -3.00) m, wall time: 8.373 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.96 
+┌ Info: time: 10 hours, iteration: 60, Δt: 10 minutes,max|u|: (7.66e+00, 4.01e+00, 1.43e-01) m s⁻¹, extrema(T): (31.32, -1.88) ᵒC, extrema(S): (41.27, 5.12) g/kg, extrema(η): (2.88, -3.76) m, wall time: 8.562 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.92 
+┌ Info: time: 10 hours, iteration: 60, Δt: 10 minutes,max|u|: (7.66e+00, 4.01e+00, 1.43e-01) m s⁻¹, extrema(T): (31.32, -1.88) ᵒC, extrema(S): (41.27, 5.12) g/kg, extrema(η): (2.88, -3.76) m, wall time: 8.562 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.92 
+┌ Info: time: 10 hours, iteration: 60, Δt: 10 minutes,max|u|: (7.66e+00, 4.01e+00, 1.43e-01) m s⁻¹, extrema(T): (31.32, -1.88) ᵒC, extrema(S): (41.27, 5.12) g/kg, extrema(η): (2.88, -3.76) m, wall time: 8.562 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.92 
+┌ Info: time: 10 hours, iteration: 60, Δt: 10 minutes,max|u|: (7.66e+00, 4.01e+00, 1.43e-01) m s⁻¹, extrema(T): (31.32, -1.88) ᵒC, extrema(S): (41.27, 5.12) g/kg, extrema(η): (2.88, -3.76) m, wall time: 8.562 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.92 
+┌ Info: time: 11.667 hours, iteration: 70, Δt: 10 minutes,max|u|: (6.31e+00, 3.49e+00, 1.71e-01) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (41.50, 5.12) g/kg, extrema(η): (1.95, -3.63) m, wall time: 8.468 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.94 
+┌ Info: time: 11.667 hours, iteration: 70, Δt: 10 minutes,max|u|: (6.31e+00, 3.49e+00, 1.71e-01) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (41.50, 5.12) g/kg, extrema(η): (1.95, -3.63) m, wall time: 8.468 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.94 
+┌ Info: time: 11.667 hours, iteration: 70, Δt: 10 minutes,max|u|: (6.31e+00, 3.49e+00, 1.71e-01) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (41.50, 5.12) g/kg, extrema(η): (1.95, -3.63) m, wall time: 8.468 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.94 
+┌ Info: time: 11.667 hours, iteration: 70, Δt: 10 minutes,max|u|: (6.31e+00, 3.49e+00, 1.71e-01) m s⁻¹, extrema(T): (31.26, -1.88) ᵒC, extrema(S): (41.50, 5.12) g/kg, extrema(η): (1.95, -3.63) m, wall time: 8.468 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.94 
+┌ Info: time: 13.333 hours, iteration: 80, Δt: 10 minutes,max|u|: (4.86e+00, 3.36e+00, 1.88e-01) m s⁻¹, extrema(T): (31.14, -1.88) ᵒC, extrema(S): (41.69, 4.78) g/kg, extrema(η): (2.59, -4.15) m, wall time: 8.272 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.99 
+┌ Info: time: 13.333 hours, iteration: 80, Δt: 10 minutes,max|u|: (4.86e+00, 3.36e+00, 1.88e-01) m s⁻¹, extrema(T): (31.14, -1.88) ᵒC, extrema(S): (41.69, 4.78) g/kg, extrema(η): (2.59, -4.15) m, wall time: 8.273 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.99 
+┌ Info: time: 13.333 hours, iteration: 80, Δt: 10 minutes,max|u|: (4.86e+00, 3.36e+00, 1.88e-01) m s⁻¹, extrema(T): (31.14, -1.88) ᵒC, extrema(S): (41.69, 4.78) g/kg, extrema(η): (2.59, -4.15) m, wall time: 8.272 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.99 
+┌ Info: time: 13.333 hours, iteration: 80, Δt: 10 minutes,max|u|: (4.86e+00, 3.36e+00, 1.88e-01) m s⁻¹, extrema(T): (31.14, -1.88) ᵒC, extrema(S): (41.69, 4.78) g/kg, extrema(η): (2.59, -4.15) m, wall time: 8.272 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.99 
+┌ Info: time: 15 hours, iteration: 90, Δt: 10 minutes,max|u|: (4.30e+00, 3.27e+00, 1.71e-01) m s⁻¹, extrema(T): (31.03, -1.89) ᵒC, extrema(S): (42.05, 4.41) g/kg, extrema(η): (3.78, -5.12) m, wall time: 8.536 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.93 
+┌ Info: time: 15 hours, iteration: 90, Δt: 10 minutes,max|u|: (4.30e+00, 3.27e+00, 1.71e-01) m s⁻¹, extrema(T): (31.03, -1.89) ᵒC, extrema(S): (42.05, 4.41) g/kg, extrema(η): (3.78, -5.12) m, wall time: 8.536 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.93 
+┌ Info: time: 15 hours, iteration: 90, Δt: 10 minutes,max|u|: (4.30e+00, 3.27e+00, 1.71e-01) m s⁻¹, extrema(T): (31.03, -1.89) ᵒC, extrema(S): (42.05, 4.41) g/kg, extrema(η): (3.78, -5.12) m, wall time: 8.536 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.93 
+┌ Info: time: 15 hours, iteration: 90, Δt: 10 minutes,max|u|: (4.30e+00, 3.27e+00, 1.71e-01) m s⁻¹, extrema(T): (31.03, -1.89) ᵒC, extrema(S): (42.05, 4.41) g/kg, extrema(η): (3.78, -5.12) m, wall time: 8.536 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.93 
+┌ Info: time: 16.667 hours, iteration: 100, Δt: 10 minutes,max|u|: (4.81e+00, 3.63e+00, 1.62e-01) m s⁻¹, extrema(T): (30.99, -1.88) ᵒC, extrema(S): (42.37, 4.16) g/kg, extrema(η): (4.88, -2.87) m, wall time: 8.597 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.91 
+┌ Info: time: 16.667 hours, iteration: 100, Δt: 10 minutes,max|u|: (4.81e+00, 3.63e+00, 1.62e-01) m s⁻¹, extrema(T): (30.99, -1.88) ᵒC, extrema(S): (42.37, 4.16) g/kg, extrema(η): (4.88, -2.87) m, wall time: 8.597 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.91 
+┌ Info: time: 16.667 hours, iteration: 100, Δt: 10 minutes,max|u|: (4.81e+00, 3.63e+00, 1.62e-01) m s⁻¹, extrema(T): (30.99, -1.88) ᵒC, extrema(S): (42.37, 4.16) g/kg, extrema(η): (4.88, -2.87) m, wall time: 8.597 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.91 
+┌ Info: time: 16.667 hours, iteration: 100, Δt: 10 minutes,max|u|: (4.81e+00, 3.63e+00, 1.62e-01) m s⁻¹, extrema(T): (30.99, -1.88) ᵒC, extrema(S): (42.37, 4.16) g/kg, extrema(η): (4.88, -2.87) m, wall time: 8.597 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.91 
+┌ Info: time: 18.333 hours, iteration: 110, Δt: 10 minutes,max|u|: (4.99e+00, 3.78e+00, 1.33e-01) m s⁻¹, extrema(T): (31.05, -1.89) ᵒC, extrema(S): (42.62, 4.03) g/kg, extrema(η): (4.57, -3.58) m, wall time: 8.297 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.98 
+┌ Info: time: 18.333 hours, iteration: 110, Δt: 10 minutes,max|u|: (4.99e+00, 3.78e+00, 1.33e-01) m s⁻¹, extrema(T): (31.05, -1.89) ᵒC, extrema(S): (42.62, 4.03) g/kg, extrema(η): (4.57, -3.58) m, wall time: 8.297 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.98 
+┌ Info: time: 18.333 hours, iteration: 110, Δt: 10 minutes,max|u|: (4.99e+00, 3.78e+00, 1.33e-01) m s⁻¹, extrema(T): (31.05, -1.89) ᵒC, extrema(S): (42.62, 4.03) g/kg, extrema(η): (4.57, -3.58) m, wall time: 8.297 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.98 
+┌ Info: time: 18.333 hours, iteration: 110, Δt: 10 minutes,max|u|: (4.99e+00, 3.78e+00, 1.33e-01) m s⁻¹, extrema(T): (31.05, -1.89) ᵒC, extrema(S): (42.62, 4.03) g/kg, extrema(η): (4.57, -3.58) m, wall time: 8.297 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.98 
+┌ Info: time: 20 hours, iteration: 120, Δt: 10 minutes,max|u|: (4.76e+00, 3.90e+00, 1.21e-01) m s⁻¹, extrema(T): (31.05, -1.89) ᵒC, extrema(S): (42.83, 3.80) g/kg, extrema(η): (4.86, -4.45) m, wall time: 8.345 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.97 
+┌ Info: time: 20 hours, iteration: 120, Δt: 10 minutes,max|u|: (4.76e+00, 3.90e+00, 1.21e-01) m s⁻¹, extrema(T): (31.05, -1.89) ᵒC, extrema(S): (42.83, 3.80) g/kg, extrema(η): (4.86, -4.45) m, wall time: 8.345 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.97 
+┌ Info: time: 20 hours, iteration: 120, Δt: 10 minutes,max|u|: (4.76e+00, 3.90e+00, 1.21e-01) m s⁻¹, extrema(T): (31.05, -1.89) ᵒC, extrema(S): (42.83, 3.80) g/kg, extrema(η): (4.86, -4.45) m, wall time: 8.345 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.97 
+┌ Info: time: 20 hours, iteration: 120, Δt: 10 minutes,max|u|: (4.76e+00, 3.90e+00, 1.21e-01) m s⁻¹, extrema(T): (31.05, -1.89) ᵒC, extrema(S): (42.83, 3.80) g/kg, extrema(η): (4.86, -4.45) m, wall time: 8.345 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.97 
+┌ Info: time: 21.667 hours, iteration: 130, Δt: 10 minutes,max|u|: (4.53e+00, 3.90e+00, 1.00e-01) m s⁻¹, extrema(T): (31.01, -1.89) ᵒC, extrema(S): (43.02, 3.66) g/kg, extrema(η): (4.26, -3.76) m, wall time: 8.734 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.88 
+┌ Info: time: 21.667 hours, iteration: 130, Δt: 10 minutes,max|u|: (4.53e+00, 3.90e+00, 1.00e-01) m s⁻¹, extrema(T): (31.01, -1.89) ᵒC, extrema(S): (43.02, 3.66) g/kg, extrema(η): (4.26, -3.76) m, wall time: 8.734 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.88 
+┌ Info: time: 21.667 hours, iteration: 130, Δt: 10 minutes,max|u|: (4.53e+00, 3.90e+00, 1.00e-01) m s⁻¹, extrema(T): (31.01, -1.89) ᵒC, extrema(S): (43.02, 3.66) g/kg, extrema(η): (4.26, -3.76) m, wall time: 8.734 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.88 
+┌ Info: time: 21.667 hours, iteration: 130, Δt: 10 minutes,max|u|: (4.53e+00, 3.90e+00, 1.00e-01) m s⁻¹, extrema(T): (31.01, -1.89) ᵒC, extrema(S): (43.02, 3.66) g/kg, extrema(η): (4.26, -3.76) m, wall time: 8.734 seconds 
+│ Wall clock time: 72.157 days 
+└ SYPD: 1.88 
+┌ Info: time: 23.333 hours, iteration: 140, Δt: 10 minutes,max|u|: (4.28e+00, 5.12e+00, 8.96e-02) m s⁻¹, extrema(T): (31.20, -1.89) ᵒC, extrema(S): (43.23, 3.42) g/kg, extrema(η): (2.95, -4.29) m, wall time: 8.530 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.93 
+┌ Info: time: 23.333 hours, iteration: 140, Δt: 10 minutes,max|u|: (4.28e+00, 5.12e+00, 8.96e-02) m s⁻¹, extrema(T): (31.20, -1.89) ᵒC, extrema(S): (43.23, 3.42) g/kg, extrema(η): (2.95, -4.29) m, wall time: 8.530 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.93 
+┌ Info: time: 23.333 hours, iteration: 140, Δt: 10 minutes,max|u|: (4.28e+00, 5.12e+00, 8.96e-02) m s⁻¹, extrema(T): (31.20, -1.89) ᵒC, extrema(S): (43.23, 3.42) g/kg, extrema(η): (2.95, -4.29) m, wall time: 8.530 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.93 
+┌ Info: time: 23.333 hours, iteration: 140, Δt: 10 minutes,max|u|: (4.28e+00, 5.12e+00, 8.96e-02) m s⁻¹, extrema(T): (31.20, -1.89) ᵒC, extrema(S): (43.23, 3.42) g/kg, extrema(η): (2.95, -4.29) m, wall time: 8.530 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.93 
+┌ Info: time: 1.042 days, iteration: 150, Δt: 10 minutes,max|u|: (4.32e+00, 7.69e+00, 1.03e-01) m s⁻¹, extrema(T): (31.58, -1.89) ᵒC, extrema(S): (43.50, 3.19) g/kg, extrema(η): (4.99, -6.23) m, wall time: 8.621 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.042 days, iteration: 150, Δt: 10 minutes,max|u|: (4.32e+00, 7.69e+00, 1.03e-01) m s⁻¹, extrema(T): (31.58, -1.89) ᵒC, extrema(S): (43.50, 3.19) g/kg, extrema(η): (4.99, -6.23) m, wall time: 8.621 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.042 days, iteration: 150, Δt: 10 minutes,max|u|: (4.32e+00, 7.69e+00, 1.03e-01) m s⁻¹, extrema(T): (31.58, -1.89) ᵒC, extrema(S): (43.50, 3.19) g/kg, extrema(η): (4.99, -6.23) m, wall time: 8.621 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.042 days, iteration: 150, Δt: 10 minutes,max|u|: (4.32e+00, 7.69e+00, 1.03e-01) m s⁻¹, extrema(T): (31.58, -1.89) ᵒC, extrema(S): (43.50, 3.19) g/kg, extrema(η): (4.99, -6.23) m, wall time: 8.620 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.111 days, iteration: 160, Δt: 10 minutes,max|u|: (5.31e+00, 9.60e+00, 8.94e-02) m s⁻¹, extrema(T): (31.91, -1.89) ᵒC, extrema(S): (43.71, 2.29) g/kg, extrema(η): (4.06, -9.66) m, wall time: 8.614 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.111 days, iteration: 160, Δt: 10 minutes,max|u|: (5.31e+00, 9.60e+00, 8.94e-02) m s⁻¹, extrema(T): (31.91, -1.89) ᵒC, extrema(S): (43.71, 2.29) g/kg, extrema(η): (4.06, -9.66) m, wall time: 8.614 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.111 days, iteration: 160, Δt: 10 minutes,max|u|: (5.31e+00, 9.60e+00, 8.94e-02) m s⁻¹, extrema(T): (31.91, -1.89) ᵒC, extrema(S): (43.71, 2.29) g/kg, extrema(η): (4.06, -9.66) m, wall time: 8.614 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.111 days, iteration: 160, Δt: 10 minutes,max|u|: (5.31e+00, 9.60e+00, 8.94e-02) m s⁻¹, extrema(T): (31.91, -1.89) ᵒC, extrema(S): (43.71, 2.29) g/kg, extrema(η): (4.06, -9.66) m, wall time: 8.614 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.181 days, iteration: 170, Δt: 10 minutes,max|u|: (5.40e+00, 1.01e+01, 8.61e-02) m s⁻¹, extrema(T): (45.15, -1.89) ᵒC, extrema(S): (53.17, 1.93) g/kg, extrema(η): (4.50, -14.84) m, wall time: 8.585 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.181 days, iteration: 170, Δt: 10 minutes,max|u|: (5.40e+00, 1.01e+01, 8.61e-02) m s⁻¹, extrema(T): (45.15, -1.89) ᵒC, extrema(S): (53.17, 1.93) g/kg, extrema(η): (4.50, -14.84) m, wall time: 8.585 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.181 days, iteration: 170, Δt: 10 minutes,max|u|: (5.40e+00, 1.01e+01, 8.61e-02) m s⁻¹, extrema(T): (45.15, -1.89) ᵒC, extrema(S): (53.17, 1.93) g/kg, extrema(η): (4.50, -14.84) m, wall time: 8.585 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.181 days, iteration: 170, Δt: 10 minutes,max|u|: (5.40e+00, 1.01e+01, 8.61e-02) m s⁻¹, extrema(T): (45.15, -1.89) ᵒC, extrema(S): (53.17, 1.93) g/kg, extrema(η): (4.50, -14.84) m, wall time: 8.585 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 1.91 
+┌ Info: time: 1.250 days, iteration: 180, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 8.154 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.02 
+┌ Info: time: 1.250 days, iteration: 180, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 8.154 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.02 
+┌ Info: time: 1.250 days, iteration: 180, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 8.154 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.02 
+┌ Info: time: 1.250 days, iteration: 180, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 8.154 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.02 
+┌ Info: time: 1.319 days, iteration: 190, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 7.399 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.22 
+┌ Info: time: 1.319 days, iteration: 190, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 7.399 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.22 
+┌ Info: time: 1.319 days, iteration: 190, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 7.399 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.22 
+┌ Info: time: 1.319 days, iteration: 190, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 7.398 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.22 
+[ Info: time = 120000.0, iteration = 200: NaN found in field T_ocean. Stopping simulation.
+[ Info: time = 120000.0, iteration = 200: NaN found in field T_ocean. Stopping simulation.
+[ Info: time = 120000.0, iteration = 200: NaN found in field T_ocean. Stopping simulation.
+[ Info: time = 120000.0, iteration = 200: NaN found in field T_ocean. Stopping simulation.
+┌ Info: time: 1.389 days, iteration: 200, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 7.314 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.25 
+┌ Info: time: 1.389 days, iteration: 200, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 7.315 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.25 
+┌ Info: time: 1.389 days, iteration: 200, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 7.315 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.25 
+┌ Info: time: 1.389 days, iteration: 200, Δt: 10 minutes,max|u|: (NaN, NaN, NaN) m s⁻¹, extrema(T): (NaN, NaN) ᵒC, extrema(S): (NaN, NaN) g/kg, extrema(η): (NaN, NaN) m, wall time: 7.314 seconds 
+│ Wall clock time: 72.158 days 
+└ SYPD: 2.25 

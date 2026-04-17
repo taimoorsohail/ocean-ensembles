@@ -10,6 +10,7 @@ using NumericalEarth.EN4
 using NumericalEarth.ECCO
 using NumericalEarth.EN4: download_dataset
 using NumericalEarth.DataWrangling.ETOPO
+using NumericalEarth.ORCA
 
 using ClimaSeaIce
 using ClimaSeaIce.SeaIceThermodynamics: IceWaterThermalEquilibrium
@@ -77,9 +78,6 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360*6)
-Ny = Integer(180*6)
-ny = div(Ny, total_ranks)
 Nz = Integer(75)
 
 @info "Defining vertical z faces"
@@ -88,25 +86,10 @@ z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true) # IMPORTANT: WE 
 
 const z_surf = z_faces.cᵃᵃᶠ(Nz)
 @info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
-@info "Grid dimensions: Nx = " * string(Nx) * ", Ny = " * string(Ny) * ", Nz = " * string(Nz)
 
-@info "Defining tripolar grid"
-underlying_grid = TripolarGrid(arch;
-                            size = (Nx, Ny, Nz),
-                            z = z_faces,
-                            halo = (7, 7, 7))
-
-@info "Defining bottom bathymetry"
-
-ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir = data_path)
-NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
-
-@time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
-                                minimum_depth = 15,
-                                interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
-                                major_basins = 4)
-
-@time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+@info "Defining ORCA12 grid"
+south_rows_to_remove = 43
+grid = ORCAGrid(arch; dataset=ORCA12(), Nz, z=z_faces, halo=(4, 4, 4), south_rows_to_remove, dir = data_path)
 
 ### Restoring
 
@@ -329,10 +312,10 @@ for (ind, depth) in enumerate(depths)
     @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                                 dir = output_path,
                                                                 schedule = AveragedTimeInterval((365/12)days),
-                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id,
+                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_twfdeg_RYF_run" * run_id,
                                                                 indices = (:, :, ind_pln),
                                                                 with_halos = false,
-                                                                including = [:coriolis, :buoyancy, :closure],
+                                                                including = [:grid, :coriolis, :buoyancy, :closure],
                                                                 overwrite_existing = true,
                                                                 array_type = Array{Float32})
 
@@ -343,8 +326,8 @@ end
 @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
                                               dir = output_path,
                                               schedule = AveragedTimeInterval((365/12)days),
-                                              filename = "global_ssh_fields_sxtdeg_RYF_run" * run_id,
-                                              including = [:coriolis, :buoyancy, :closure],
+                                              filename = "global_ssh_fields_twfdeg_RYF_run" * run_id,
+                                              including = [:grid, :coriolis, :buoyancy, :closure],
                                               with_halos = false,
                                               overwrite_existing = true,
                                               array_type = Array{Float32})
@@ -352,7 +335,7 @@ end
 @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
                                                               dir = output_path,
                                                               schedule = AveragedTimeInterval((365/12)days),
-                                                              filename = "global_surface_fluxes_sxtdeg_RYF_run" * run_id,
+                                                              filename = "global_surface_fluxes_twfdeg_RYF_run" * run_id,
                                                               with_halos = false,
                                                               overwrite_existing = true,
                                                               array_type = Array{Float32})
@@ -360,7 +343,7 @@ end
 @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
                                                    dir = output_path,
                                                    schedule = AveragedTimeInterval((365/48)days),
-                                                   filename = "global_tot_integrals_sxtdeg_RYF_run" * run_id,
+                                                   filename = "global_tot_integrals_twfdeg_RYF_run" * run_id,
                                                    overwrite_existing = true)
 
 ################################### END OUTPUTTING ######################################
@@ -370,7 +353,7 @@ end
 @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
                                                               schedule = TimeInterval((365/12)days),  
                                                               dir = output_path, 
-                                                              prefix="RYF_sxtdeg_checkpoint_rank$localrank",
+                                                              prefix="RYF_twfdeg_checkpoint_rank$localrank",
                                                               overwrite_existing = true,
                                                               cleanup = false)
 

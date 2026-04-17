@@ -1,0 +1,419 @@
+]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia]0;Julia┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+Precompiling packages...
+PrecompilingPrecompiling packages...
+ packages...
+Precompiling packages...
+    NumericalEarth Being precompiled by another process (pid: 3228337, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/NumericalEarth/RubWl_XdCXd.ji.pidfile)
+    NumericalEarth Being precompiled by another process (pid: 3228337, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/NumericalEarth/RubWl_XdCXd.ji.pidfile)
+    NumericalEarth Being precompiled by another process (pid: 3228337, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/NumericalEarth/RubWl_XdCXd.ji.pidfile)
+Info Given NumericalEarth was explicitly requested, output will be shown live [0K
+[0KWARNING: Imported binding ClimaSeaIce.SlabSeaIceThermodynamics was undeclared at import time during import to SeaIces.
+  29576.9 ms  ✓ NumericalEarth
+  1 dependency successfully precompiled in 33 seconds. 239 already precompiled.
+  1 dependency had output during precompilation:
+┌ NumericalEarth
+│  [Output was shown above]
+└  
+  31304.0 ms  ✓ NumericalEarth
+  1 dependency successfully precompiled in 35 seconds. 239 already precompiled.
+  32851.8 ms  ✓ NumericalEarth
+  1 dependency successfully precompiled in 37 seconds. 239 already precompiled.
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+  34300.9 ms  ✓ NumericalEarth
+  1 dependency successfully precompiled in 38 seconds. 239 already precompiled.
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+Precompiling packages...
+Precompiling packages...
+    OceanEnsembles Being precompiled by another process (pid: 3228337, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceanEnsembles/biPSG_XdCXd.ji.pidfile)
+Precompiling packages...
+Precompiling packages...
+    Oceananigans Being precompiled by another process (pid: 3228339, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/Oceananigans/hU93i_XdCXd.ji.pidfile)
+Info Given OceanEnsembles was explicitly requested, output will be shown live [0K
+[0K┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+[0K┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+[0K┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+  11716.3 ms  ✓ OceanEnsembles
+  1 dependency successfully precompiled in 20 seconds. 462 already precompiled.
+  1 dependency had output during precompilation:
+┌ OceanEnsembles
+│  [Output was shown above]
+└  
+  11545.7 ms  ✓ OceanEnsembles
+  1 dependency successfully precompiled in 19 seconds. 462 already precompiled.
+  25021.3 ms  ✓ Oceananigans
+  1 dependency successfully precompiled in 34 seconds. 462 already precompiled.
+  1 dependency precompiled but a different version is currently loaded. Restart julia to access the new version. Otherwise, loading dependents of this package may trigger further precompilation to work with the unexpected version.
+  23308.6 ms  ✓ Oceananigans
+  1 dependency successfully precompiled in 33 seconds. 462 already precompiled.
+  1 dependency precompiled but a different version is currently loaded. Restart julia to access the new version. Otherwise, loading dependents of this package may trigger further precompilation to work with the unexpected version.
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Top grid cell is 3.0m thick
+[ Info: Top grid cell is 3.0m thick
+[ Info: Defining ORCA12 grid
+[ Info: Defining ORCA12 grid
+[ Info: Top grid cell is 3.0m thick
+[ Info: Defining ORCA12 grid
+[ Info: Top grid cell is 3.0m thick
+[ Info: Defining ORCA12 grid
+[ Info: Downloading ORCA12 data: mesh_mask to /g/data/e14/txs156/.julia/scratchspaces/904d977b-046a-4731-8b86-9235c0d1ef02/ORCA...
+ERROR: LoadError: RequestError: Failed to connect to drive.google.com port 443 after 33 ms: Could not connect to server while requesting https://drive.google.com/file/d/1uq13jQBew1k9Abo9L4gHAq1NQBylCa56/view?usp=sharing
+Stacktrace:
+  [1] (::Downloads.var"#26#27"{IOStream, Base.DevNull, Nothing, Vector{Pair{String, String}}, Float64, Downloads.var"#p_func##0#p_func##1"{typeof(NumericalEarth.DataWrangling.download_progress)}, Bool, Nothing, Bool, Nothing, String, Bool, Bool})(easy::Downloads.Curl.Easy)
+    @ Downloads ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Downloads.jl:479
+  [2] with_handle(f::Downloads.var"#26#27"{IOStream, Base.DevNull, Nothing, Vector{Pair{String, String}}, Float64, Downloads.var"#p_func##0#p_func##1"{typeof(NumericalEarth.DataWrangling.download_progress)}, Bool, Nothing, Bool, Nothing, String, Bool, Bool}, handle::Downloads.Curl.Easy)
+    @ Downloads.Curl ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Curl/Curl.jl:105
+  [3] #24
+    @ ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Downloads.jl:390 [inlined]
+  [4] arg_write(f::Downloads.var"#24#25"{Base.DevNull, Nothing, Vector{Pair{String, String}}, Float64, Downloads.var"#p_func##0#p_func##1"{typeof(NumericalEarth.DataWrangling.download_progress)}, Bool, Nothing, Bool, Nothing, String, Bool, Bool}, arg::IOStream)
+    @ ArgTools ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/ArgTools/src/ArgTools.jl:134
+  [5] #22
+    @ ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Downloads.jl:389 [inlined]
+  [6] arg_read
+    @ ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/ArgTools/src/ArgTools.jl:76 [inlined]
+  [7] request(url::String; input::Nothing, output::IOStream, method::Nothing, headers::Vector{Pair{String, String}}, timeout::Float64, progress::typeof(NumericalEarth.DataWrangling.download_progress), verbose::Bool, debug::Nothing, throw::Bool, downloader::Nothing, interrupt::Nothing)
+    @ Downloads ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Downloads.jl:388
+  [8] request
+    @ ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Downloads.jl:355 [inlined]
+  [9] (::Downloads.var"#7#8"{Nothing, Vector{Pair{String, String}}, Float64, typeof(NumericalEarth.DataWrangling.download_progress), Bool, Nothing, Nothing, String})(output::IOStream)
+    @ Downloads ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Downloads.jl:273
+ [10] open(f::Downloads.var"#7#8"{Nothing, Vector{Pair{String, String}}, Float64, typeof(NumericalEarth.DataWrangling.download_progress), Bool, Nothing, Nothing, String}, args::String; kwargs::@Kwargs{write::Bool, lock::Bool})
+    @ Base ./io.jl:410
+ [11] open_nolock
+    @ ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/ArgTools/src/ArgTools.jl:35 [inlined]
+ [12] arg_write(f::Function, arg::String)
+    @ ArgTools ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/ArgTools/src/ArgTools.jl:103
+ [13] #download#5
+    @ ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Downloads.jl:272 [inlined]
+ [14] download
+    @ ~/.julia/juliaup/julia-1.12.4+0.x64.linux.gnu/share/julia/stdlib/v1.12/Downloads/src/Downloads.jl:252 [inlined]
+ [15] macro expansion
+    @ /g/data/v46/txs156/NumericalORCA.jl/src/DataWrangling/ORCA/ORCA.jl:123 [inlined]
+ [16] macro expansion
+    @ /g/data/v46/txs156/Oceananigans.jl/src/DistributedComputations/distributed_macros.jl:28 [inlined]
+ [17] download_dataset(metadatum::Metadatum{ORCA12, Nothing, Nothing, Symbol, String})
+    @ NumericalEarth.DataWrangling.ORCA /g/data/v46/txs156/NumericalORCA.jl/src/DataWrangling/ORCA/ORCA.jl:120
+ [18] ORCAGrid(arch::Distributed{GPU{CUDABackend}, true, Partition{Nothing, Int64, Nothing}, Tuple{Int64, Int64, Int64}, Int64, Tuple{Int64, Int64, Int64}, Oceananigans.DistributedComputations.NeighboringRanks{Nothing, Nothing, Int64, Int64, Nothing, Nothing, Nothing, Nothing}, MPI.Comm, Vector{MPI.Request}, Base.RefValue{Int64}, Nothing}, FT::DataType; dataset::ORCA12, halo::Tuple{Int64, Int64, Int64}, z::MutableVerticalDiscretization{ExponentialDiscretization, ExponentialDiscretization, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}, Nz::Int64, radius::Float64, with_bathymetry::Bool, active_cells_map::Bool, south_rows_to_remove::Int64)
+    @ NumericalEarth.Bathymetry /g/data/v46/txs156/NumericalORCA.jl/src/Bathymetry/orca_grid.jl:149
+ [19] ORCAGrid
+    @ /g/data/v46/txs156/NumericalORCA.jl/src/Bathymetry/orca_grid.jl:137 [inlined]
+ [20] top-level scope
+    @ /g/data/v46/txs156/ocean-ensembles/experiments/ORCA12_expt.jl:92
+ [21] include(mod::Module, _path::String)
+    @ Base ./Base.jl:306
+ [22] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:317
+ [23] _start()
+    @ Base ./client.jl:550
+in expression starting at /g/data/v46/txs156/ocean-ensembles/experiments/ORCA12_expt.jl:92

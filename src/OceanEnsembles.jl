@@ -1,7 +1,8 @@
 module OceanEnsembles
 
 export basin_mask, ocean_tracer_content!, volume_transport!,
-       combine_ranks, identify_combination_targets, create_grid, section_mask
+       combine_ranks, identify_combination_targets, create_grid, section_mask,
+       apply_polygon_mask!
 
 using NumericalEarth, Oceananigans, Glob
 
