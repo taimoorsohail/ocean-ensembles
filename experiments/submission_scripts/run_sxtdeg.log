@@ -61,24 +61,6 @@
 │ 
 │ In any other case, please file an issue.
 └ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
-┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
-┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
-│ This may cause errors.
-│ 
-│ If you're running under a profiler, this situation is expected. Otherwise,
-│ ensure that your library path environment variable (e.g., `PATH` on Windows
-│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
-│ 
-│ In any other case, please file an issue.
-└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
 ┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
 │ This may cause errors.
 │ 
@@ -106,10 +88,747 @@
 │ 
 │ In any other case, please file an issue.
 └ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
-PrecompilingPrecompilingPrecompilingPrecompiling    packages...packages...packages...packages...
+┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+│ This may cause errors.
+│ 
+│ If you're running under a profiler, this situation is expected. Otherwise,
+│ ensure that your library path environment variable (e.g., `PATH` on Windows
+│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+│ 
+│ In any other case, please file an issue.
+└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+PrecompilingPrecompilingPrecompilingPrecompiling    packages...packages...
 
+packages...packages...
 
-
-    Oceananigans Being precompiled by another process (pid: 2324577, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/Oceananigans/hU93i_XdCXd.ji.pidfile)
-    Oceananigans Being precompiled by another process (pid: 2324577, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/Oceananigans/hU93i_XdCXd.ji.pidfile)
-    Oceananigans Being precompiled by another process (pid: 2324577, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/Oceananigans/hU93i_XdCXd.ji.pidfile)
+    Oceananigans Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/Oceananigans/hU93i_XdCXd.ji.pidfile)
+    Oceananigans Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/Oceananigans/hU93i_XdCXd.ji.pidfile)
+    Oceananigans Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/Oceananigans/hU93i_XdCXd.ji.pidfile)
+  20964.1 ms  ✓ Oceananigans
+  21588.9 ms  ✓ Oceananigans
+    OceananigansNCDatasetsExt Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansNCDatasetsExt/fy6mv_XdCXd.ji.pidfile)
+    ClimaSeaIce Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/ClimaSeaIce/yudIZ_XdCXd.ji.pidfile)
+  22168.0 ms  ✓ Oceananigans
+    OceananigansNCDatasetsExt Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansNCDatasetsExt/fy6mv_XdCXd.ji.pidfile)
+    ClimaSeaIce Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/ClimaSeaIce/yudIZ_XdCXd.ji.pidfile)
+  22735.9 ms  ✓ Oceananigans
+    OceananigansNCDatasetsExt Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansNCDatasetsExt/fy6mv_XdCXd.ji.pidfile)
+    ClimaSeaIce Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/ClimaSeaIce/yudIZ_XdCXd.ji.pidfile)
+   5157.1 ms  ✓ Oceananigans → OceananigansNCDatasetsExt
+   5795.2 ms  ✓ ClimaSeaIce
+   4624.1 ms  ✓ Oceananigans → OceananigansNCDatasetsExt
+   6002.8 ms  ✓ ClimaSeaIce
+   4873.2 ms  ✓ Oceananigans → OceananigansNCDatasetsExt
+   6974.9 ms  ✓ Oceananigans → OceananigansNCDatasetsExt
+    NumericalEarth Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/NumericalEarth/RubWl_XdCXd.ji.pidfile)
+   6374.4 ms  ✓ ClimaSeaIce
+    NumericalEarth Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/NumericalEarth/RubWl_XdCXd.ji.pidfile)
+   6727.4 ms  ✓ ClimaSeaIce
+    NumericalEarth Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/NumericalEarth/RubWl_XdCXd.ji.pidfile)
+  23570.1 ms  ✓ NumericalEarth
+  4 dependencies successfully precompiled in 55 seconds. 236 already precompiled.
+  23453.4 ms  ✓ NumericalEarth
+  4 dependencies successfully precompiled in 57 seconds. 236 already precompiled.
+  25448.5 ms  ✓ NumericalEarth
+  4 dependencies successfully precompiled in 59 seconds. 236 already precompiled.
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +cldemote.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512fp16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512ifma.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +tsxldtrk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +ptwrite.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vpopcntdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-int8.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avxvnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdiri.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +serialize.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vpclmulqdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +uintr.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-tile.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +gfni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sha.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdir64b.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +wbnoinvd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +enqcmd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pconfig.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bitalg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi2.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +rdpid.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +shstk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vaes.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +waitpkg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sgx.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+  25874.0 ms  ✓ NumericalEarth
+  4 dependencies successfully precompiled in 60 seconds. 236 already precompiled.
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +cldemote.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512fp16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512ifma.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +tsxldtrk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +ptwrite.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vpopcntdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-int8.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avxvnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdiri.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +serialize.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vpclmulqdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +uintr.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-tile.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +gfni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sha.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdir64b.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +wbnoinvd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +enqcmd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pconfig.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bitalg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi2.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +rdpid.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +shstk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vaes.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +waitpkg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sgx.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +cldemote.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512fp16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512ifma.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +tsxldtrk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +ptwrite.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vpopcntdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-int8.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avxvnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdiri.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +serialize.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vpclmulqdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +uintr.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-tile.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +gfni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sha.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdir64b.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +wbnoinvd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +enqcmd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pconfig.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bitalg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi2.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +rdpid.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +shstk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vaes.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +waitpkg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sgx.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+Precompiling packages...
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU name (from build time).
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:71
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +cldemote.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsaves.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512fp16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512ifma.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +tsxldtrk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +ptwrite.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +xsavec.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vpopcntdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512cd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-int8.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +evex512.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avxvnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: -rtm.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdiri.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +serialize.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vpclmulqdq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vl.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +uintr.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clflushopt.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-tile.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +gfni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512f.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +amx-bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bf16.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vnni.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bw.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pku.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sha.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +movdir64b.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +wbnoinvd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +enqcmd.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +pconfig.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512bitalg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +clwb.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi2.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +rdpid.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512vbmi.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +shstk.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +vaes.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +waitpkg.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +sgx.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+┌ Warning: Runtime invalidation was disabled, but the CPU info is out-of-date.
+│ Will continue with incorrect CPU feature flag: +avx512dq.
+└ @ HostCPUFeatures /g/data/e14/txs156/.julia/packages/HostCPUFeatures/ZTXz4/src/cpu_info.jl:56
+Precompiling packages...
+    OceananigansCUDAExt Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansCUDAExt/RRSG2_XdCXd.ji.pidfile)
+Precompiling packages...
+    OceananigansCUDAExt Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansCUDAExt/RRSG2_XdCXd.ji.pidfile)
+Precompiling packages...
+Info Given OceananigansCUDAExt was explicitly requested, output will be shown live [0K
+[0K┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+[0K┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+[0K┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+    OceananigansCUDAExt Being precompiled by another process (pid: 134031, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansCUDAExt/RRSG2_XdCXd.ji.pidfile)
+   7477.5 ms  ✓ Oceananigans → OceananigansCUDAExt
+  1 dependency successfully precompiled in 10 seconds. 148 already precompiled.
+  1 dependency had output during precompilation:
+┌ Oceananigans → OceananigansCUDAExt
+│  [Output was shown above]
+└  
+   3154.8 ms  ✓ Oceananigans → OceananigansCUDAExt
+  1 dependency successfully precompiled in 6 seconds. 148 already precompiled.
+   6415.2 ms  ✓ Oceananigans → OceananigansCUDAExt
+  1 dependency successfully precompiled in 9 seconds. 148 already precompiled.
+   4780.5 ms  ✓ Oceananigans → OceananigansCUDAExt
+  1 dependency successfully precompiled in 8 seconds. 148 already precompiled.
+Precompiling packages...
+Precompiling packages...
+Precompiling packages...
+    OceananigansMakieExt Being precompiled by another process (pid: 134030, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansMakieExt/JgJCU_XdCXd.ji.pidfile)
+Precompiling packages...
+    OceananigansMakieExt Being precompiled by another process (pid: 134030, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansMakieExt/JgJCU_XdCXd.ji.pidfile)
+    OceananigansMakieExt Being precompiled by another process (pid: 134030, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceananigansMakieExt/JgJCU_XdCXd.ji.pidfile)
+  13761.4 ms  ✓ Oceananigans → OceananigansMakieExt
+  15315.3 ms  ✓ Oceananigans → OceananigansMakieExt
+    OceanEnsembles Being precompiled by another process (pid: 134030, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceanEnsembles/biPSG_XdCXd.ji.pidfile)
+  17037.1 ms  ✓ Oceananigans → OceananigansMakieExt
+    OceanEnsembles Being precompiled by another process (pid: 134030, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceanEnsembles/biPSG_XdCXd.ji.pidfile)
+  18433.0 ms  ✓ Oceananigans → OceananigansMakieExt
+    OceanEnsembles Being precompiled by another process (pid: 134030, pidfile: /g/data/e14/txs156/.julia/compiled/v1.12/OceanEnsembles/biPSG_XdCXd.ji.pidfile)
+Info Given OceanEnsembles was explicitly requested, output will be shown live [0K
+[0K┌ Warning: CUDA runtime library `libcublasLt.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcublasLt.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+[0K┌ Warning: CUDA runtime library `libnvJitLink.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libnvJitLink.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+[0K┌ Warning: CUDA runtime library `libcusparse.so.12` was loaded from a system path, `/apps/cuda/12.6.2/lib64/libcusparse.so.12`.
+[0K│ This may cause errors.
+[0K│ 
+[0K│ If you're running under a profiler, this situation is expected. Otherwise,
+[0K│ ensure that your library path environment variable (e.g., `PATH` on Windows
+[0K│ or `LD_LIBRARY_PATH` on Linux) does not include CUDA library paths.
+[0K│ 
+[0K│ In any other case, please file an issue.
+[0K└ @ CUDA /g/data/e14/txs156/.julia/packages/CUDA/Il00B/src/initialization.jl:198
+  10305.4 ms  ✓ OceanEnsembles
+  2 dependencies successfully precompiled in 32 seconds. 461 already precompiled.
+  1 dependency had output during precompilation:
+┌ OceanEnsembles
+│  [Output was shown above]
+└  
+   8709.6 ms  ✓ OceanEnsembles
+  2 dependencies successfully precompiled in 32 seconds. 461 already precompiled.
+   7050.7 ms  ✓ OceanEnsembles
+  2 dependencies successfully precompiled in 32 seconds. 461 already precompiled.
+   5672.9 ms  ✓ OceanEnsembles
+  2 dependencies successfully precompiled in 32 seconds. 461 already precompiled.
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: Downloading/checking input data
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: We download the 1990-1991 data for an RYF implementation
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining grid
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Defining vertical z faces
+[ Info: Top grid cell is 3.0m thick
+[ Info: Top grid cell is 3.0m thick
+[ Info: Top grid cell is 3.0m thick
+[ Info: Grid dimensions: Nx = 2160, Ny = 1080, Nz = 75
+[ Info: Grid dimensions: Nx = 2160, Ny = 1080, Nz = 75
+[ Info: Defining tripolar grid
+[ Info: Grid dimensions: Nx = 2160, Ny = 1080, Nz = 75
+[ Info: Defining tripolar grid
+[ Info: Defining tripolar grid
+[ Info: Top grid cell is 3.0m thick
+[ Info: Grid dimensions: Nx = 2160, Ny = 1080, Nz = 75
+[ Info: Defining tripolar grid
+[ Info: Defining bottom bathymetry
+[ Info: Defining bottom bathymetry
+[ Info: Defining bottom bathymetry
+[ Info: Defining bottom bathymetry
+[ Info: Loading cached bathymetry from /g/data/e14/txs156/.julia/scratchspaces/904d977b-046a-4731-8b86-9235c0d1ef02/bathymetry_cache/bathymetry_2160x1080_0.0_360.0_-81.18424433710543_90.0_ea2d7e8f.jld2
+ 60.850914 seconds (853.95 M allocations: 58.028 GiB, 9.10% gc time, 46.72% compilation time: 5% of which was recompilation)
+ 60.980127 seconds (864.55 M allocations: 58.577 GiB, 10.43% gc time, 56.13% compilation time: 6% of which was recompilation)
+ 61.063153 seconds (853.95 M allocations: 58.028 GiB, 9.83% gc time, 47.13% compilation time: 5% of which was recompilation)
+ 61.147307 seconds (855.72 M allocations: 58.112 GiB, 9.28% gc time, 48.13% compilation time: 5% of which was recompilation)
+ 45.061295 seconds (20.90 M allocations: 6.796 GiB, 76.47% gc time, 20.36% compilation time: <1% of which was recompilation)
+[ Info: Defining restoring rate
+ 45.518169 seconds (21.49 M allocations: 13.360 GiB, 73.50% gc time, 20.92% compilation time: <1% of which was recompilation)
+[ Info: Defining restoring rate
+ 45.848185 seconds (21.49 M allocations: 11.786 GiB, 75.22% gc time, 20.91% compilation time: <1% of which was recompilation)
+[ Info: Defining restoring rate
+ 47.849753 seconds (21.02 M allocations: 13.142 GiB, 73.37% gc time, 19.59% compilation time: <1% of which was recompilation)
+[ Info: Defining restoring rate
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining closures
+[ Info: Defining free surface
+[ Info: Defining free surface
+[ Info: Defining free surface
+[ Info: Defining free surface
+[ Info: Defining ocean model
+[ Info: Defining ocean model
+[ Info: Defining ocean model
+[ Info: Defining ocean model
+288.885997 seconds (1.11 G allocations: 87.168 GiB, 17.63% gc time, 66.65% compilation time: <1% of which was recompilation)
+288.893138 seconds (1.12 G allocations: 81.099 GiB, 17.16% gc time, 67.93% compilation time: <1% of which was recompilation)
+288.888883 seconds (1.11 G allocations: 88.741 GiB, 16.83% gc time, 67.05% compilation time: <1% of which was recompilation)
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+[ Info: Initialising with EN4
+288.938714 seconds (1.12 G allocations: 87.512 GiB, 17.09% gc time, 66.92% compilation time: <1% of which was recompilation)
+[ Info: Initialising with EN4
+[ Info: Creating sea ice model
+[ Info: Creating sea ice model
+[ Info: Creating sea ice model
+[ Info: Creating sea ice model
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state
+[ Info: Defining Atmospheric state

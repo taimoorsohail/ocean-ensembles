@@ -22,7 +22,7 @@ using Oceananigans.Operators: Ax, Ay, Az, Δz
 using Oceananigans.Fields: ReducedField
 using Oceananigans.Architectures: on_architecture
 
-using OceanEnsembles
+# using OceanEnsembles
 
 using CFTime
 using Dates
@@ -30,9 +30,9 @@ using Printf
 using Glob 
 using JLD2
 
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+data_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/data/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles-2/outputs/")
+figdir = expanduser("/g/data/v46/txs156/ocean-ensembles-2/figures/")
 
 # Argument is provided by the submission script!
 
@@ -251,7 +251,6 @@ vert_integral = Symbol[]
 vert_integral_outputs = Field[]
 
 for key in keys(outputs)
-    @show key
     f = outputs[key]
     f_tot = Field(Integral(f, dims = (1,2,3)))
     f_vert = Field(Integral(f, dims = (1,2)))
