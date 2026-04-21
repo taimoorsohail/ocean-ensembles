@@ -332,7 +332,7 @@ for (ind, depth) in enumerate(depths)
                                                                 filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id,
                                                                 indices = (:, :, ind_pln),
                                                                 with_halos = false,
-                                                                including = [:coriolis, :buoyancy, :closure],
+                                                                including = [:buoyancy, :closure],
                                                                 overwrite_existing = true,
                                                                 array_type = Array{Float32})
 
@@ -344,7 +344,7 @@ end
                                               dir = output_path,
                                               schedule = AveragedTimeInterval((365/12)days),
                                               filename = "global_ssh_fields_sxtdeg_RYF_run" * run_id,
-                                              including = [:coriolis, :buoyancy, :closure],
+                                              including = [:buoyancy, :closure],
                                               with_halos = false,
                                               overwrite_existing = true,
                                               array_type = Array{Float32})
