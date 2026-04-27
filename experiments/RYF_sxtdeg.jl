@@ -61,8 +61,7 @@ localrank = Integer(arch.local_rank)
 # ### ECCO files
 @info "Downloading/checking input data"
 
-dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),
-             collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 4, 1)), collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
 
 @info "We download the 1990-1991 data for an RYF implementation"
 
@@ -140,7 +139,7 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 # output number of substeps
 # free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=12minutes)
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=120)
+free_surface = SplitExplicitFreeSurface(grid; substeps=70)
 momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
 
@@ -255,7 +254,6 @@ surface_height = (; surface_height = ocean.model.free_surface.displacement)
 surface_forcing = (; heat_flux = net_ocean_heat_flux(simulation.model), 
                     fw_flux = net_ocean_freshwater_flux(simulation.model))
 
-
 @info "Defining total integral outputs"
 
 tot_integral = Symbol[]
@@ -332,7 +330,7 @@ for (ind, depth) in enumerate(depths)
                                                                 filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id,
                                                                 indices = (:, :, ind_pln),
                                                                 with_halos = false,
-                                                                including = [:coriolis, :buoyancy, :closure],
+                                                                including = [:buoyancy, :closure],
                                                                 overwrite_existing = true,
                                                                 array_type = Array{Float32})
 
@@ -344,14 +342,14 @@ end
                                               dir = output_path,
                                               schedule = AveragedTimeInterval((365/12)days),
                                               filename = "global_ssh_fields_sxtdeg_RYF_run" * run_id,
-                                              including = [:coriolis, :buoyancy, :closure],
+                                              including = [:buoyancy, :closure],
                                               with_halos = false,
                                               overwrite_existing = true,
                                               array_type = Array{Float32})
 
 @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
                                                               dir = output_path,
-                                                              schedule = AveragedTimeInterval((365/12)days),
+                                                              schedule = AveragedTimeInterval((365/48)days),
                                                               filename = "global_surface_fluxes_sxtdeg_RYF_run" * run_id,
                                                               with_halos = false,
                                                               overwrite_existing = true,
@@ -384,5 +382,5 @@ simulation.stop_time = parse(Int,ARGS[4]) * 11 * (365/12)days
 if parse(Int,ARGS[4]) > 1
     run!(simulation, pickup=true, checkpoint_at_end=true)
 else
-    run!(simulation, pickup=false, checkpoint_at_end=true)
+    run!(simulation, pickup=true, checkpoint_at_end=true)
 end

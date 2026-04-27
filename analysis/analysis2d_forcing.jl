@@ -10,17 +10,17 @@ const COLOR_SIGMA_MULTIPLE = 3.0
 const MAX_COLOR_SAMPLES = 1_000_000
 const MAX_COLOR_FRAMES = 240
 const PROGRESS_UPDATES = 20
-const SURFACE_VAR = "surface_height"
+const forcing_timesteps_days = Float64[]
 const SWAPPABLE_PAIRS = Dict(
     :surface_tracers => ["T_surf", "S_surf"],
-    :fluxes => ["total_heat_flux", "total_freshwater_flux", "ocean_heat_flux", "ocean_freshwater_flux", "sea_ice_heat_flux", "sea_ice_freshwater_flux"])
+    :fluxes => ["fw_flux", "heat_flux"])
 # Current default: surface height + T_surf + S_surf.
 # To switch later, set e.g. ACTIVE_PAIR = :fluxes
-const ACTIVE_PAIR = :surface_tracers
+const ACTIVE_PAIR = :fluxes
 const VAR_TITLES = Dict(
     "surface_height" => "Surface Height (m)",
-    "total_heat_flux" => "Total Heat Flux (W m⁻²)",
-    "total_freshwater_flux" => "Total Mass Flux (kg m⁻² s⁻¹)",
+    "heat_flux" => "Total Heat Flux (W m⁻²)",
+    "fw_flux" => "Total Mass Flux (kg m⁻² s⁻¹)",
     "ocean_heat_flux" => "Ocean Heat Flux (W m⁻²)",
     "ocean_freshwater_flux" => "Ocean Mass Flux (kg m⁻² s⁻¹)", 
     "sea_ice_heat_flux" => "Sea Ice Heat Flux (W m⁻²)", 
@@ -42,9 +42,9 @@ function run_id(path::AbstractString)
 end
 
 function forcing_files(path::AbstractString)
-    files = glob("global_forcing_fields_$(RESOLUTION)*_RYF_run*.jld2", path)
+    files = glob("global_surface_fluxes_$(RESOLUTION)*_RYF_run*.jld2", path)
     files = filter(files) do f
-        !occursin("_rank", f) && occursin("forcing_field", f) && run_id(f) >= 0
+        !occursin("_rank", f) && occursin("surface_fluxes", f) && run_id(f) >= 0
     end
     sort!(files; by = run_id)
     return files
@@ -54,6 +54,7 @@ struct FrameRef
     file::String
     key::Int
     time::Float64
+    run::Int
 end
 
 mutable struct RunningStats
@@ -86,12 +87,14 @@ end
 
 function collect_frame_refs(files::Vector{String}, vars::Vector{String})
     isempty(files) && error("No forcing files found in $OUTPUT_PATH.")
-    frames = FrameRef[]
+    frame_by_time = Dict{Float64, FrameRef}()
     used_files = 0
+    replaced_duplicates = 0
 
     @info "Collecting frame references" file_count = length(files)
 
     for (file_index, file) in enumerate(files)
+        run = run_id(file)
         @info "Scanning file" file_index total_files = length(files) file
         jldopen(file, "r") do f
             haskey(f, "timeseries/t") || return
@@ -105,7 +108,12 @@ function collect_frame_refs(files::Vector{String}, vars::Vector{String})
             ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))) )
             for key in ts_keys
                 tval = Float64(f["timeseries/t/$key"])
-                push!(frames, FrameRef(file, key, tval))
+                candidate = FrameRef(file, key, tval, run)
+                existing = get(frame_by_time, tval, nothing)
+                if isnothing(existing) || run > existing.run || (run == existing.run && key >= existing.key)
+                    replaced_duplicates += !isnothing(existing) && run > existing.run ? 1 : 0
+                    frame_by_time[tval] = candidate
+                end
             end
             used_files += 1
         end
@@ -114,9 +122,10 @@ function collect_frame_refs(files::Vector{String}, vars::Vector{String})
     end
 
     used_files == 0 && error("No valid forcing files contained all required variables: $(join(vars, ", ")).")
-    isempty(frames) && error("No timesteps found in forcing files.")
+    isempty(frame_by_time) && error("No timesteps found in forcing files.")
+    frames = collect(values(frame_by_time))
     sort!(frames; by = frame -> frame.time)
-    @info "Finished collecting frame references" valid_files = used_files frames = length(frames)
+    @info "Finished collecting frame references" valid_files = used_files frames = length(frames) replaced_duplicates
     return frames
 end
 
@@ -211,7 +220,7 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
     @info "Using forcing files" count = length(files)
 
     haskey(SWAPPABLE_PAIRS, ACTIVE_PAIR) || error("ACTIVE_PAIR=$(ACTIVE_PAIR) not found. Valid options: $(join(string.(collect(keys(SWAPPABLE_PAIRS))), ", "))")
-    selected_vars = vcat([SURFACE_VAR], SWAPPABLE_PAIRS[ACTIVE_PAIR])
+    selected_vars = vcat(SWAPPABLE_PAIRS[ACTIVE_PAIR])
     @info "Selected variables" selected_vars
 
     frames = collect_frame_refs(files, selected_vars)
@@ -234,7 +243,10 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
     end
     resize_to_layout!(fig)
 
-    years = [frame.time for frame in frames] ./ SECONDS_PER_YEAR
+    timesteps_days = [frame.time for frame in frames] ./ (24 * 3600)
+    empty!(forcing_timesteps_days)
+    append!(forcing_timesteps_days, timesteps_days)
+    years = timesteps_days ./ 365
 
     current_file = Ref("")
     handle = Ref{Any}(nothing)
@@ -250,7 +262,7 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
             end
 
             load_frame!(buffers, handle[], selected_vars, frame.key)
-            title.text = "Global surface forcing fields (divergent scale, ±1σ) | Year = $(round(years[frame_index], digits=2))"
+            title.text = "Global surface forcing fields (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(years[frame_index], digits=2))"
             for var in selected_vars
                 copyto!(observables[var][], buffers[var])
                 notify(observables[var])
@@ -263,6 +275,7 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
     end
 
     @info "Saved animation" outname nframes
+    @info "Forcing timesteps (days)" forcing_timesteps_days
     return outname
 end
 

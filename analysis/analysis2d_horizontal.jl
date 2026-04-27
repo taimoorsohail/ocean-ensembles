@@ -108,8 +108,8 @@ function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterat
     depth_progress_step = max(1, cld(length(depths), PROGRESS_UPDATES))
 
     for (depth_index, depth) in enumerate(depths)
-        raw_times = Float64[]
-        raw_data = Matrix{Float32}[]
+        records_by_time = Dict{Float64, NamedTuple{(:run, :data), Tuple{Int, Matrix{Float32}}}}()
+        replaced_duplicates = 0
         iter_progress_step = max(1, cld(length(iterations), PROGRESS_UPDATES))
 
         for (iter_index, iteration) in enumerate(iterations)
@@ -146,8 +146,11 @@ function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterat
                     end
 
                     A === nothing && continue
-                    push!(raw_times, tval)
-                    push!(raw_data, A)
+                    existing = get(records_by_time, tval, nothing)
+                    if isnothing(existing) || iteration >= existing.run
+                        replaced_duplicates += !isnothing(existing) && iteration > existing.run ? 1 : 0
+                        records_by_time[tval] = (run = iteration, data = A)
+                    end
                 end
             end
 
@@ -156,10 +159,11 @@ function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterat
             end
         end
 
-        order = sortperm(raw_times)
-        push!(all_depth_times, raw_times[order])
-        push!(all_depth_data, raw_data[order])
-        @info "Loaded depth level." variable = var depth depth_index frames = length(raw_data)
+        sorted_times = sort(collect(keys(records_by_time)))
+        sorted_data = [records_by_time[t].data for t in sorted_times]
+        push!(all_depth_times, sorted_times)
+        push!(all_depth_data, sorted_data)
+        @info "Loaded depth level." variable = var depth depth_index frames = length(sorted_data) replaced_duplicates
         if depth_index == 1 || depth_index == length(depths) || depth_index % depth_progress_step == 0
             log_record_progress("depth_levels_$(var)", depth_index, length(depths))
         end
@@ -170,11 +174,12 @@ function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterat
 end
 
 function load_surface_timeseries(files::Vector{String}, vars::Vector{String})
-    all_data = Dict{String, Vector{Matrix{Float32}}}(v => Matrix{Float32}[] for v in vars)
-    all_time = Float64[]
+    records_by_time = Dict{Float64, NamedTuple{(:run, :fields), Tuple{Int, Vector{Matrix{Float32}}}}}()
+    replaced_duplicates = 0
     @info "Loading surface timeseries..." file_count = length(files) variables = vars
 
     for (file_index, file) in enumerate(files)
+        run = run_id(file)
         jldopen(file, "r") do f
             has_t = haskey(f, "timeseries/t")
             missing = [v for v in vars if !haskey(f, "timeseries/$v")]
@@ -199,9 +204,10 @@ function load_surface_timeseries(files::Vector{String}, vars::Vector{String})
                 end
 
                 valid || continue
-                push!(all_time, tval)
-                for (idx, var) in enumerate(vars)
-                    push!(all_data[var], timestep_fields[idx])
+                existing = get(records_by_time, tval, nothing)
+                if isnothing(existing) || run >= existing.run
+                    replaced_duplicates += !isnothing(existing) && run > existing.run ? 1 : 0
+                    records_by_time[tval] = (run = run, fields = timestep_fields)
                 end
             end
         end
@@ -211,12 +217,12 @@ function load_surface_timeseries(files::Vector{String}, vars::Vector{String})
         end
     end
 
-    order = sortperm(all_time)
-    all_time = all_time[order]
-    for var in vars
-        all_data[var] = all_data[var][order]
+    all_time = sort(collect(keys(records_by_time)))
+    all_data = Dict{String, Vector{Matrix{Float32}}}(v => Matrix{Float32}[] for v in vars)
+    for (var_idx, var) in enumerate(vars)
+        all_data[var] = [records_by_time[t].fields[var_idx] for t in all_time]
     end
-    @info "Completed surface timeseries load." frames = length(all_time) variables = vars
+    @info "Completed surface timeseries load." frames = length(all_time) variables = vars replaced_duplicates
 
     return all_time, all_data
 end

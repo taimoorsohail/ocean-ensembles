@@ -2,5 +2,5 @@
 set -euo pipefail
 
 mpiexec --bind-to socket --map-by socket -n 4 \
-  julia --project=. ../RYF_sxtdeg.jl --arch GPU --time 1 \
+  julia --project=. ../RYF_sxtdeg.jl --arch GPU --time 2 \
   2>&1 | tee run_sxtdeg.log

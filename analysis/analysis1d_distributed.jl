@@ -1,9 +1,17 @@
 using CairoMakie
 using Oceananigans  # From local
+using NumericalEarth: EarthSystemModels, Oceans
 using Statistics
 using JLD2
 using Glob
-using OceanEnsembles
+
+const ocean_eos = Oceans.TEOS10EquationOfState()
+const ρ₀ = isdefined(Oceananigans, :reference_density) ?
+           Oceananigans.reference_density(ocean_eos) :
+           EarthSystemModels.reference_density(ocean_eos)
+const cₚ = isdefined(Oceananigans, :heat_capacity) ?
+           Oceananigans.heat_capacity(ocean_eos) :
+           EarthSystemModels.heat_capacity(ocean_eos)
 
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
@@ -17,221 +25,285 @@ keys_interest = ["T_totintegral",
 
 resolution = "sxtdeg"
 nframes = nothing
-# Example: get all matching files in a folder
-files = glob("global_*tot*$(resolution)*_RYF_run*.jld2", output_path)
-files_surface = filter(f -> !occursin("_rank", f),
-                        glob("global_*forcing*$(resolution)_RYF_run*.jld2", output_path))
+files_integral = glob("global_*tot*$(resolution)*_RYF_run*.jld2", output_path)
+files_surface = glob("global_surface_fluxes_$(resolution)*_RYF_run*.jld2", output_path)
+files_integral = filter(f -> !occursin("_rank", basename(f)), files_integral)
+files_surface = filter(f -> !occursin("_rank", basename(f)), files_surface)
 
-# Collect prefixes here
-prefixes = String[]
+isempty(files_integral) && error("No combined integral files found for resolution=$(resolution) in $(output_path)")
 
-for file in files
-    @info file
-    fname = basename(file)
-    prefix = replace(fname, r"_run.*" => "")
-    push!(prefixes, joinpath(output_path, prefix))
+run_number(file) = begin
+    m = match(r"_run(\d+)\.jld2$", basename(file))
+    isnothing(m) ? typemax(Int) : parse(Int, m.captures[1])
 end
 
-# Keep only unique prefixes
-unique_prefixes = unique(prefixes)
+sort!(files_integral; by = run_number)
+sort!(files_surface; by = run_number)
 
-println(unique_prefixes)
+surface_flux_vars = ("heat_flux", "fw_flux")
+surface_flux_timeseries = Dict(var => Any[] for var in surface_flux_vars)
 
-iter_rank_map = identify_combination_targets(basename(unique_prefixes[1]), dirname(unique_prefixes[1]); type = "iterrank")
-iterations = sort(collect(keys(iter_rank_map)))
-ranks = iter_rank_map[iterations[1]]
-time_total  = Vector{Vector{Float64}}()
-iters_total = Vector{Vector{Int}}()
-T_int_iters = Vector{Matrix{Float64}}()
-S_int_iters = Vector{Matrix{Float64}}()
-T_int_z_iters = Vector{Array{Float64,3}}()
-S_int_z_iters = Vector{Array{Float64,3}}()
-V_int_z_iters = Vector{Array{Float64,3}}()
-V_int_iters = Vector{Matrix{Float64}}()
-
-depth = []
-
-# Read depth once from rank0 file of the first iteration
-run0 = lpad(string(iterations[1]), 4, '0')
-filename_rank0_first = string(unique_prefixes[1], "_run$(run0)_rank", ranks[1], ".jld2")
-jldopen(filename_rank0_first, "r") do data
-    push!(depth, data["grid/underlying_grid/z/cᵃᵃᶜ"][7:end-7] ) # this is your z coordinate
+for file in files_surface
+    @info "Loading surface flux FieldTimeSeries from $(basename(file))"
+    for var in surface_flux_vars
+        push!(surface_flux_timeseries[var], FieldTimeSeries(file, var))
+    end
 end
 
-Lz = length(depth[1])
+@info "Loaded surface flux FieldTimeSeries collections" runs = length(files_surface) variables = collect(surface_flux_vars)
 
+function linear_interpolate_series(query_times, source_times, source_values)
+    Nq = length(query_times)
+    Ns = length(source_times)
+    Ns >= 2 || error("Need at least 2 source points for interpolation.")
 
-for iteration in iterations
-    @info "Processing run $iteration"
-    run = lpad(string(iteration), 4, '0')
+    out = Vector{Float64}(undef, Nq)
+    j = 1
 
-    # Current global max time seen so far
-    tmax = isempty(time_total) ? -Inf : maximum(maximum.(time_total))
+    for i in 1:Nq
+        t = query_times[i]
+        while j < Ns - 1 && source_times[j+1] < t
+            j += 1
+        end
 
-    # ---- First pass: collect new times (rank 0 is enough) ----
-    times = Float64[]
-    iters = Int[]
+        t₀, t₁ = source_times[j], source_times[j+1]
+        y₀, y₁ = source_values[j], source_values[j+1]
 
-    filename_rank0 = string(
-        unique_prefixes[1],
-        "_run$(run)_rank",
-        ranks[1],
-        ".jld2"
-    )
+        if t₁ == t₀
+            out[i] = y₀
+        else
+            α = (t - t₀) / (t₁ - t₀)
+            out[i] = (1 - α) * y₀ + α * y₁
+        end
+    end
 
-    jldopen(filename_rank0, "r") do data
+    return out
+end
+
+time_total = Float64[]
+T_total = Float64[]
+S_total = Float64[]
+V_total = Float64[]
+
+T_z_total = Vector{Vector{Float64}}()
+S_z_total = Vector{Vector{Float64}}()
+V_z_total = Vector{Vector{Float64}}()
+
+depth = Vector{Float64}()
+integral_by_time = Dict{Float64, NamedTuple{(:run, :T, :S, :V, :Tz, :Sz, :Vz), Tuple{Int, Float64, Float64, Float64, Vector{Float64}, Vector{Float64}, Vector{Float64}}}}()
+integral_replacements = Ref(0)
+
+for file in files_integral
+    @info "Processing combined file $(basename(file))"
+    run = run_number(file)
+
+    jldopen(file, "r") do data
+        isempty(depth) && append!(depth, data["serialized/grid"].underlying_grid.z.cᵃᵃᶜ)
+
         timeiters = sort(parse.(Int, keys(data["timeseries/t/"])))
         for iter in timeiters
-            t = data["timeseries/t/$(iter)"]
-            if t > tmax
-                push!(times, t)
-                push!(iters, iter)
+            t = Float64(data["timeseries/t/$(iter)"])
+            record = (
+                run = run,
+                T = data["timeseries/T_totintegral/$(iter)"][1, 1, 1],
+                S = data["timeseries/S_totintegral/$(iter)"][1, 1, 1],
+                V = data["timeseries/total_volume_c/$(iter)"][1, 1, 1],
+                Tz = vec(data["timeseries/T_vertintegral/$(iter)"][1, 1, 7:end-7]),
+                Sz = vec(data["timeseries/S_vertintegral/$(iter)"][1, 1, 7:end-7]),
+                Vz = vec(data["timeseries/vert_volume_c/$(iter)"][1, 1, 7:end-7]))
+
+            existing = get(integral_by_time, t, nothing)
+            if isnothing(existing) || run >= existing.run
+                integral_replacements[] += (!isnothing(existing) && run > existing.run) ? 1 : 0
+                integral_by_time[t] = record
             end
         end
     end
-
-    # Allocate correctly-sized array
-    T_int = zeros(length(times), length(ranks))
-    S_int = zeros(length(times), length(ranks))
-    T_int_z = zeros(length(times), length(ranks), Lz)
-    S_int_z = zeros(length(times), length(ranks), Lz)
-    V_int = zeros(length(times), length(ranks))
-    V_int_z = zeros(length(times), length(ranks), Lz)
-
-    # ---- Second pass: fill T_int for all ranks ----
-    for (j, rank) in enumerate(ranks)
-        filename = string(
-            unique_prefixes[1],
-            "_run$(run)_rank",
-            rank,
-            ".jld2"
-        )
-
-        row = 0
-        jldopen(filename, "r") do data
-            timeiters = sort(parse.(Int, keys(data["timeseries/t/"])))
-            for iter in timeiters
-                t = data["timeseries/t/$(iter)"]
-                if t > tmax
-                    row += 1
-                    T_int[row, j] =
-                        data["timeseries/T_totintegral/$(iter)"][1, 1, 1]
-                    S_int[row, j] =
-                        data["timeseries/S_totintegral/$(iter)"][1, 1, 1]
-                    T_int_z[row, j,:] =
-                        data["timeseries/T_vertintegral/$(iter)"][1, 1, 7:end-7]
-                    S_int_z[row, j,:] =
-                        data["timeseries/S_vertintegral/$(iter)"][1, 1, 7:end-7]
-                    V_int[row, j] =
-                        data["timeseries/total_volume_c/$(iter)"][1, 1, 1]
-                    V_int_z[row, j,:] =
-                        data["timeseries/vert_volume_c/$(iter)"][1, 1, 7:end-7]
-                end
-            end
-        end
-    end
-
-    push!(time_total, times)
-    push!(iters_total, iters)
-    push!(T_int_iters, T_int)
-    push!(S_int_iters, S_int)
-    push!(T_int_z_iters, T_int_z)
-    push!(S_int_z_iters, S_int_z)
-    push!(V_int_iters, V_int)
-    push!(V_int_z_iters, V_int_z)
 end
 
-# Concatenate after loop
-t_all = vcat(time_total...)
-T_all = vcat(T_int_iters...)
-S_all = vcat(S_int_iters...)
-V_all = vcat(V_int_iters...)
+for t in sort(collect(keys(integral_by_time)))
+    entry = integral_by_time[t]
+    push!(time_total, t)
+    push!(T_total, entry.T)
+    push!(S_total, entry.S)
+    push!(V_total, entry.V)
+    push!(T_z_total, entry.Tz)
+    push!(S_z_total, entry.Sz)
+    push!(V_z_total, entry.Vz)
+end
 
-T_z_all = vcat(T_int_z_iters...)
-S_z_all = vcat(S_int_z_iters...)
-V_z_all = vcat(V_int_z_iters...)
+@info "Merged integral timeseries with run-priority deduplication" unique_steps = length(time_total) replaced_duplicates = integral_replacements[]
 
+N = length(time_total)
+N > 0 || error("No new timeseries entries found in combined files.")
+Lz = length(T_z_total[1])
 
-# time_total = []
-# iters_total = []
-# T_int_iters = []
-# for iteration in iterations
-#     data = jldopen(string(unique_prefixes[1], "_iteration$(iteration)_rank", ranks[1], ".jld2"))
-#     timeiters = sort(parse.(Int, keys(data["timeseries/t/"])))
-#     time = []
-#     @info "Processing iteration $iteration"
-#     for (i, iter) in enumerate(timeiters)
-#         @info "Checking time for iter $iter"
-#         if isempty(time_total) || data["timeseries/t/$(iter)"] > maximum(maximum.(time_total))
-#             push!(time, data["timeseries/t/$(iter)"])
-#         end
-#     end
-#     T_int = zeros(length(time), length(ranks))
-#     for rank in ranks
-#         data = jldopen(string(unique_prefixes[1], "_iteration$(iteration)_rank", rank, ".jld2"))
-#         for (i, iter) in enumerate(timeiters)
-#             if isempty(time_total) || data["timeseries/t/$(iter)"] > maximum(maximum.(time_total))
-#                 T_int[i, rank+1] = data["timeseries/T_totintegral/$(iter)"][1,1,1]
-#             end
-#         end
-#     end
-#     @info "I made it" 
-#     push!(time_total, time)
-#     push!(iters_total, timeiters)
-#     push!(T_int_iters, T_int)
-# end
+if any(length.(T_z_total) .!= Lz) || any(length.(S_z_total) .!= Lz) || any(length.(V_z_total) .!= Lz)
+    error("Inconsistent vertical vector lengths across timeseries entries.")
+end
 
-# T_all = vcat(T_int_iters...)
-# t_all = vcat(time_total...)
-# perm = sortperm(t_all)
+if length(depth) != Lz
+    @warn "Depth length ($(length(depth))) does not match vertical-integral length ($(Lz)); adjusting depth to match."
+    if length(depth) > Lz
+        depth = depth[1:Lz]
+    elseif !isempty(depth)
+        depth = collect(range(first(depth), last(depth), length = Lz))
+    else
+        depth = collect(range(-Lz, 0, length = Lz))
+    end
+end
 
-# t_sorted = t_all[perm]
-# T_sorted = T_all[perm, :]
+t_all = copy(time_total)
+T_all = reshape(copy(T_total), N, 1)
+S_all = reshape(copy(S_total), N, 1)
+V_all = reshape(copy(V_total), N, 1)
+
+T_z_matrix = permutedims(reduce(hcat, T_z_total), (2, 1))
+S_z_matrix = permutedims(reduce(hcat, S_z_total), (2, 1))
+V_z_matrix = permutedims(reduce(hcat, V_z_total), (2, 1))
+
+T_z_all = reshape(T_z_matrix, N, 1, Lz)
+S_z_all = reshape(S_z_matrix, N, 1, Lz)
+V_z_all = reshape(V_z_matrix, N, 1, Lz)
+
+perm = sortperm(t_all)
+t_all = t_all[perm]
+T_all = T_all[perm, :]
+S_all = S_all[perm, :]
+V_all = V_all[perm, :]
+T_z_all = T_z_all[perm, :, :]
+S_z_all = S_z_all[perm, :, :]
+V_z_all = V_z_all[perm, :, :]
 
 time_in_years = t_all ./ (3600*24*365)
 
+surface_flux_integrals = Dict("heat_flux" => Float64[], "fw_flux" => Float64[])
+surface_flux_times = Float64[]
+surface_flux_by_time = Dict{Float64, NamedTuple{(:run, :heat_flux, :fw_flux), Tuple{Int, Float64, Float64}}}()
+surface_flux_replacements = Ref(0)
 
-fig = Figure(size = (800, 600))
+for run_idx in eachindex(files_surface)
+    run = run_number(files_surface[run_idx])
+    heat_fts = surface_flux_timeseries["heat_flux"][run_idx]
+    fw_fts = surface_flux_timeseries["fw_flux"][run_idx]
+    Nt = min(length(heat_fts), length(fw_fts))
+
+    for t_idx in 1:Nt
+        t = Float64(heat_fts.times[t_idx])
+
+        # Horizontal-only integral: `dims=(1,2)` integrates with dA, not dz.
+        heat_integral = compute!(Field(Integral(heat_fts[t_idx], dims = (1, 2))))
+        fw_integral = compute!(Field(Integral(fw_fts[t_idx], dims = (1, 2))))
+        record = (
+            run = run,
+            heat_flux = -interior(heat_integral)[1, 1, 1],
+            fw_flux = interior(fw_integral)[1, 1, 1])
+
+        existing = get(surface_flux_by_time, t, nothing)
+        if isnothing(existing) || run >= existing.run
+            surface_flux_replacements[] += (!isnothing(existing) && run > existing.run) ? 1 : 0
+            surface_flux_by_time[t] = record
+        end
+    end
+end
+
+for t in sort(collect(keys(surface_flux_by_time)))
+    push!(surface_flux_times, t)
+    push!(surface_flux_integrals["heat_flux"], surface_flux_by_time[t].heat_flux)
+    push!(surface_flux_integrals["fw_flux"], surface_flux_by_time[t].fw_flux)
+end
+
+isempty(surface_flux_times) && error("No surface-flux FieldTimeSeries timesteps found.")
+@info "Merged surface-flux timeseries with run-priority deduplication" unique_steps = length(surface_flux_times) replaced_duplicates = surface_flux_replacements[]
+
+dt_in_seconds = vcat(0.0, diff(surface_flux_times))
+surface_flux_cumsum = Dict(
+    "heat_flux" => cumsum(surface_flux_integrals["heat_flux"] .* dt_in_seconds),
+    "fw_flux" => cumsum(surface_flux_integrals["fw_flux"] .* dt_in_seconds))
+
+overlap_start = max(minimum(t_all), minimum(surface_flux_times))
+overlap_end = min(maximum(t_all), maximum(surface_flux_times))
+(overlap_end > overlap_start) || error("No overlapping time window between integral diagnostics and surface flux timeseries.")
+
+target_overlap_idx = findall(t -> overlap_start <= t <= overlap_end, t_all)
+!isempty(target_overlap_idx) || error("No integral times found in overlapping time window.")
+
+t_compare = t_all[target_overlap_idx]
+time_compare_years = t_compare ./ (3600 * 24 * 365)
+heat_flux_cumsum_compare = linear_interpolate_series(t_compare, surface_flux_times, surface_flux_cumsum["heat_flux"])
+fw_flux_cumsum_compare = linear_interpolate_series(t_compare, surface_flux_times, surface_flux_cumsum["fw_flux"])
+
+integral_dt_days = length(t_all) > 1 ? median(diff(t_all)) / 86400 : NaN
+flux_dt_days = length(surface_flux_times) > 1 ? median(diff(surface_flux_times)) / 86400 : NaN
+@info "Using overlapping time window for flux comparisons (flux cumsum interpolated to integral timestamps)" overlap_count = length(target_overlap_idx) overlap_start overlap_end integral_count = length(t_all) flux_count = length(surface_flux_times) integral_dt_days flux_dt_days
+
+fig = Figure(size = (900, 700))
+ax1 = Axis(fig[1, 1], title = "OHC vs ∫ Heat Flux dt", xlabel = "Time (years)", ylabel = "Energy (J)")
+ax3 = Axis(fig[1, 2], title = "OSC vs ∫ Freshwater Flux dt", xlabel = "Time (years)", ylabel = "Freshwater-equivalent (kg)")
+ax5 = Axis(fig[2, 1], title = "OHC Comparison Difference", xlabel = "Time (years)", ylabel = "OHC - ∫HFdt")
+ax6 = Axis(fig[2, 2], title = "OSC Comparison Difference", xlabel = "Time (years)", ylabel = "OSC - ∫FWdt")
+ax2 = Axis(fig[3, 1], title = "Mean Temperature", xlabel = "Time (years)", ylabel = "Temperature (°C)")
+ax4 = Axis(fig[3, 2], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Salinity (psu)")
+
+ohc = ρ₀ * cₚ * sum(T_all, dims=2)[:, 1]
+mean_temperature = sum(T_all, dims=2)[:, 1] ./ sum(V_all, dims=2)[:, 1]
+osc = sum(S_all, dims=2)[:, 1] ./ (35 * ρ₀)
+mean_salinity = sum(S_all, dims=2)[:, 1] ./ sum(V_all, dims=2)[:, 1]
+
+ohc_anomaly = ohc .- ohc[1]
+osc_anomaly = osc .- osc[1]
+ohc_anomaly_compare = ohc[target_overlap_idx] .- ohc[target_overlap_idx[1]]
+osc_anomaly_compare = osc[target_overlap_idx] .- osc[target_overlap_idx[1]]
+heat_flux_cumsum_compare .-= heat_flux_cumsum_compare[1]
+fw_flux_cumsum_compare .-= fw_flux_cumsum_compare[1]
+
+lines!(ax1, time_compare_years, ohc_anomaly_compare, label = "OHC anomaly")
+lines!(ax1, time_compare_years, heat_flux_cumsum_compare, label = "cumsum(∫heat_flux dA · dt)")
+lines!(ax2, time_in_years, mean_temperature .- mean_temperature[1], label = "Mean Temperature anomaly")
+lines!(ax3, time_compare_years, osc_anomaly_compare, label = "OSC anomaly")
+lines!(ax3, time_compare_years, fw_flux_cumsum_compare, label = "cumsum(∫fw_flux dA · dt)")
+lines!(ax4, time_in_years, mean_salinity .- mean_salinity[1], label = "Mean Salinity anomaly")
+
+ohc_difference = ohc_anomaly_compare .- heat_flux_cumsum_compare
+osc_difference = osc_anomaly_compare .- fw_flux_cumsum_compare
+lines!(ax5, time_compare_years, ohc_difference, label = "Difference")
+lines!(ax6, time_compare_years, osc_difference, label = "Difference")
+hlines!(ax5, [0.0], color = :black, linestyle = :dash)
+hlines!(ax6, [0.0], color = :black, linestyle = :dash)
+
+axislegend(ax1, position = :rb)
+axislegend(ax3, position = :rb)
+
+figpath_integrated = joinpath(figdir, "integrated_props_$(resolution).png")
+save(figpath_integrated, fig, px_per_unit=3)
+
+fig = Figure(size = (800, 500))
 ax1 = Axis(fig[1, 1], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
 ax2 = Axis(fig[2, 1], title = "Mean Temperature", xlabel = "Time (years)", ylabel = "Temperature (°C)")
 ax3 = Axis(fig[1, 2], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
 ax4 = Axis(fig[2, 2], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Salinity (psu)")
-ax5 = Axis(fig[3, :], title = "Total Volume", xlabel = "Time (years)", ylabel = "Volume (m³)")
-
-lines!(ax1, time_in_years, 1035*1000*sum(T_all, dims=2)[:,1], label = "OHC")
-lines!(ax2, time_in_years, sum(T_all, dims=2)[:,1]./sum(V_all, dims=2)[:,1], label = "Mean Temperature")
-lines!(ax3, time_in_years, sum(S_all, dims=2)[:,1]./(35*1035), label = "OSC")
-lines!(ax4, time_in_years, sum(S_all, dims=2)[:,1]./sum(V_all, dims=2)[:,1], label = "Mean Salinity")
-lines!(ax5, time_in_years, sum(V_all, dims=2)[:,1], label = "Total Volume")
-
-save(figdir * "integrated_props_$(resolution).png", fig, px_per_unit=3)
-
-fig = Figure(size = (800, 600))
-ax1 = Axis(fig[1, 1], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
-ax2 = Axis(fig[2, 1], title = "Mean Temperature", xlabel = "Time (years)", ylabel = "Temperature (°C)")
-ax3 = Axis(fig[1, 2], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
-ax4 = Axis(fig[2, 2], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Salinity (psu)")
-ax5 = Axis(fig[3, :], title = "Total Volume", xlabel = "Time (years)", ylabel = "Volume (m³)")
 
 allranks_T_z_int = sum(T_z_all, dims=2)[:,1,:]
 allranks_T_z_int_anomaly = allranks_T_z_int .- allranks_T_z_int[1,:]'
 allranks_S_z_int = sum(S_z_all, dims=2)[:,1,:]
 allranks_S_z_int_anomaly = allranks_S_z_int .- allranks_S_z_int[1,:]'
 allranks_V_z_int = sum(V_z_all, dims=2)[:,1,:]
+allranks_V_z_int_anomaly = allranks_V_z_int .- allranks_V_z_int[1,:]'
 
-heatmap!(ax1, time_in_years, depth[1], 1035*1000*allranks_T_z_int_anomaly, label = "OHC", colorrange = (-1e21, 1e21), colormap = :bwr)
-heatmap!(ax2, time_in_years, depth[1], 1035*1000*allranks_T_z_int_anomaly./allranks_V_z_int, label = "Mean Temperature")
-heatmap!(ax3, time_in_years, depth[1], allranks_S_z_int_anomaly./(35*1035), label = "OSC", colorrange = (-1e10, 1e10), colormap = :bwr)
-heatmap!(ax4, time_in_years, depth[1], allranks_S_z_int_anomaly./allranks_V_z_int, label = "Mean Salinity")
-heatmap!(ax5, time_in_years, depth[1], allranks_V_z_int, label = "Total Volume")
+heatmap!(ax1, time_in_years, depth, ρ₀ * cₚ * allranks_T_z_int_anomaly, label = "OHC", colorrange = (-1e21, 1e21), colormap = :bwr)
+heatmap!(ax2, time_in_years, depth, ρ₀ * cₚ * allranks_T_z_int_anomaly ./ allranks_V_z_int, label = "Mean Temperature")
+heatmap!(ax3, time_in_years, depth, allranks_S_z_int_anomaly ./ (35 * ρ₀), label = "OSC", colorrange = (-1e10, 1e10), colormap = :bwr)
+heatmap!(ax4, time_in_years, depth, allranks_S_z_int_anomaly./allranks_V_z_int, label = "Mean Salinity")
 
 ylims!(ax1, -1000, 0)
 ylims!(ax2, -1000, 0)
 ylims!(ax3, -1000, 0)
 ylims!(ax4, -1000, 0)
-ylims!(ax5, -1000, 0)
 
-save(figdir * "integrated_props_z_$(resolution).png", fig, px_per_unit=3)
+figpath_integrated_z = joinpath(figdir, "integrated_props_z_$(resolution).png")
+save(figpath_integrated_z, fig, px_per_unit=3)
+
+@info "Created figure files:" figpath_integrated figpath_integrated_z
 
 # fig = Figure(size = (800, 600))
 # ax1 = Axis(fig[1, 1], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
