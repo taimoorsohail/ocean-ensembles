@@ -10,8 +10,8 @@ const FIGDIR = expanduser("/g/data/v46/txs156/ocean-ensembles-2/figures/")
 # Match RYF_sxtdeg.jl TripolarGrid setup.
 const NX = Int(360 * 12)
 const NY = Int(180 * 12)
-const NZ = Int(75)
-const HALO = (7, 7, 7)
+const NZ = Int(1)
+const HALO = (4, 4, 4)
 const ORCA_HALO = HALO
 const DEPTH = -5500.0
 const ORCA12_SOUTH_ROWS_TO_REMOVE = 43
@@ -146,7 +146,7 @@ function sample_land_points(lon, lat, land; stride = ORCA_LAND_STRIDE)
     return xs, ys
 end
 
-function draw_segmented_line!(ax, xs, ys; color = :black, linewidth = 0.35f0, lon_jump = 140f0, lat_jump = 25f0)
+function draw_segmented_line!(ax, xs, ys; color = :black, linewidth = 0.35f0, lon_jump = 140f0, lat_jump = 25f0, label = "")
     n = length(xs)
     n < 2 && return
 
@@ -158,18 +158,20 @@ function draw_segmented_line!(ax, xs, ys; color = :black, linewidth = 0.35f0, lo
 
         if split
             if k - start_idx >= 2
-                lines!(ax, @view(xs[start_idx:k-1]), @view(ys[start_idx:k-1]); color, linewidth)
+                lines!(ax, @view(xs[start_idx:k-1]), @view(ys[start_idx:k-1]); color, linewidth, label)
             end
             start_idx = k
         end
     end
 
     if n - start_idx + 1 >= 2
-        lines!(ax, @view(xs[start_idx:n]), @view(ys[start_idx:n]); color, linewidth)
+        lines!(ax, @view(xs[start_idx:n]), @view(ys[start_idx:n]); color, linewidth, label)
     end
 end
 
-function draw_curvilinear_grid!(ax, lon, lat; row_stride, col_stride, color = :black, linewidth = 0.35f0)
+function draw_curvilinear_grid!(ax, lon, lat; row_stride, col_stride,
+                               color = :black, linewidth = 0.35f0, label = "")
+
     nrows, ncols = size(lon)
 
     rows = collect(1:row_stride:nrows)
@@ -178,12 +180,25 @@ function draw_curvilinear_grid!(ax, lon, lat; row_stride, col_stride, color = :b
     cols = collect(1:col_stride:ncols)
     cols[end] != ncols && push!(cols, ncols)
 
+    first = true
+
     for row in rows
-        draw_segmented_line!(ax, vec(@view(lon[row, :])), vec(@view(lat[row, :])); color, linewidth)
+        draw_segmented_line!(ax,
+            vec(@view(lon[row, :])),
+            vec(@view(lat[row, :]));
+            color, linewidth,
+            label = first ? label : nothing
+        )
+        first = false
     end
 
     for col in cols
-        draw_segmented_line!(ax, vec(@view(lon[:, col])), vec(@view(lat[:, col])); color, linewidth)
+        draw_segmented_line!(ax,
+            vec(@view(lon[:, col])),
+            vec(@view(lat[:, col]));
+            color, linewidth,
+            label = nothing
+        )
     end
 end
 
@@ -196,59 +211,43 @@ function make_comparison_figure(orca_lon, orca_lat, orca_land, tripolar_lon, tri
                    ylabel = "Latitude (deg)",
                    aspect = DataAspect())
 
-    ax_tripolar = Axis(fig[1, 2];
-                       title = "TripolarGrid Output (Nx=$NX, Ny=$NY, Nz=$NZ, halo=$HALO)",
-                       xlabel = "Longitude (deg)",
-                       ylabel = "Latitude (deg)",
-                       aspect = DataAspect())
-
     land_x, land_y = sample_land_points(orca_lon, orca_lat, orca_land)
     scatter!(ax_orca, land_x, land_y; markersize = 1.5, color = (:gray60, 0.85))
+
     draw_curvilinear_grid!(ax_orca, orca_lon, orca_lat;
                            row_stride = ORCA_ROW_STRIDE,
                            col_stride = ORCA_COL_STRIDE,
                            color = (:black, 0.42),
-                           linewidth = 0.35)
+                           linewidth = 2,
+                           label = "ORCA12Grid")
 
-    draw_curvilinear_grid!(ax_tripolar, tripolar_lon, tripolar_lat;
+    draw_curvilinear_grid!(ax_orca, tripolar_lon, tripolar_lat;
                            row_stride = TRIPOLAR_ROW_STRIDE,
                            col_stride = TRIPOLAR_COL_STRIDE,
                            color = (:dodgerblue4, 0.6),
-                           linewidth = 0.45)
+                           linewidth = 2,
+                           label = "Tripolar Grid")
 
-    for ax in (ax_orca, ax_tripolar)
-        xlims!(ax, -180, 180)
-        ylims!(ax, -90, 90)
-    end
-
-    Label(fig[0, 1:2],
-          "ORCA source: ORCAGrid(dataset=$dataset_name, halo=$ORCA_HALO)\nTripolar setup copied from RYF_sxtdeg.jl: size=($NX, $NY, $NZ), halo=$HALO, depth=$DEPTH m",
-          tellwidth = false,
-          fontsize = 15)
+    xlims!(ax_orca, -180, 180)
+    ylims!(ax_orca, -90, 90)
+    axislegend(ax_orca, position = :rb)
 
     return fig
 end
 
-function main()
-    @info "Building ORCAGrid and extracting land mask..."
-    orca_lon, orca_lat, orca_land, dataset = build_orca12_lon_lat_land()
+@info "Building ORCAGrid and extracting land mask..."
+orca_lon, orca_lat, orca_land, dataset = build_orca12_lon_lat_land()
 
-    @info "Building TripolarGrid coordinates..." NX NY NZ HALO DEPTH
-    tripolar_grid = build_tripolar_grid()
-    tripolar_lon, tripolar_lat = center_lon_lat(tripolar_grid)
+@info "Building TripolarGrid coordinates..." NX NY NZ HALO DEPTH
+tripolar_grid = build_tripolar_grid()
+tripolar_lon, tripolar_lat = center_lon_lat(tripolar_grid)
 
-    @info "Creating comparison figure..."
-    fig = make_comparison_figure(orca_lon, orca_lat, orca_land, tripolar_lon, tripolar_lat;
-                                 dataset_name = string(typeof(dataset)))
+@info "Creating comparison figure..."
+fig = make_comparison_figure(orca_lon, orca_lat, orca_land, tripolar_lon, tripolar_lat;
+                                dataset_name = string(typeof(dataset)))
 
-    mkpath(FIGDIR)
-    outfile = joinpath(FIGDIR, "orca12_vs_tripolar_grid_Nx$(NX)_Ny$(NY)_Nz$(NZ)_halo$(HALO[1]).png")
-    save(outfile, fig, px_per_unit = 2)
+mkpath(FIGDIR)
+outfile = joinpath(FIGDIR, "orca12_vs_tripolar_grid_Nx$(NX)_Ny$(NY)_Nz$(NZ)_halo$(HALO[1]).png")
+save(outfile, fig, px_per_unit = 2)
 
-    @info "Saved ORCA12 vs Tripolar grid comparison." outfile
-    return nothing
-end
-
-if abspath(PROGRAM_FILE) == @__FILE__
-    main()
-end
+@info "Saved ORCA12 vs Tripolar grid comparison." outfile

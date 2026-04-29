@@ -351,7 +351,7 @@ end
 
 @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
                                                               dir = output_path,
-                                                              schedule = AveragedTimeInterval((365/12)days),
+                                                              schedule = AveragedTimeInterval((365/48)days),
                                                               filename = "global_surface_fluxes_sxtdeg_RYF_run" * run_id,
                                                               with_halos = false,
                                                               overwrite_existing = true,

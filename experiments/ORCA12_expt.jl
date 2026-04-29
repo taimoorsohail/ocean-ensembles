@@ -88,8 +88,19 @@ const z_surf = z_faces.cᵃᵃᶠ(Nz)
 @info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
 
 @info "Defining ORCA12 grid"
-south_rows_to_remove = 43
-grid = ORCAGrid(arch; dataset=ORCA12(), Nz, z=z_faces, halo=(4, 4, 4), south_rows_to_remove, dir = data_path)
+south_rows_to_remove = 0
+grid_12deg = ORCAGrid(arch; dataset=ORCA12(), Nz, z=z_faces, halo=(7, 7, 7), south_rows_to_remove, dir = data_path)
+
+underlying_grid = resample_grid(grid_12deg; size=(360*6, 180*6))
+
+ORCA12metadata = Metadatum(:bottom_height, dataset=ORCA12(), dir = data_path)
+
+bottom_height = regrid_bathymetry(underlying_grid, ORCA12metadata;
+                                minimum_depth = 15,
+                                interpolation_passes = 25,
+                                major_basins = 4)
+
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
 ### Restoring
 
