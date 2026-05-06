@@ -23,7 +23,7 @@ module load foss/2022a UCX-CUDA/1.16.0-CUDA-12.4.1 Julia/1.10.8
 
 cd ~/uom/ocean-ensembles/experiments/submission_scripts/
 
-srun --cpu-bind=socket -np 4 julia --project ../RYF_sxtdeg.jl --arch GPU --stop_time $target \
+srun --cpu-bind=socket -n 4 julia --project ../RYF_sxtdeg.jl --arch GPU --stop_time $target \
 > ../run_logs/GPU_RYF1_6dg_${count}.stdout \
 2> ../run_logs/GPU_RYF1_6dg_${count}.stderr
 
