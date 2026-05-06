@@ -1,27 +1,34 @@
 using CairoMakie
 using Oceananigans  # From local
+using Oceananigans.Operators: Az
+using OceanEnsembles
 using Statistics
 using JLD2
 using Glob
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+outputpath = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
+fig_dir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 resolution = "onedeg"
 
 # Example: get all matching files in a folder
-files = glob("global_tot*$(resolution)_RYF_iteration*.jld2", output_path)
+files_totint = glob("global_tot*$(resolution)_RYF_run*.jld2", outputpath)
+files_surface = glob("*forcing_field*$(resolution)_RYF_run*.jld2", outputpath)
 
+files = vcat(files_totint, files_surface)
+run_id(path) = parse(Int, match(r"run(\d+)", path).captures[1])
+sort!(files_surface; by = run_id)
 # --- Extract iteration numbers ---
-iterations = [parse(Int, match(r"iteration(\d+)", f).captures[1]) 
-              for f in files if occursin(r"iteration\d+", f)]
+iterations = [parse(Int, match(r"run(\d+)", f).captures[1]) 
+              for f in files if occursin(r"run\d+", f)]
 unique_iterations = sort(unique(iterations))
 
 tot_files = []
 
 for iteration in unique_iterations
-    pattern = "global_tot_integrals_$(resolution)_RYF_iteration$(iteration).jld2"
-    matching_files = glob(pattern, output_path)
+    it_id = lpad(iteration, 4, '0')
+    pattern = "global_tot_integrals_$(resolution)_RYF_run$(it_id).jld2"
+    matching_files = glob(pattern, outputpath)
     if !isempty(matching_files)
         push!(tot_files, matching_files[1])
     else
@@ -30,33 +37,31 @@ for iteration in unique_iterations
 
 end
 
-vars_int = [ "T_totintegral",
+vars_totint = ["T_totintegral",
  "S_totintegral",
+ "e_totintegral",
  "u_totintegral",
  "v_totintegral",
  "w_totintegral"]
+ vols_totint = ["total_volume_c",
+ "total_volume_x",
+ "total_volume_y"]
+ time = ["t"]
 
- vars_avg = [ "T_avg",
- "S_avg",
- "u_avg",
- "v_avg",
- "w_avg"]
-
-vars = vcat(vars_int, vars_avg)
+vars = vcat(vars_totint, vols_totint, time)
 
 function create_dict(vars, path)
     dicts = Dict()
     data = jldopen(path)
     for var in vars
         try
-            # Surface
             grp = data["timeseries/" * var]
             num_keys = filter(k -> tryparse(Int, k) !== nothing, keys(grp))
             timesteps = sort(parse.(Int, num_keys))
             values = [grp[string(t)] for t in timesteps]
             dicts[var] = (
                 timesteps = timesteps,
-                values = [only(v) for v in values]
+                values = only.(values)
 )
         catch e
             if e isa KeyError
@@ -68,6 +73,49 @@ function create_dict(vars, path)
     end
     close(data)
     return dicts
+end
+
+function surface_height_timeseries(surface_files, grid)
+    all_t = Int[]
+    all_mean = Float64[]
+    η = Field{Center, Center, Nothing}(grid)
+    one = Field{Center, Center, Nothing}(grid)
+    set!(one, 1)
+    area_total = (Integral(one * Az, dims = (1, 2)) |> Field)[1, 1, 1]
+
+    for file in surface_files
+        data = jldopen(file)
+        haskey(data, "timeseries/surface_height") || begin
+            close(data)
+            @warn "Skipping $file: timeseries/surface_height not found."
+            continue
+        end
+
+        ts_keys = sort(parse.(Int, collect(keys(data["timeseries/t"]))))
+        for key in ts_keys
+            tval = round(Int, Float64(data["timeseries/t/$key"]))
+            raw = data["timeseries/surface_height/$key"]
+            η_xy = ndims(raw) == 3 ? raw[:, :, 1] : raw
+            set!(η, η_xy)
+            η_norm_int = (Integral((η * Az) / area_total, dims = (1, 2)) |> Field)[1, 1, 1]
+            push!(all_t, tval)
+            push!(all_mean, Float64(η_norm_int))
+        end
+        close(data)
+    end
+
+    order = sortperm(all_t)
+    all_t = all_t[order]
+    all_mean = all_mean[order]
+
+    rev_t = reverse(all_t)
+    rev_mean = reverse(all_mean)
+    uniq_idx = unique(i -> rev_t[i], eachindex(rev_t))
+
+    t_unique = reverse(rev_t[uniq_idx])
+    mean_unique = reverse(rev_mean[uniq_idx])
+
+    return t_unique ./ (365 * 24 * 60 * 60), mean_unique
 end
 
 @info "I am loading the surface" 
@@ -98,112 +146,39 @@ for var in vars
     )
 end
 
-T_avg = filter(!isnan,concatted_timeseries["T_avg"].values)
-S_avg = filter(!isnan,concatted_timeseries["S_avg"].values)
-u_avg = filter(!isnan,concatted_timeseries["u_avg"].values)
-v_avg = filter(!isnan,concatted_timeseries["v_avg"].values)
-w_avg = filter(!isnan,concatted_timeseries["w_avg"].values)
+totint = Dict()
 
-T_int = filter(!isnan,concatted_timeseries["T_totintegral"].values)
-S_int = filter(!isnan,concatted_timeseries["S_totintegral"].values)
-u_int = filter(!isnan,concatted_timeseries["u_totintegral"].values)
-v_int = filter(!isnan,concatted_timeseries["v_totintegral"].values)
-w_int = filter(!isnan,concatted_timeseries["w_totintegral"].values)
+for var in vars
+    totint[var] = concatted_timeseries[var].values
+end
+time_day = totint["t"]/(3600*24)
+time_in_years = time_day/365
+isempty(files_surface) && error("No forcing surface files found in $outputpath.")
+grid_run = lpad(run_id(files_surface[1]), 4, '0')
+grid_prefix = outputpath * "global_75_fields_$(resolution)_RYF_run$(grid_run)"
+if !isfile(grid_prefix * ".jld2")
+    grid_prefix = outputpath * "global_75_fields_$(resolution)_RYF_run0001"
+end
+surface_grid = create_grid(grid_prefix; gridtype = "TripolarGrid")
+surface_time_in_years, surface_height_mean = surface_height_timeseries(files_surface, surface_grid)
 
-time_day = 1:size(filter(!isnan,T_avg))[1]
-time_year = time_day/365
+fig = Figure(size = (1000, 700))
+ax1 = Axis(fig[1, 1], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
+ax2 = Axis(fig[2, 1], title = "Mean Temperature", xlabel = "Time (years)", ylabel = "Temperature (°C)")
+ax3 = Axis(fig[1, 2], title = "OSC", xlabel = "Time (years)", ylabel = "OFWC (kg)")
+ax4 = Axis(fig[2, 2], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Salinity (psu)")
+ax5 = Axis(fig[3, 1], title = "Total Volume", xlabel = "Time (years)", ylabel = "Volume (m³)")
+ax6 = Axis(fig[3, 2], title = "Surface Height (Σ(ηA/ΣA))", xlabel = "Time (years)", ylabel = "Σ(ηA/ΣA)")
 
-# T_avg2 = filter(!isnan,slice["T_avg"])
-# S_avg2 = filter(!isnan,slice["S_avg"])
-# u_avg2 = filter(!isnan,slice["u_avg"])
-# v_avg2 = filter(!isnan,slice["v_avg"])
-# w_avg2 = filter(!isnan,slice["w_avg"])
+lines!(ax1, time_in_years, 1035*1000*totint[vars[1]], label = "OHC")
+lines!(ax2, time_in_years, totint[vars[1]]./totint[vars[7]], label = "Mean Temperature")
+lines!(ax3, time_in_years, (1.3358605008598876e18.-totint[vars[2]])./(35), label = "OSC")
+lines!(ax4, time_in_years, totint[vars[2]]./totint[vars[7]], label = "Mean Salinity")
+lines!(ax5, time_in_years, 0.5*(totint[vars[4]].^2+totint[vars[5]].^2+totint[vars[6]].^2), label = "Total KE analog")
+lines!(ax6, surface_time_in_years[2:end], surface_height_mean[2:end], label = "GMSL (m)")
 
-# T_int2 = filter(!isnan,slice["T_totintegral"])
-# S_int2 = filter(!isnan,slice["S_totintegral"])
-# u_int2 = filter(!isnan,slice["u_totintegral"])
-# v_int2 = filter(!isnan,slice["v_totintegral"])
-# w_int2 = filter(!isnan,slice["w_totintegral"])
+save(fig_dir * "integrated_props_$(resolution).png", fig, px_per_unit=3)
 
-# time_day2 = 1:size(filter(!isnan,T_avg2))[1]
-# time_year2 = time_day2
+### Now we work on the heat budget!
 
-fig = Figure(size = (1200, 800))
-# 1. Temperature
-ax1 = Axis(fig[1, 1:3], title = "Temperature", xlabel = "Year", ylabel = "Average Temperature (°C)")
-lines!(ax1, time_year, filter(!isnan,T_avg), label = "Checkpoint")
-# lines!(ax1, time_year2, filter(!isnan,T_avg2), label = "No Checkpoint")
-xlims!(ax1, 0, maximum(time_year))
-ylims!(ax1, minimum(T_avg), maximum(T_avg))
 
-# 2. Salinity
-ax2 = Axis(fig[1, 4:6], title = "Salinity", xlabel = "Year", ylabel = "Average Salinity (psu)")
-lines!(ax2, time_year, filter(!isnan,S_avg), label = "Checkpoint")
-# lines!(ax2, time_year2, filter(!isnan,S_avg2), label = "No Checkpoint")
-xlims!(ax2, 0, maximum(time_year))
-ylims!(ax2, minimum(S_avg), maximum(S_avg))
-
-# 3. U velocity
-ax3 = Axis(fig[2, 1:2], title = "U velocity", xlabel = "Year", ylabel = "Average U (m/s)")
-lines!(ax3, time_year, filter(!isnan,u_avg), label = "Checkpoint")
-# lines!(ax3, time_year2, filter(!isnan,u_avg2), label = "No Checkpoint")
-xlims!(ax3, 0, maximum(time_year))
-ylims!(ax3, minimum(u_avg), maximum(u_avg))
-
-# 4. V velocity
-ax4 = Axis(fig[2, 3:4], title = "V velocity", xlabel = "Year", ylabel = "Average V (m/s)")
-lines!(ax4, time_year, filter(!isnan,v_avg), label = "Checkpoint")
-# lines!(ax4, time_year2, filter(!isnan,v_avg2), label = "No Checkpoint")
-xlims!(ax4, 0, maximum(time_year))
-ylims!(ax4, minimum(v_avg), maximum(v_avg))
-
-# 5. W velocity
-ax5 = Axis(fig[2, 5:6], title = "W velocity", xlabel = "Year", ylabel = "Average W (m/s)")
-lines!(ax5, time_year, filter(!isnan,w_avg), label = "Checkpoint")
-# lines!(ax5, time_year2, filter(!isnan,w_avg2), label = "No Checkpoint")
-xlims!(ax5, 0, maximum(time_year))
-ylims!(ax5, minimum(w_avg), maximum(w_avg))
-
-Legend(fig[1, 1], ax1)
-
-save(figdir * "average_global_vars_$(resolution).png", fig, px_per_unit=3)
-
-fig = Figure(size = (1200, 800))
-# 1. Temperature
-ax1 = Axis(fig[1, 1:3], title = "Temperature", xlabel = "Year", ylabel = "Integrated Temperature (°C)")
-lines!(ax1, time_year, filter(!isnan,T_int), label = "Checkpoint")
-# lines!(ax1, time_year2, filter(!isnan,T_int2), label = "No Checkpoint")
-xlims!(ax1, 0, maximum(time_year))
-ylims!(ax1, minimum(T_int), maximum(T_int))
-
-# 2. Salinity
-ax2 = Axis(fig[1, 4:6], title = "Salinity", xlabel = "Year", ylabel = "Integrated Salinity (psu)")
-lines!(ax2, time_year, filter(!isnan,S_int), label = "Checkpoint")
-# lines!(ax2, time_year2, filter(!isnan,S_int2), label = "No Checkpoint")
-xlims!(ax2, 0, maximum(time_year))
-ylims!(ax2, minimum(S_int), maximum(S_int))
-
-# 3. U velocity
-ax3 = Axis(fig[2, 1:2], title = "U velocity", xlabel = "Year", ylabel = "Integrated U (m/s)")
-lines!(ax3, time_year, filter(!isnan,u_int), label = "Checkpoint")
-# lines!(ax3, time_year2, filter(!isnan,u_int2), label = "No Checkpoint")
-xlims!(ax3, 0, maximum(time_year))
-ylims!(ax3, minimum(u_int), maximum(u_int))
-
-# 4. V velocity
-ax4 = Axis(fig[2, 3:4], title = "V velocity", xlabel = "Year", ylabel = "Integrated V (m/s)")
-lines!(ax4, time_year, filter(!isnan,v_int), label = "Checkpoint")
-# lines!(ax4, time_year2, filter(!isnan,v_int2), label = "No Checkpoint")
-xlims!(ax4, 0, maximum(time_year))
-ylims!(ax4, minimum(v_int), maximum(v_int))
-
-# 5. W velocity
-ax5 = Axis(fig[2, 5:6], title = "W velocity", xlabel = "Year", ylabel = "Integrated W (m/s)")
-lines!(ax5, time_year, filter(!isnan,w_int), label = "Checkpoint")
-# lines!(ax5, time_year2, filter(!isnan,w_int2), label = "No Checkpoint")
-xlims!(ax5, 0, maximum(time_year))
-ylims!(ax5, minimum(w_int), maximum(w_int))
-
-Legend(fig[1, 1], ax1)
-
-save(figdir * "int_global_vars_$(resolution).png", fig, px_per_unit=3)

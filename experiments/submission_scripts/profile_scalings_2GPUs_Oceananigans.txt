@@ -1,0 +1,25 @@
+#!/bin/bash
+#PBS -P v46
+#PBS -q gpuvolta
+#PBS -l walltime=04:00:00
+#PBS -l mem=256GB
+#PBS -l storage=gdata/v46+gdata/hh5+gdata/e14+scratch/v46+scratch/v45+scratch/e14
+#PBS -l wd
+#PBS -l ncpus=24 
+#PBS -l ngpus=2 
+#PBS -l jobfs=180GB
+#PBS -W umask=027
+#PBS -j n 
+#PBS -N ocnprofile_scalings_2GPU
+
+## Where the outputs go
+#PBS -o /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_2GPU_ocngns.o
+#PBS -e /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_2GPU_ocngns.e
+
+mpiexec -np 2 bash -c '
+  nsys profile \
+    --trace=cuda,mpi \
+    --force-overwrite true \
+    --output=/g/data/v46/txs156/ocean-ensembles/experiments/run_logs/my_profile_2GPUs_ocngns_${OMPI_COMM_WORLD_RANK} \
+    julia --project  --check-bounds=no ../scaling_Oceananigans.jl > /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_2GPU_ocngns.stdout 2> /g/data/v46/txs156/ocean-ensembles/experiments/run_logs/profile_scalings_2GPU_ocngns.stderr
+'

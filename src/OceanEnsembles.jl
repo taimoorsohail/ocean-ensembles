@@ -1,9 +1,10 @@
 module OceanEnsembles
 
 export basin_mask, ocean_tracer_content!, volume_transport!,
-       combine_ranks, identify_combination_targets
+       combine_ranks, identify_combination_targets, create_grid, section_mask,
+       apply_polygon_mask!
 
-using ClimaOcean, Oceananigans, Glob
+using NumericalEarth, Oceananigans, Glob
 
 # using PyCall, Conda
 
@@ -38,7 +39,7 @@ using .OutputWrangling
         
 #     @compile_workload begin
 #         arch = CPU()
-#         r_faces = ClimaOcean.exponential_z_faces(; Nz, depth=5000, h=12.43)
+#         r_faces = NumericalEarth.exponential_z_faces(; Nz, depth=5000, h=12.43)
 #         underlying_grid = Oceananigans.OrthogonalSphericalShellGrids.TripolarGrid(arch;
 #                                         size = (Nx, Ny, Nz),
 #                                         z = r_faces,
