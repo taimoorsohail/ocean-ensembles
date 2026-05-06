@@ -31,9 +31,6 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 arch = CPU()
 
-# total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
-# localrank = Integer(arch.local_rank)
-
 # ### Download necessary files to run the code
 
 # ### ECCO files
@@ -117,7 +114,7 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 # output number of substeps
 # free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=12minutes)
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+free_surface = SplitExplicitFreeSurface(grid; substeps=70)
 momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
 
@@ -159,7 +156,7 @@ set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), 
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), include_rivers_and_icebergs=true)
+atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory=100, include_rivers_and_icebergs=true)
 
 # ### Coupled simulation
 
@@ -173,7 +170,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), in
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=120minutes)
+simulation = Simulation(coupled_model; Δt=10minutes)
 
 # ### A progress messenger
 #
@@ -296,8 +293,6 @@ depths = [0,-100, -500, -1000, -2000]
 
 symbols_slice = Symbol[]  # empty vector to store symbols
 
-@show run_id = lpad(ARGS[4], 4, '0')
-
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
     slice_level = ind_pln
@@ -305,7 +300,7 @@ for (ind, depth) in enumerate(depths)
     @show slice_level
     @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                                 dir = output_path,
-                                                                schedule = AveragedTimeInterval((365/4)days),
+                                                                schedule = IterationInterval(1),#AveragedTimeInterval((365/12)days),
                                                                 filename = "global_" * string(Integer(round(slice_level))) * "_fields_threedeg_RYF",
                                                                 indices = (:, :, ind_pln),
                                                                 with_halos = false,
@@ -319,7 +314,7 @@ end
 
 @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
                                               dir = output_path,
-                                              schedule = AveragedTimeInterval((365/4)days),
+                                              schedule = IterationInterval(1),#AveragedTimeInterval((365/12)days),
                                               filename = "global_ssh_fields_threedeg_RYF",
                                               including = [:buoyancy, :closure],
                                               with_halos = false,
@@ -328,7 +323,7 @@ end
 
 @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
                                                               dir = output_path,
-                                                              schedule = AveragedTimeInterval((365/4)days),
+                                                              schedule = IterationInterval(1),#AveragedTimeInterval((365/48)days),
                                                               filename = "global_surface_fluxes_threedeg_RYF",
                                                               with_halos = false,
                                                               overwrite_existing = true,
@@ -336,7 +331,7 @@ end
 
 @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
                                                    dir = output_path,
-                                                   schedule = AveragedTimeInterval((365/4)days),
+                                                   schedule = AveragedTimeInterval((365/48)days),
                                                    filename = "global_tot_integrals_threedeg_RYF",
                                                    overwrite_existing = true)
 
@@ -344,17 +339,17 @@ end
 
 ################################### START CHECKPOINTING ######################################
 
-# @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
-#                                                               schedule = TimeInterval((334)days),  
-#                                                               dir = output_path, 
-#                                                               prefix="RYF_threedeg_checkpoint,"
-#                                                               overwrite_existing = true,
-#                                                               cleanup = false)
+@time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
+                                                              schedule = TimeInterval((365/12)days),  
+                                                              dir = output_path, 
+                                                              prefix="RYF_threedeg_checkpoint",
+                                                              overwrite_existing = true,
+                                                              cleanup = false)
 
 ################################### END CHECKPOINTING ######################################
 
 @info "Running Simulation"
 
-simulation.Δt = 120minutes
+simulation.Δt = 10minutes
 simulation.stop_time = 380days
 run!(simulation)

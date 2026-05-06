@@ -35,23 +35,7 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 # Argument is provided by the submission script!
 
-if isempty(ARGS)
-    println("No arguments provided. Please enter architecture (CPU/GPU):")
-    arch_input = readline()
-    if arch_input == "GPU"
-        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    elseif arch_input == "CPU"
-        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    else
-        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
-    end
-elseif ARGS[2] == "GPU" 
-    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-elseif ARGS[2] == "CPU"
-    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
-end    
+arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
 
 total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 localrank = Integer(arch.local_rank)
@@ -61,7 +45,8 @@ localrank = Integer(arch.local_rank)
 # ### ECCO files
 @info "Downloading/checking input data"
 
-dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 4, 1)), collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 4, 1)),
+             collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
 
 @info "We download the 1990-1991 data for an RYF implementation"
 
@@ -76,10 +61,9 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360*6)
-Ny = Integer(180*6)
-ny = div(Ny, total_ranks)
-Nz = Integer(75)
+Nx = Integer(360/3)
+Ny = Integer(180/3)
+Nz = Integer(75/3)
 
 @info "Defining vertical z faces"
 depth = -5500.0 # Depth of the ocean in meters
@@ -93,7 +77,7 @@ const z_surf = z_faces.cᵃᵃᶠ(Nz)
 underlying_grid = TripolarGrid(arch;
                             size = (Nx, Ny, Nz),
                             z = z_faces,
-                            halo = (7, 7, 7))
+                            halo = (7,7,4))
 
 @info "Defining bottom bathymetry"
 
@@ -102,7 +86,7 @@ NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                 minimum_depth = 15,
-                                interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
                                 major_basins = 4)
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
@@ -139,7 +123,7 @@ closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 # output number of substeps
 # free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=12minutes)
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=70)
+free_surface = SplitExplicitFreeSurface(grid; substeps=10)
 momentum_advection = WENOVectorInvariant()
 tracer_advection   = WENO(order = 7)
 
@@ -195,7 +179,7 @@ atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory=100, include
 @info "Defining coupled model"
 @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
-simulation = Simulation(coupled_model; Δt=10minutes)
+simulation = Simulation(coupled_model; Δt=120minutes)
 
 # ### A progress messenger
 #
@@ -253,6 +237,7 @@ outputs = merge(tracers, velocities)
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
 surface_forcing = (; heat_flux = net_ocean_heat_flux(simulation.model), 
                     fw_flux = net_ocean_freshwater_flux(simulation.model))
+
 
 @info "Defining total integral outputs"
 
@@ -327,7 +312,7 @@ for (ind, depth) in enumerate(depths)
     @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                                 dir = output_path,
                                                                 schedule = IterationInterval(1),#AveragedTimeInterval((365/12)days),
-                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id,
+                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_threedeg_RYF_run" * run_id,
                                                                 indices = (:, :, ind_pln),
                                                                 with_halos = false,
                                                                 including = [:buoyancy, :closure],
@@ -341,7 +326,7 @@ end
 @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
                                               dir = output_path,
                                               schedule = IterationInterval(1),#AveragedTimeInterval((365/12)days),
-                                              filename = "global_ssh_fields_sxtdeg_RYF_run" * run_id,
+                                              filename = "global_ssh_fields_threedeg_RYF_run" * run_id,
                                               including = [:buoyancy, :closure],
                                               with_halos = false,
                                               overwrite_existing = true,
@@ -350,7 +335,7 @@ end
 @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
                                                               dir = output_path,
                                                               schedule = IterationInterval(1),#AveragedTimeInterval((365/48)days),
-                                                              filename = "global_surface_fluxes_sxtdeg_RYF_run" * run_id,
+                                                              filename = "global_surface_fluxes_threedeg_RYF_run" * run_id,
                                                               with_halos = false,
                                                               overwrite_existing = true,
                                                               array_type = Array{Float32})
@@ -358,7 +343,7 @@ end
 @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
                                                    dir = output_path,
                                                    schedule = AveragedTimeInterval((365/48)days),
-                                                   filename = "global_tot_integrals_sxtdeg_RYF_run" * run_id,
+                                                   filename = "global_tot_integrals_threedeg_RYF_run" * run_id,
                                                    overwrite_existing = true)
 
 ################################### END OUTPUTTING ######################################
@@ -368,7 +353,7 @@ end
 @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
                                                               schedule = TimeInterval((365/12)days),  
                                                               dir = output_path, 
-                                                              prefix="RYF_sxtdeg_checkpoint_rank$localrank",
+                                                              prefix="RYF_threedeg_checkpoint_rank$localrank",
                                                               overwrite_existing = true,
                                                               cleanup = false)
 
@@ -376,11 +361,6 @@ end
 
 @info "Running Simulation"
 
-simulation.Δt = 10minutes
-simulation.stop_time = parse(Int,ARGS[4]) * 11 * (365/12)days
-
-if parse(Int,ARGS[4]) > 1
-    run!(simulation, pickup=true, checkpoint_at_end=true)
-else
-    run!(simulation, pickup=false, checkpoint_at_end=true)
-end
+simulation.Δt = 120minutes
+simulation.stop_time = 380days
+run!(simulation)
