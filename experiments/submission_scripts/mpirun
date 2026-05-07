@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -f "${script_dir}/jll_runtime_env.sh" ]; then
+  # shellcheck disable=SC1091
+  source "${script_dir}/jll_runtime_env.sh"
+fi
+
+exec julia --project="${script_dir}" -e '
+using MPI
+run(`$(MPI.mpiexec()) $(ARGS)`)
+' -- "$@"
