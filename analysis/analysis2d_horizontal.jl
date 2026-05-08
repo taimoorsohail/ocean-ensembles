@@ -1,13 +1,14 @@
 using CairoMakie
-using GeoMakie
 using JLD2
 using Glob
 using OceanEnsembles
 using Oceananigans
 using Oceananigans.Fields: location
 
-const OUTPUT_PATH = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-const FIGDIR = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+with_trailing_slash(path) = endswith(path, Base.Filesystem.path_separator) ? path : path * Base.Filesystem.path_separator
+
+const OUTPUT_PATH = with_trailing_slash(expanduser(get(ENV, "OUTPUT_PATH", "/home/tsohail/uom/ocean-ensembles/outputs/")))
+const FIGDIR = with_trailing_slash(expanduser(get(ENV, "FIGDIR", "/home/tsohail/uom/ocean-ensembles/figures/")))
 const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60
 const VIDEO_FRAMERATE = 12 # 12 frames per second for all videos

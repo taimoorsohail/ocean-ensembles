@@ -43,25 +43,36 @@ figdir = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
 
 # Argument is provided by the submission script!
 
-if isempty(ARGS)
-    println("No arguments provided. Please enter architecture (CPU/GPU):")
-    arch_input = readline()
-    if arch_input == "GPU"
-        select_local_cuda_device!()
-        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    elseif arch_input == "CPU"
-        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+function get_arg(flag::String, default::Union{Nothing,String}=nothing)
+    i = findfirst(==(flag), ARGS)
+    if i === nothing
+        return default
+    elseif i == length(ARGS)
+        error("Missing value for $flag")
     else
-        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
+        return ARGS[i + 1]
     end
-elseif ARGS[2] == "GPU" 
-    select_local_cuda_device!()
-    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-elseif ARGS[2] == "CPU"
-    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+end
+
+arch_str = get_arg("--arch")
+if arch_str === nothing
+    println("No architecture provided. Please enter architecture (CPU/GPU):")
+    arch_str = readline()
+end
+
+run_str = get_arg("--run")
+if run_str === nothing
+    println("No run number provided. Please enter run number:")
+    run_str = readline()
+end
+
+if arch_str == "GPU"
+    arch = GPU()
+elseif arch_str == "CPU"
+    arch = CPU()
 else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
-end    
+    error("Invalid architecture. Must be 'CPU' or 'GPU'.")
+end
 
 total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
 localrank = Integer(arch.local_rank)
@@ -327,7 +338,7 @@ depths = [0,-100, -500, -1000, -2000]
 
 symbols_slice = Symbol[]  # empty vector to store symbols
 
-@show run_id = lpad(parse(Int,ARGS[4]), 4, '0')
+@show run_id = lpad(parse(Int, run_str), 4, '0')
 
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
@@ -385,10 +396,10 @@ end
 @info "Running Simulation"
 
 simulation.Δt = 10minutes
-simulation.stop_time = parse(Int,ARGS[4]) * 11 * (365/12)days
+simulation.stop_time = parse(Int, run_str) * 11 * (365/12)days
 
-if parse(Int,ARGS[4]) > 1
+if parse(Int, run_str) > 1
     run!(simulation, pickup=true, checkpoint_at_end=true)
 else
-    run!(simulation, pickup=true, checkpoint_at_end=true)
+    run!(simulation, pickup=false, checkpoint_at_end=true)
 end
