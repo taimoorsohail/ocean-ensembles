@@ -15,6 +15,33 @@ const VIDEO_FRAMERATE = 12 # 12 frames per second for all videos
 const TARGET_DEPTH_LEVELS = [75, 57, 37, 27, 17] # surface -> deeper
 const PROGRESS_UPDATES = 20
 
+function copy_files_to_tempdir(files::Vector{String}; prefix::String)
+    copy_dir = mktempdir(; prefix)
+    copied = String[]
+
+    try
+        for file in files
+            dest = joinpath(copy_dir, basename(file))
+            cp(file, dest; force = true)
+            push!(copied, dest)
+        end
+    catch
+        rm(copy_dir; recursive = true, force = true)
+        rethrow()
+    end
+
+    @info "Copied analysis inputs." source_files = length(files) copy_dir
+    return with_trailing_slash(copy_dir), copied
+end
+
+function cleanup_copied_outputs!(copy_dir::Union{Nothing, String})
+    if copy_dir !== nothing && isdir(copy_dir)
+        rm(copy_dir; recursive = true, force = true)
+        @info "Deleted copied analysis inputs." copy_dir
+    end
+    return nothing
+end
+
 const VAR_TITLES = Dict(
     "T" => "Temperature (degC)",
     "S" => "Salinity (g/kg)",
@@ -101,7 +128,7 @@ function load_grid_from_output_file(filepath::AbstractString)
     return grid
 end
 
-function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterations::Vector{Int})
+function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterations::Vector{Int}; path::AbstractString = OUTPUT_PATH)
     all_depth_times = Vector{Vector{Float64}}()
     all_depth_data = Vector{Vector{Matrix{Float32}}}()
     is_speed = var == "speed"
@@ -115,7 +142,7 @@ function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterat
 
         for (iter_index, iteration) in enumerate(iterations)
             run = lpad(string(iteration), 4, '0')
-            filepath = OUTPUT_PATH * "global_$(depth)_fields_$(RESOLUTION)_RYF_run$(run).jld2"
+            filepath = joinpath(path, "global_$(depth)_fields_$(RESOLUTION)_RYF_run$(run).jld2")
             isfile(filepath) || continue
 
             jldopen(filepath, "r") do f
@@ -314,11 +341,12 @@ function make_depth_variable_video(var::String,
                                    depths::Vector{Int},
                                    depths_actual::Vector{Float64},
                                    iterations::Vector{Int};
+                                   output_path::AbstractString = OUTPUT_PATH,
                                    outname::Union{Nothing, String} = nothing,
                                    sea_ice_files::Vector{String} = String[],
                                    overlay_surface_ice::Bool = false,
                                    framerate::Int = VIDEO_FRAMERATE)
-    all_depth_times, all_depth_data = load_depth_variable_timeseries(var, depths, iterations)
+    all_depth_times, all_depth_data = load_depth_variable_timeseries(var, depths, iterations; path = output_path)
     any(isempty, all_depth_data) && error("At least one depth has zero frames for $var.")
 
     nframes_by_depth = length.(all_depth_data)
@@ -525,41 +553,55 @@ end
 function run_all_animations()
     @info "Starting horizontal analysis animations." output_path = OUTPUT_PATH resolution = RESOLUTION
 
-    depth_files = depth_slice_files(OUTPUT_PATH)
-    isempty(depth_files) && error("No depth-slice files found in $(OUTPUT_PATH).")
+    copy_output_path = nothing
 
-    grid_file = first(depth_files)
-    grid = load_grid_from_output_file(grid_file)
-    @info "Loaded grid for animations." grid_file
+    try
+        live_depth_files = depth_slice_files(OUTPUT_PATH)
+        isempty(live_depth_files) && error("No depth-slice files found in $(OUTPUT_PATH).")
 
-    depths = selected_depth_levels(depth_files)
-    runs = unique_iterations(depth_files)
-    depths_actual = abs.(grid.z.cᵃᵃᶠ[depths])
-    sea_ice_files = sea_ice_surface_files(OUTPUT_PATH)
+        live_sea_ice_files = sea_ice_surface_files(OUTPUT_PATH)
+        copy_output_path, _ = copy_files_to_tempdir(unique(vcat(live_depth_files, live_sea_ice_files));
+                                                    prefix = "analysis2d_horizontal_")
 
-    @info "Prepared animation inputs." depth_files = length(depth_files) runs = length(runs) depths sea_ice_files = length(sea_ice_files)
+        depth_files = depth_slice_files(copy_output_path)
+        sea_ice_files = sea_ice_surface_files(copy_output_path)
 
-    for var in ("T", "S", "u", "v", "speed")
-        @info "Processing depth variable..." variable = var
-        make_depth_variable_video(var, depths, depths_actual, runs;
-                                  sea_ice_files = sea_ice_files,
-                                  overlay_surface_ice = (var == "T" || var == "S" || var == "speed"),
-                                  outname = FIGDIR * "$(var)_$(RESOLUTION)_all_depths.mp4")
+        grid_file = first(depth_files)
+        grid = load_grid_from_output_file(grid_file)
+        @info "Loaded grid for animations." grid_file
+
+        depths = selected_depth_levels(depth_files)
+        runs = unique_iterations(depth_files)
+        depths_actual = abs.(grid.z.cᵃᵃᶠ[depths])
+
+        @info "Prepared animation inputs." depth_files = length(depth_files) runs = length(runs) depths sea_ice_files = length(sea_ice_files)
+
+        for var in ("T", "S", "u", "v", "speed")
+            @info "Processing depth variable..." variable = var
+            make_depth_variable_video(var, depths, depths_actual, runs;
+                                      output_path = copy_output_path,
+                                      sea_ice_files = sea_ice_files,
+                                      overlay_surface_ice = (var == "T" || var == "S" || var == "speed"),
+                                      outname = FIGDIR * "$(var)_$(RESOLUTION)_all_depths.mp4")
+        end
+
+        if isempty(sea_ice_files)
+            @warn "No sea-ice surface files found. Skipping sea-ice animation."
+        else
+            make_sea_ice_surface_polar_animation(sea_ice_files, grid;
+                                                 hemisphere = :north,
+                                                 latitude_cutoff = 50,
+                                                 outname = FIGDIR * "sea_ice_surface_$(RESOLUTION)_arctic_all_runs.mp4")
+
+            make_sea_ice_surface_polar_animation(sea_ice_files, grid;
+                                                 hemisphere = :south,
+                                                 latitude_cutoff = 50,
+                                                 outname = FIGDIR * "sea_ice_surface_$(RESOLUTION)_southern_ocean_all_runs.mp4")
+        end
+    finally
+        cleanup_copied_outputs!(copy_output_path)
     end
 
-    if isempty(sea_ice_files)
-        @warn "No sea-ice surface files found. Skipping sea-ice animation."
-    else
-        make_sea_ice_surface_polar_animation(sea_ice_files, grid;
-                                             hemisphere = :north,
-                                             latitude_cutoff = 50,
-                                             outname = FIGDIR * "sea_ice_surface_$(RESOLUTION)_arctic_all_runs.mp4")
-
-        make_sea_ice_surface_polar_animation(sea_ice_files, grid;
-                                             hemisphere = :south,
-                                             latitude_cutoff = 50,
-                                             outname = FIGDIR * "sea_ice_surface_$(RESOLUTION)_southern_ocean_all_runs.mp4")
-    end
     @info "Completed all horizontal animations."
     return nothing
 end

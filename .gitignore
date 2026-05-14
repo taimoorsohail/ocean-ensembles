@@ -55,7 +55,7 @@ experiments/submission_scripts/logs/
 # Figures
 *.png
 figures/*.png
-figures/*.mp4
+*.mp4
 
 # SSH keys
 gha_ssh_key

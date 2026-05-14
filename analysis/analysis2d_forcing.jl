@@ -17,6 +17,34 @@ const SWAPPABLE_PAIRS = Dict(
 # Current default: surface height + T_surf + S_surf.
 # To switch later, set e.g. ACTIVE_PAIR = :fluxes
 const ACTIVE_PAIR = :fluxes
+
+function copy_files_to_tempdir(files::Vector{String}; prefix::String)
+    copy_dir = mktempdir(; prefix)
+    copied = String[]
+
+    try
+        for file in files
+            dest = joinpath(copy_dir, basename(file))
+            cp(file, dest; force = true)
+            push!(copied, dest)
+        end
+    catch
+        rm(copy_dir; recursive = true, force = true)
+        rethrow()
+    end
+
+    @info "Copied analysis inputs." source_files = length(files) copy_dir
+    return copied, copy_dir
+end
+
+function cleanup_copied_outputs!(copy_dir::Union{Nothing, String})
+    if copy_dir !== nothing && isdir(copy_dir)
+        rm(copy_dir; recursive = true, force = true)
+        @info "Deleted copied analysis inputs." copy_dir
+    end
+    return nothing
+end
+
 const VAR_TITLES = Dict(
     "surface_height" => "Surface Height (m)",
     "heat_flux" => "Total Heat Flux (W m⁻²)",
@@ -216,67 +244,74 @@ end
 function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTION)_all_runs.mp4", framerate = 6)
     @info "Starting forcing animation build" output = outname framerate
 
-    files = forcing_files(OUTPUT_PATH)
-    @info "Using forcing files" count = length(files)
-
-    haskey(SWAPPABLE_PAIRS, ACTIVE_PAIR) || error("ACTIVE_PAIR=$(ACTIVE_PAIR) not found. Valid options: $(join(string.(collect(keys(SWAPPABLE_PAIRS))), ", "))")
-    selected_vars = vcat(SWAPPABLE_PAIRS[ACTIVE_PAIR])
-    @info "Selected variables" selected_vars
-
-    frames = collect_frame_refs(files, selected_vars)
-    buffers = allocate_frame_buffers(selected_vars, frames[1])
-    colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
-
-    nframes = length(frames)
-    @info "Preparing figure and render loop" nframes
-
-    fig = Figure(size = (1800, 700))
-    title = Label(fig[0, :], "Loading...", tellwidth = false)
-
-    observables = Dict{String, Observable{Matrix{Float32}}}()
-    for (i, var) in enumerate(selected_vars)
-        ax = Axis(fig[1, i], title = get(VAR_TITLES, var, var))
-        observables[var] = Observable(copy(buffers[var]))
-        cmap, clim = colormap_limits[var]
-        hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim)
-        Colorbar(fig[2, i], hm, vertical = false)
-    end
-    resize_to_layout!(fig)
-
-    timesteps_days = [frame.time for frame in frames] ./ (24 * 3600)
-    empty!(forcing_timesteps_days)
-    append!(forcing_timesteps_days, timesteps_days)
-    years = timesteps_days ./ 365
-
-    current_file = Ref("")
-    handle = Ref{Any}(nothing)
-    @info "Starting MP4 render" outname
+    copy_dir = nothing
 
     try
-        record(fig, outname, 1:nframes; framerate) do frame_index
-            frame = frames[frame_index]
-            if frame.file != current_file[]
-                handle[] !== nothing && close(handle[])
-                handle[] = jldopen(frame.file, "r")
-                current_file[] = frame.file
-            end
+        live_files = forcing_files(OUTPUT_PATH)
+        files, copy_dir = copy_files_to_tempdir(live_files; prefix = "analysis2d_forcing_")
+        @info "Using copied forcing files" count = length(files)
 
-            load_frame!(buffers, handle[], selected_vars, frame.key)
-            title.text = "Global surface forcing fields (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(years[frame_index], digits=2))"
-            for var in selected_vars
-                copyto!(observables[var][], buffers[var])
-                notify(observables[var])
-            end
+        haskey(SWAPPABLE_PAIRS, ACTIVE_PAIR) || error("ACTIVE_PAIR=$(ACTIVE_PAIR) not found. Valid options: $(join(string.(collect(keys(SWAPPABLE_PAIRS))), ", "))")
+        selected_vars = vcat(SWAPPABLE_PAIRS[ACTIVE_PAIR])
+        @info "Selected variables" selected_vars
 
-            report_progress_step(frame_index, nframes; label = "Frame render")
+        frames = collect_frame_refs(files, selected_vars)
+        buffers = allocate_frame_buffers(selected_vars, frames[1])
+        colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
+
+        nframes = length(frames)
+        @info "Preparing figure and render loop" nframes
+
+        fig = Figure(size = (1800, 700))
+        title = Label(fig[0, :], "Loading...", tellwidth = false)
+
+        observables = Dict{String, Observable{Matrix{Float32}}}()
+        for (i, var) in enumerate(selected_vars)
+            ax = Axis(fig[1, i], title = get(VAR_TITLES, var, var))
+            observables[var] = Observable(copy(buffers[var]))
+            cmap, clim = colormap_limits[var]
+            hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim)
+            Colorbar(fig[2, i], hm, vertical = false)
         end
-    finally
-        handle[] !== nothing && close(handle[])
-    end
+        resize_to_layout!(fig)
 
-    @info "Saved animation" outname nframes
-    @info "Forcing timesteps (days)" forcing_timesteps_days
-    return outname
+        timesteps_days = [frame.time for frame in frames] ./ (24 * 3600)
+        empty!(forcing_timesteps_days)
+        append!(forcing_timesteps_days, timesteps_days)
+        years = timesteps_days ./ 365
+
+        current_file = Ref("")
+        handle = Ref{Any}(nothing)
+        @info "Starting MP4 render" outname
+
+        try
+            record(fig, outname, 1:nframes; framerate) do frame_index
+                frame = frames[frame_index]
+                if frame.file != current_file[]
+                    handle[] !== nothing && close(handle[])
+                    handle[] = jldopen(frame.file, "r")
+                    current_file[] = frame.file
+                end
+
+                load_frame!(buffers, handle[], selected_vars, frame.key)
+                title.text = "Global surface forcing fields (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(years[frame_index], digits=2))"
+                for var in selected_vars
+                    copyto!(observables[var][], buffers[var])
+                    notify(observables[var])
+                end
+
+                report_progress_step(frame_index, nframes; label = "Frame render")
+            end
+        finally
+            handle[] !== nothing && close(handle[])
+        end
+
+        @info "Saved animation" outname nframes
+        @info "Forcing timesteps (days)" forcing_timesteps_days
+        return outname
+    finally
+        cleanup_copied_outputs!(copy_dir)
+    end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

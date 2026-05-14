@@ -3,7 +3,7 @@ using NumericalEarth
 using NumericalEarth.EN4
 using NumericalEarth.ECCO
 using NumericalEarth.EN4: download_dataset
-using NumericalEarth.DataWrangling.ETOPO
+using NumericalEarth.ORCA
 using NumericalEarth.EarthSystemModels.InterfaceComputations: IceBathHeatFlux
 
 using ClimaSeaIce
@@ -36,11 +36,11 @@ const data_path = expanduser("/home/tsohail/uom/ocean-ensembles/data/")
 const output_path = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
 const figdir = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
 
-const Nx = Integer(360 * 6)
-const Ny = Integer(180 * 6)
 const Nz = Integer(75)
 const depth = -5500.0
 const output_depths = [0, -100, -500, -1000, -2000]
+const resolution_label = "twfdeg"
+const checkpoint_prefix = "RYF_twfdeg_checkpoint"
 
 const checkpoint_interval = IterationInterval(68)
 const output_interval = AveragedTimeInterval((365 / 48)days)
@@ -129,8 +129,6 @@ function clear_previous_repl_state!()
                    :sea_ice,
                    :ocean,
                    :grid,
-                   :underlying_grid,
-                   :bottom_height,
                    :atmosphere,
                    :radiation,
                    :forcing,
@@ -189,33 +187,19 @@ function download_input_data!(dates, dataset)
     download_dataset(temperature)
     download_dataset(salinity)
 
-    ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir=data_path)
-    NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
-
-    return (; temperature, salinity, ETOPOmetadata)
+    return (; temperature, salinity)
 end
 
-function build_grid(arch, ETOPOmetadata)
+function build_grid(arch)
     @info "Defining vertical z faces"
     z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true)
     z_surf = z_faces.cᵃᵃᶠ(Nz)
 
     @info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
-    @info "Grid dimensions: Nx = $Nx, Ny = $Ny, Nz = $Nz"
+    @info "Grid dimensions: ORCA12, Nz = $Nz"
 
-    @info "Defining tripolar grid"
-    underlying_grid = TripolarGrid(arch;
-                                   size=(Nx, Ny, Nz),
-                                   z=z_faces,
-                                   halo=(7, 7, 7))
-
-    @info "Defining bottom bathymetry"
-    @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
-                                            minimum_depth=15,
-                                            interpolation_passes=25,
-                                            major_basins=4)
-
-    @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+    @info "Defining ORCA12 grid"
+    @time grid = ORCAGrid(arch; dataset=ORCA12(), z=z_faces, halo=(7, 7, 7), dir=data_path)
 
     return (; grid, z_surf)
 end
@@ -478,8 +462,8 @@ end
 
 function remove_existing_diagnostic_output_files!(run_id_leading)
     diagnostic_filenames = (
-        "global_diagnostic_k$(Nz - 1)_fields_sxtdeg_RYF_run" * run_id_leading,
-        "global_diagnostic_surface_fields_sxtdeg_RYF_run" * run_id_leading)
+        "global_diagnostic_k$(Nz - 1)_fields_$(resolution_label)_RYF_run" * run_id_leading,
+        "global_diagnostic_surface_fields_$(resolution_label)_RYF_run" * run_id_leading)
 
     for filename in diagnostic_filenames
         filepath = joinpath(output_path, filename * ".jld2")
@@ -511,7 +495,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
         @time ocean.output_writers[spec.key] = JLD2Writer(ocean.model, outputs;
                                                           dir=output_path,
                                                           schedule=output_interval,
-                                                          filename="global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id_leading,
+                                                          filename="global_" * string(Integer(round(slice_level))) * "_fields_$(resolution_label)_RYF_run" * run_id_leading,
                                                           indices=(:, :, spec.ind_pln),
                                                           with_halos=false,
                                                           overwrite_existing=true,
@@ -521,7 +505,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
                                                   dir=output_path,
                                                   schedule=output_interval,
-                                                  filename="global_ssh_fields_sxtdeg_RYF_run" * run_id_leading,
+                                                  filename="global_ssh_fields_$(resolution_label)_RYF_run" * run_id_leading,
                                                   with_halos=false,
                                                   overwrite_existing=true,
                                                   array_type=Array{Float32})
@@ -529,7 +513,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
                                                                   dir=output_path,
                                                                   schedule=output_interval,
-                                                                  filename="global_surface_fluxes_sxtdeg_RYF_run" * run_id_leading,
+                                                                  filename="global_surface_fluxes_$(resolution_label)_RYF_run" * run_id_leading,
                                                                   with_halos=false,
                                                                   overwrite_existing=true,
                                                                   array_type=Array{Float32})
@@ -537,7 +521,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     @time ocean.output_writers[:diagnostic_subsurface] = JLD2Writer(ocean.model, diagnostic_subsurface_outputs;
                                                                     dir=output_path,
                                                                     schedule=diagnostic_surface_interval,
-                                                                    filename="global_diagnostic_k$(diagnostic_surface_level)_fields_sxtdeg_RYF_run" * run_id_leading,
+                                                                    filename="global_diagnostic_k$(diagnostic_surface_level)_fields_$(resolution_label)_RYF_run" * run_id_leading,
                                                                     indices=(:, :, diagnostic_surface_level),
                                                                     including=(),
                                                                     with_halos=false,
@@ -547,7 +531,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     @time simulation.output_writers[:diagnostic_surface] = JLD2Writer(simulation.model, build_diagnostic_surface_outputs(simulation);
                                                                       dir=output_path,
                                                                       schedule=diagnostic_surface_interval,
-                                                                      filename="global_diagnostic_surface_fields_sxtdeg_RYF_run" * run_id_leading,
+                                                                      filename="global_diagnostic_surface_fields_$(resolution_label)_RYF_run" * run_id_leading,
                                                                       including=(),
                                                                       with_halos=false,
                                                                       overwrite_existing=true,
@@ -556,7 +540,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
                                                        dir=output_path,
                                                        schedule=output_interval,
-                                                       filename="global_tot_integrals_sxtdeg_RYF_run" * run_id_leading,
+                                                       filename="global_tot_integrals_$(resolution_label)_RYF_run" * run_id_leading,
                                                        overwrite_existing=true)
 
     return nothing
@@ -568,7 +552,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     inputs = download_input_data!(dates, dataset)
 
     @info "Defining grid"
-    grid_state = build_grid(arch, inputs.ETOPOmetadata)
+    grid_state = build_grid(arch)
     grid = grid_state.grid
     z_surf = grid_state.z_surf
 
@@ -642,7 +626,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model,
                                                                   schedule=checkpoint_interval,
                                                                   dir=output_path,
-                                                                  prefix="RYF_sxtdeg_checkpoint",
+                                                                  prefix=checkpoint_prefix,
                                                                   overwrite_existing=true,
                                                                   cleanup=false)
 

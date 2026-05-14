@@ -16,6 +16,33 @@ const cₚ = isdefined(Oceananigans, :heat_capacity) ?
 output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
+function copy_files_to_tempdir(files::Vector{String}; prefix::String)
+    copy_dir = mktempdir(; prefix)
+    copied = String[]
+
+    try
+        for file in files
+            dest = joinpath(copy_dir, basename(file))
+            cp(file, dest; force = true)
+            push!(copied, dest)
+        end
+    catch
+        rm(copy_dir; recursive = true, force = true)
+        rethrow()
+    end
+
+    @info "Copied analysis inputs." source_files = length(files) copy_dir
+    return copied, copy_dir
+end
+
+function cleanup_copied_outputs!(copy_dir::Union{Nothing, String})
+    if copy_dir !== nothing && isdir(copy_dir)
+        rm(copy_dir; recursive = true, force = true)
+        @info "Deleted copied analysis inputs." copy_dir
+    end
+    return nothing
+end
+
 keys_interest = ["T_totintegral",
                 "S_totintegral",
                 "T_vertintegral",
@@ -37,6 +64,16 @@ run_number(file) = begin
     isnothing(m) ? typemax(Int) : parse(Int, m.captures[1])
 end
 
+sort!(files_integral; by = run_number)
+sort!(files_surface; by = run_number)
+
+copied_output_dir = nothing
+copied_inputs = unique(vcat(files_integral, files_surface))
+copied_files, copied_output_dir = copy_files_to_tempdir(copied_inputs; prefix = "analysis1d_distributed_")
+atexit(() -> cleanup_copied_outputs!(copied_output_dir))
+
+files_integral = filter(f -> occursin("tot", basename(f)), copied_files)
+files_surface = filter(f -> occursin("surface_fluxes", basename(f)), copied_files)
 sort!(files_integral; by = run_number)
 sort!(files_surface; by = run_number)
 
@@ -304,6 +341,8 @@ figpath_integrated_z = joinpath(figdir, "integrated_props_z_$(resolution).png")
 save(figpath_integrated_z, fig, px_per_unit=3)
 
 @info "Created figure files:" figpath_integrated figpath_integrated_z
+cleanup_copied_outputs!(copied_output_dir)
+copied_output_dir = nothing
 
 # fig = Figure(size = (800, 600))
 # ax1 = Axis(fig[1, 1], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
