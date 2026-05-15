@@ -584,13 +584,3 @@ function run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, st
 
     return nothing
 end
-
-function main(arch, run_id)
-    final_state = build_simulation(arch, run_id; add_outputs=false)
-    run_segment!(final_state; pickup=false, Δt=10, stop_time = nothing, stop_iteration = 10)
-    return final_state
-end
-
-if abspath(PROGRAM_FILE) == @__FILE__
-    main()
-end
