@@ -44,43 +44,6 @@ checkpoint_interval = TimeInterval(0.5days)
 output_interval = AveragedTimeInterval((365 / 48)days)
 diagnostic_surface_interval = TimeInterval(0.5days)
 
-function get_arg(flag::String, default::Union{Nothing,String}=nothing)
-    i = findfirst(==(flag), ARGS)
-    if i === nothing
-        return default
-    elseif i == length(ARGS)
-        error("Missing value for $flag")
-    else
-        return ARGS[i + 1]
-    end
-end
-
-function parse_architecture()
-    arch_str = get_arg("--arch")
-    if arch_str === nothing
-        println("No architecture provided. Please enter architecture (CPU/GPU):")
-        arch_str = readline()
-    end
-
-    if arch_str == "GPU"
-        return GPU()
-    elseif arch_str == "CPU"
-        return CPU()
-    else
-        error("Invalid architecture. Must be 'CPU' or 'GPU'.")
-    end
-end
-
-function parse_run_id()
-    run_str = get_arg("--run")
-    if run_str === nothing
-        println("No run number provided. Please enter run number:")
-        run_str = readline()
-    end
-
-    return parse(Int, run_str)
-end
-
 function gpu_memory_status(prefix="")
     if !isdefined(Main, :CUDA)
         return nothing
@@ -123,56 +86,6 @@ function reclaim_gpu_memory!(state; verbose=true)
     return nothing
 end
 
-function clear_previous_repl_state!()
-    heavy_names = (:simulation,
-                   :coupled_model,
-                   :sea_ice,
-                   :ocean,
-                   :grid,
-                   :underlying_grid,
-                   :bottom_height,
-                   :atmosphere,
-                   :radiation,
-                   :forcing,
-                   :FS,
-                   :free_surface,
-                   :closure,
-                   :catke_closure,
-                   :tracers,
-                   :velocities,
-                   :outputs,
-                   :surface_height,
-                   :surface_forcing,
-                   :global_outputs,
-                   :tot_integral_outputs,
-                   :vert_integral_outputs,
-                   :surf_integral_outputs,
-                   :tot_integral_volumes,
-                   :vert_integral_volumes,
-                   :V_ccc,
-                   :V_fcc,
-                   :V_cfc,
-                   :totint_vol_c,
-                   :totint_vol_x,
-                   :totint_vol_y,
-                   :vertint_vol_c,
-                   :vertint_vol_x,
-                   :vertint_vol_y,
-                   :cumulative_tuple,
-                   :cumulative_vert_tuple,
-                   :cumulative_tuple_vol,
-                   :cumulative_vert_tuple_vol,
-                   :final_state)
-
-    for name in heavy_names
-        if isdefined(Main, name)
-            @eval Main $(name) = nothing
-        end
-    end
-
-    reclaim_gpu_memory!()
-    return nothing
-end
 
 function ryf_dates()
     return vcat(collect(DateTime(1991, 1, 1):Month(1):DateTime(1991, 4, 1)),
@@ -279,6 +192,7 @@ function findmax_interior_field(field)
 end
 
 function add_progress_callback!(simulation)
+    start_wall_time = Ref(time_ns())
     wall_time = Ref(time_ns())
     callback_iteration_interval = 10
     callback_interval = IterationInterval(callback_iteration_interval)
@@ -332,8 +246,9 @@ function add_progress_callback!(simulation)
                 maximum(abs, v),
                 maximum(abs, w))
 
-        step_time = 1e-9 * (time_ns() - wall_time[])
-        wall_progress = time_ns() * 1e-9
+        current_wall_time = time_ns()
+        step_time = 1e-9 * (current_wall_time - wall_time[])
+        wall_progress = 1e-9 * (current_wall_time - start_wall_time[])
 
         msg1 = @sprintf("time: %s, iteration: %d, Δt: %s, ", prettytime(sim), iteration, prettytime(sim.Δt))
         msg2 = @sprintf("max|u|: (%.2e, %.2e, %.2e) m s⁻¹, ", umax...)
@@ -341,14 +256,14 @@ function add_progress_callback!(simulation)
         msg4 = @sprintf("extrema(S): (%.2f, %.2f) g/kg, ", Srange...)
         msg5 = @sprintf("extrema(η): (%.2f, %.2f) m, ", ηrange...)
         msg6 = @sprintf("wall time: %s\n", prettytime(step_time))
-        msg7 = @sprintf("Wall clock time: %s\n", prettytime(wall_progress))
+        msg7 = @sprintf("elapsed wall time: %s\n", prettytime(wall_progress))
         msg8 = @sprintf("SYPD: %.2f\n", (callback_iteration_interval * sim.Δt) / step_time / 365)
         msg9 = @sprintf("advective_cfl: %.2f at lat=%.2f, lon=%.2f, z=%.1f m, dominant=%s\n",
                         advective_cfl, cfl_latitude, cfl_longitude, cfl_depth, dominant_component)
 
         @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9
 
-        wall_time[] = time_ns()
+        wall_time[] = current_wall_time
         return nothing
     end
 
