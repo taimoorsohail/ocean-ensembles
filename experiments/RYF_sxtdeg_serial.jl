@@ -672,9 +672,9 @@ function run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, st
     return nothing
 end
 
-function main()
+function main(arch, run_id)
     final_state = build_simulation(arch, run_id; add_outputs=true)
-    run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, stop_iteration = nothing)
+    run_segment!(final_state; pickup=false, Δt=5minutes, stop_time = nothing, stop_iteration = nothing)
     return final_state
 end
 
