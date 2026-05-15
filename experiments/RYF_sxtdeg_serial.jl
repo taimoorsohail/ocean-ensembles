@@ -18,8 +18,6 @@ using Oceananigans.Operators: Ax, Ay, Az,
 using Oceananigans.Fields: ReducedField, interior, ConstantField, ZeroField, OneField
 using Oceananigans.Architectures: on_architecture
 
-using OceanEnsembles
-
 using CFTime
 using Dates
 using Printf
@@ -673,8 +671,8 @@ function run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, st
 end
 
 function main(arch, run_id)
-    final_state = build_simulation(arch, run_id; add_outputs=true)
-    run_segment!(final_state; pickup=false, Δt=5minutes, stop_time = nothing, stop_iteration = nothing)
+    final_state = build_simulation(arch, run_id; add_outputs=false)
+    run_segment!(final_state; pickup=false, Δt=10, stop_time = nothing, stop_iteration = 10)
     return final_state
 end
 
