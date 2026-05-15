@@ -42,9 +42,9 @@ const Nz = Integer(75)
 const depth = -5500.0
 const output_depths = [0, -100, -500, -1000, -2000]
 
-const checkpoint_interval = IterationInterval(68)
+const checkpoint_interval = IterationInterval(120)
 const output_interval = AveragedTimeInterval((365 / 48)days)
-const diagnostic_surface_interval = IterationInterval(1)
+const diagnostic_surface_interval = IterationInterval(120)
 
 function get_arg(flag::String, default::Union{Nothing,String}=nothing)
     i = findfirst(==(flag), ARGS)
@@ -207,7 +207,7 @@ function build_grid(arch, ETOPOmetadata)
     underlying_grid = TripolarGrid(arch;
                                    size=(Nx, Ny, Nz),
                                    z=z_faces,
-                                   halo=(7, 7, 7))
+                                   halo=(8, 8, 8))
 
     @info "Defining bottom bathymetry"
     @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
@@ -584,8 +584,8 @@ function build_simulation(arch, run_id; add_outputs=true)
     catke_closure = NumericalEarth.Oceans.default_ocean_closure()
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
-    @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=100) # Try increasing the number of substeps to improve stability if NaNs are encountered.
+    @info "Defining free surface" #Try running w/o sea ice duna,mics, remove rivers and iceberges? 
+    free_surface = SplitExplicitFreeSurface(grid; substeps=100) 
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
 
@@ -606,8 +606,10 @@ function build_simulation(arch, run_id; add_outputs=true)
 
     # Sea ice is disabled for this fresh ocean-atmosphere-radiation run.
     @info "Creating sea ice model"
-    sea_ice = sea_ice_simulation(grid, ocean; advection=WENO(order=7))
-    @show sea_ice.model isa ClimaSeaIce.SeaIceModel
+    sea_ice = sea_ice_simulation(grid, ocean; 
+                                 advection=WENO(order=7, 
+                                 minimum_buffer_upwind_order=1))
+
     set!(sea_ice.model,
          h=Metadatum(:sea_ice_thickness; dataset=ECCO4Monthly(), dir=data_path),
          ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir=data_path))
@@ -649,25 +651,15 @@ function build_simulation(arch, run_id; add_outputs=true)
     return (; simulation, ocean)
 end
 
-function run_segment!(state, run_id; pickup)
+function run_segment!(state, run_id; pickup, Δt=5minutes)
     simulation = state.simulation
-    simulation.Δt = 10minutes
-    simulation.stop_time = run_id * 11 * (365 / 12)days
+    simulation.Δt = Δt
+    simulation.stop_time = run_id * 12 * (365 / 12)days
 
     @info "Running simulation" run_id pickup stop_time=prettytime(simulation.stop_time)
     run!(simulation, pickup=pickup, checkpoint_at_end=true)
 
     return nothing
-end
-
-function run_with_restart_rebuild!(arch, run_id)
-    pickup = run_id > 1
-    gpu_memory_status("Before build: ")
-
-    state = build_simulation(arch, run_id)
-    run_segment!(state, run_id; pickup)
-
-    return state
 end
 
 function main()
@@ -683,3 +675,4 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     main()
 end
+
