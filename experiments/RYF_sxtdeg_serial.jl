@@ -43,6 +43,7 @@ output_depths = [0, -100, -500, -1000, -2000]
 checkpoint_interval = TimeInterval(0.5days)
 output_interval = AveragedTimeInterval((365 / 48)days)
 diagnostic_surface_interval = TimeInterval(0.5days)
+callback_iteration_interval = 600
 
 function gpu_memory_status(prefix="")
     if !isdefined(Main, :CUDA)
@@ -191,10 +192,9 @@ function findmax_interior_field(field)
     return findmax(host_interior(field))
 end
 
-function add_progress_callback!(simulation)
+function add_progress_callback!(simulation, callback_iteration_interval)
     start_wall_time = Ref(time_ns())
     wall_time = Ref(time_ns())
-    callback_iteration_interval = 10
     callback_interval = IterationInterval(callback_iteration_interval)
 
     ocean_model = simulation.model.ocean.model
