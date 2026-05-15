@@ -38,7 +38,7 @@ const Nx = Integer(360 * 6)
 const Ny = Integer(180 * 6)
 const Nz = Integer(75)
 const depth = -5500.0
-const output_depths = [0, -100, -500, -1000, -2000]
+output_depths = [0, -100, -500, -1000, -2000]
 
 checkpoint_interval = TimeInterval(0.5days)
 output_interval = AveragedTimeInterval((365 / 48)days)
