@@ -98,7 +98,9 @@ function gpu_memory_status(prefix="")
     return nothing
 end
 
-function reclaim_gpu_memory!(; verbose=true)
+function reclaim_gpu_memory!(state; verbose=true)
+    verbose && gpu_memory_status("Before reclaim: ")
+    state = nothing
     if isdefined(Main, :CUDA)
         try
             CUDA.synchronize()
@@ -213,7 +215,7 @@ function build_grid(arch, ETOPOmetadata)
     @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                             minimum_depth=15,
                                             interpolation_passes=25,
-                                            major_basins=4)
+                                            major_basins=2)
 
     @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
@@ -648,27 +650,31 @@ function build_simulation(arch, run_id; add_outputs=true)
                                                                   overwrite_existing=true,
                                                                   cleanup=false)
 
-    return (; simulation, ocean)
+    return (; simulation, ocean, run_id)
 end
 
-function run_segment!(state, run_id; pickup, Δt=5minutes)
+function run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, stop_iteration = nothing)
     simulation = state.simulation
     simulation.Δt = Δt
-    simulation.stop_time = run_id * 12 * (365 / 12)days
+    if isnothing(stop_time) && isnothing(stop_iteration)
+        simulation.stop_time = state.run_id * 12 * (365 / 12)days
+    elseif !isnothing(stop_iteration) && isnothing(stop_time)
+        simulation.stop_iteration = stop_iteration
+    elseif isnothing(stop_iteration) && !isnothing(stop_time)
+        simulation.stop_time = stop_time
+    elseif !isnothing(stop_iteration) && !isnothing(stop_time)
+        error("Only one of stop_time or stop_iteration should be provided")
+    end
 
-    @info "Running simulation" run_id pickup stop_time=prettytime(simulation.stop_time)
+    @info "Running simulation" state.run_id pickup stop_time=prettytime(simulation.stop_time)
     run!(simulation, pickup=pickup, checkpoint_at_end=true)
 
     return nothing
 end
 
 function main()
-    clear_previous_repl_state!()
-
-    arch = parse_architecture()
-    run_id = parse_run_id()
-
-    global final_state = run_with_restart_rebuild!(arch, run_id)
+    final_state = build_simulation(arch, run_id; add_outputs=true)
+    run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, stop_iteration = nothing)
     return final_state
 end
 
