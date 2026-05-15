@@ -40,9 +40,9 @@ const Nz = Integer(75)
 const depth = -5500.0
 const output_depths = [0, -100, -500, -1000, -2000]
 
-const checkpoint_interval = IterationInterval(120)
-const output_interval = AveragedTimeInterval((365 / 48)days)
-const diagnostic_surface_interval = IterationInterval(120)
+checkpoint_interval = TimeInterval(0.5days)
+output_interval = AveragedTimeInterval((365 / 48)days)
+diagnostic_surface_interval = TimeInterval(0.5days)
 
 function get_arg(flag::String, default::Union{Nothing,String}=nothing)
     i = findfirst(==(flag), ARGS)
@@ -679,4 +679,3 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     main()
 end
-
