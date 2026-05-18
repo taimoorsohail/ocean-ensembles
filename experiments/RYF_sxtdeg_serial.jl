@@ -43,8 +43,8 @@ const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
 checkpoint_interval = TimeInterval(120minutes)
-output_interval = AveragedTimeInterval((365 / 48)days)
-diagnostic_surface_interval = TimeInterval((365 / 48)days)
+output_interval = AveragedTimeInterval(120minutes)
+diagnostic_surface_interval = TimeInterval(120minutes)
 callback_iteration_interval = 10
 
 function gpu_memory_status(prefix="")
@@ -579,10 +579,10 @@ function build_simulation(arch, run_id; add_outputs=true)
          S=Metadata(:salinity; dates=first(dates), dataset=dataset, dir=data_path))
 
     @info "Creating sea ice model"
-    sea_ice_rheology = ElastoViscoPlasticRheology(rheology_activation_concentration = (0.15, 0.80))
-    sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; rheology = sea_ice_rheology)
+    # sea_ice_rheology = ElastoViscoPlasticRheology(rheology_activation_concentration = (0.15, 0.80))
+    # sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; rheology = sea_ice_rheology)
     sea_ice = sea_ice_simulation(grid, ocean;
-                                 dynamics = sea_ice_dynamics,
+                                 dynamics = nothing,
                                  advection = WENO(order=7,
                                                   minimum_buffer_upwind_order=1))
 
@@ -607,8 +607,8 @@ function build_simulation(arch, run_id; add_outputs=true)
     #     radiation,
     #     interfaces,
     # )
-    @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation)
-    # @time coupled_model = OceanOnlyModel(ocean; atmosphere, land, radiation)
+    # @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation)
+    @time coupled_model = OceanOnlyModel(ocean; atmosphere, land, radiation)
 
     simulation = Simulation(coupled_model; Δt=10minutes)
     add_progress_callback!(simulation)
@@ -620,7 +620,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model,
                                                                   schedule=checkpoint_interval,
                                                                   dir=output_path,
-                                                                  prefix="RYF_sxtdeg_checkpoint_norestoring",
+                                                                  prefix="RYF_sxtdeg_checkpoint_noSIatall",
                                                                   overwrite_existing=true,
                                                                   cleanup=false)
 
