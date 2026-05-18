@@ -7,6 +7,7 @@ using NumericalEarth.DataWrangling.ETOPO
 using NumericalEarth.EarthSystemModels.InterfaceComputations: IceBathHeatFlux
 
 using ClimaSeaIce
+using ClimaSeaIce.Rheologies: ElastoViscoPlasticRheology
 using ClimaSeaIce.SeaIceThermodynamics: IceWaterThermalEquilibrium
 
 using Oceananigans
@@ -16,6 +17,7 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Operators: Ax, Ay, Az,
                               Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ
 using Oceananigans.Fields: ReducedField, interior, ConstantField, ZeroField, OneField
+using Oceananigans.ImmersedBoundaries: immersed_cell, peripheral_node
 using Oceananigans.Architectures: on_architecture
 
 using CFTime
@@ -40,10 +42,10 @@ const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
-checkpoint_interval = TimeInterval(0.5days)
+checkpoint_interval = TimeInterval(120minutes)
 output_interval = AveragedTimeInterval((365 / 48)days)
-diagnostic_surface_interval = TimeInterval(0.5days)
-callback_iteration_interval = 600
+diagnostic_surface_interval = TimeInterval((365 / 48)days)
+callback_iteration_interval = 10
 
 function gpu_memory_status(prefix="")
     if !isdefined(Main, :CUDA)
@@ -60,9 +62,8 @@ function gpu_memory_status(prefix="")
     return nothing
 end
 
-function reclaim_gpu_memory!(state; verbose=true)
+function reclaim_gpu_memory!(; verbose=true)
     verbose && gpu_memory_status("Before reclaim: ")
-    state = nothing
     if isdefined(Main, :CUDA)
         try
             CUDA.synchronize()
@@ -112,6 +113,7 @@ end
 function build_grid(arch, ETOPOmetadata)
     @info "Defining vertical z faces"
     z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true)
+    # z_surf = z_faces[Nz]
     z_surf = z_faces.cᵃᵃᶠ(Nz)
 
     @info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
@@ -121,7 +123,7 @@ function build_grid(arch, ETOPOmetadata)
     underlying_grid = TripolarGrid(arch;
                                    size=(Nx, Ny, Nz),
                                    z=z_faces,
-                                   halo=(8, 8, 8))
+                                   halo=(7, 7, 7))
 
     @info "Defining bottom bathymetry"
     @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
@@ -192,7 +194,7 @@ function findmax_interior_field(field)
     return findmax(host_interior(field))
 end
 
-function add_progress_callback!(simulation, callback_iteration_interval)
+function add_progress_callback!(simulation; callback_iteration_interval = callback_iteration_interval)
     start_wall_time = Ref(time_ns())
     wall_time = Ref(time_ns())
     callback_interval = IterationInterval(callback_iteration_interval)
@@ -206,6 +208,7 @@ function add_progress_callback!(simulation, callback_iteration_interval)
                                                         grid, u, v, w)
 
     inverse_timescale_field = Field(inverse_timescale_operation)
+
     longitudes = λnodes(grid, Center(), Center(), Center(); with_halos=false)
     latitudes = φnodes(grid, Center(), Center(), Center(); with_halos=false)
     depths = znodes(grid, Center(), Center(), Center(); with_halos=false)
@@ -223,6 +226,49 @@ function add_progress_callback!(simulation, callback_iteration_interval)
         inverse_timescale_u, inverse_timescale_v, inverse_timescale_w =
             maybe_allow_scalar() do
                 advective_inverse_timescale_componentsᶜᶜᶜ(i, j, k, grid, u, v, w)
+            end
+
+        uC, vC, wC, wA, uE, vN =
+            maybe_allow_scalar() do
+                (u[i, j, k],
+                 v[i, j, k],
+                 w[i, j, k],
+                 w[i, j, k+1],
+                 u[i+1, j, k],
+                 v[i, j+1, k])
+            end
+
+        bottom = grid.immersed_boundary.bottom_height
+        hC, hW, hE, hS, hN, local_Δz, local_Δz_above, local_cfl_w, local_cfl_w_above =
+            maybe_allow_scalar() do
+                Δz⁻¹ = Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
+                Δz⁻¹_above = Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid)
+
+                (bottom[i, j, 1],
+                 bottom[i-1, j, 1],
+                 bottom[i+1, j, 1],
+                 bottom[i, j-1, 1],
+                 bottom[i, j+1, 1],
+                 1 / Δz⁻¹,
+                 1 / Δz⁻¹_above,
+                 sim.Δt * abs(w[i, j, k]) * Δz⁻¹,
+                 sim.Δt * abs(w[i, j, k+1]) * Δz⁻¹_above)
+            end
+
+        cell_immersed, uC_peripheral, uE_peripheral, vC_peripheral, vN_peripheral =
+            maybe_allow_scalar() do
+                (immersed_cell(i, j, k, grid),
+                 peripheral_node(i, j, k, grid, Face(), Center(), Center()),
+                 peripheral_node(i+1, j, k, grid, Face(), Center(), Center()),
+                 peripheral_node(i, j, k, grid, Center(), Face(), Center()),
+                 peripheral_node(i, j+1, k, grid, Center(), Face(), Center()))
+            end
+
+        cell_above_immersed, wC_peripheral, wA_peripheral =
+            maybe_allow_scalar() do
+                (k < grid.Nz ? immersed_cell(i, j, k+1, grid) : false,
+                 peripheral_node(i, j, k, grid, Center(), Center(), Face()),
+                 peripheral_node(i, j, k+1, grid, Center(), Center(), Face()))
             end
 
         cfl_u = sim.Δt * inverse_timescale_u
@@ -260,8 +306,21 @@ function add_progress_callback!(simulation, callback_iteration_interval)
         msg8 = @sprintf("SYPD: %.2f\n", (callback_iteration_interval * sim.Δt) / step_time / 365)
         msg9 = @sprintf("advective_cfl: %.2f at lat=%.2f, lon=%.2f, z=%.1f m, dominant=%s\n",
                         advective_cfl, cfl_latitude, cfl_longitude, cfl_depth, dominant_component)
+        msg10 = @sprintf("cfl components: u/v/w=(%.2f, %.2f, %.2f)\n",
+                         cfl_u, cfl_v, cfl_w)
+        msg11 = @sprintf("cfl-site velocities: uC/uE=(%.2e, %.2e), vC/vN=(%.2e, %.2e), wC/wA=(%.2e, %.2e)\n",
+                         uC, uE, vC, vN, wC, wA)
+        msg12 = @sprintf("cfl-site mask: cell_immersed=%s, uC/uE peripheral=(%s, %s), vC/vN peripheral=(%s, %s)\n",
+                         string(cell_immersed), string(uC_peripheral), string(uE_peripheral),
+                         string(vC_peripheral), string(vN_peripheral))
+        msg13 = @sprintf("cfl-site vertical mask: cell_above_immersed=%s, wC/wA peripheral=(%s, %s)\n",
+                         string(cell_above_immersed), string(wC_peripheral), string(wA_peripheral))
+        msg14 = @sprintf("cfl-site bottom hC/hW/hE/hS/hN=(%.1f, %.1f, %.1f, %.1f, %.1f) m\n",
+                         hC, hW, hE, hS, hN)
+        msg15 = @sprintf("cfl-site Δz/Δz_above=(%.2f, %.2f) m, cfl_w/cfl_w_above=(%.2f, %.2f)\n",
+                         local_Δz, local_Δz_above, local_cfl_w, local_cfl_w_above)
 
-        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9
+        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9 * msg10 * msg11 * msg12 * msg13 * msg14 * msg15
 
         wall_time[] = current_wall_time
         return nothing
@@ -500,7 +559,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
     @info "Defining free surface" #Try running w/o sea ice duna,mics, remove rivers and iceberges? 
-    free_surface = SplitExplicitFreeSurface(grid; substeps=100) 
+    free_surface = SplitExplicitFreeSurface(grid; substeps=70)
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
 
@@ -519,11 +578,13 @@ function build_simulation(arch, run_id; add_outputs=true)
          T=Metadata(:temperature; dates=first(dates), dataset=dataset, dir=data_path),
          S=Metadata(:salinity; dates=first(dates), dataset=dataset, dir=data_path))
 
-    # Sea ice is disabled for this fresh ocean-atmosphere-radiation run.
     @info "Creating sea ice model"
-    sea_ice = sea_ice_simulation(grid, ocean; 
-                                 advection=WENO(order=7, 
-                                 minimum_buffer_upwind_order=1))
+    sea_ice_rheology = ElastoViscoPlasticRheology(rheology_activation_concentration = (0.15, 0.80))
+    sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; rheology = sea_ice_rheology)
+    sea_ice = sea_ice_simulation(grid, ocean;
+                                 dynamics = sea_ice_dynamics,
+                                 advection = WENO(order=7,
+                                                  minimum_buffer_upwind_order=1))
 
     set!(sea_ice.model,
          h=Metadatum(:sea_ice_thickness; dataset=ECCO4Monthly(), dir=data_path),
@@ -559,7 +620,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model,
                                                                   schedule=checkpoint_interval,
                                                                   dir=output_path,
-                                                                  prefix="RYF_sxtdeg_checkpoint",
+                                                                  prefix="RYF_sxtdeg_checkpoint_norestoring",
                                                                   overwrite_existing=true,
                                                                   cleanup=false)
 
