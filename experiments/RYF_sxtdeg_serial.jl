@@ -2,7 +2,7 @@ using NumericalEarth
 
 using NumericalEarth.EN4
 using NumericalEarth.ECCO
-using NumericalEarth.EN4: download_dataset
+using NumericalEarth.DataWrangling: download_dataset
 using NumericalEarth.DataWrangling.ETOPO
 using NumericalEarth.EarthSystemModels.InterfaceComputations: IceBathHeatFlux
 
