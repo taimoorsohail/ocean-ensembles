@@ -590,10 +590,10 @@ function build_simulation(arch, run_id; add_outputs=true)
          ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir=data_path))
 
     @info "Defining Atmospheric state"
-    jra55_backend = JRA55NetCDFBackend(2)
-    radiation = JRA55PrescribedRadiation(arch; backend=jra55_backend)
-    atmosphere = JRA55PrescribedAtmosphere(arch; backend=jra55_backend)
-    land = JRA55PrescribedLand(arch; backend=jra55_backend)
+    time_indices_in_memory = 24
+    radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory)
+    atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory)
+    land = JRA55PrescribedLand(arch; time_indices_in_memory)
 
     @info "Defining coupled model"
     interfaces = ComponentInterfaces(atmosphere, ocean, sea_ice;
