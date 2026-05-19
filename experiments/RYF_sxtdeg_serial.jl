@@ -548,6 +548,7 @@ end
 function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     dates = ryf_dates()
     dataset = EN4Monthly()
+    time_indices_in_memory = 24
     inputs = download_input_data!(dates, dataset)
 
     @info "Defining grid"
@@ -560,7 +561,7 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     mask(x, y, z, t) = z >= z_surf - 1
 
     # Keep time caches small so pickup does not require a large transient memory budget.
-    FS = DatasetRestoring(inputs.salinity, grid; mask, rate=restoring_rate, time_indices_in_memory=2)
+    FS = DatasetRestoring(inputs.salinity, grid; mask, rate=restoring_rate, time_indices_in_memory)
     forcing = (; S=FS)
 
     @info "Defining closures"
@@ -571,6 +572,7 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     free_surface = SplitExplicitFreeSurface(grid; substeps=70)
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
+    sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
 
     @info "Defining ocean model"
     @time ocean = ocean_simulation(grid; Δt,
@@ -591,14 +593,13 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     # sea_ice_rheology = ElastoViscoPlasticRheology(rheology_activation_concentration = (0.15, 0.80))
     # sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; rheology = sea_ice_rheology)
     sea_ice = sea_ice_simulation(grid, ocean;
-                                 advection = WENO(order=7, minimum_buffer_upwind_order=1))
+                                 advection = sea_ice_advection)
 
     set!(sea_ice.model,
          h=Metadatum(:sea_ice_thickness; dataset=ECCO4Monthly(), dir=data_path),
          ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir=data_path))
 
     @info "Defining Atmospheric state"
-    time_indices_in_memory = 24
     radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory)
     atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory)
     land = JRA55PrescribedLand(arch; time_indices_in_memory)
