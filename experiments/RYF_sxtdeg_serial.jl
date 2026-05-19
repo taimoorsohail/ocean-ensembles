@@ -582,8 +582,7 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     # sea_ice_rheology = ElastoViscoPlasticRheology(rheology_activation_concentration = (0.15, 0.80))
     # sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; rheology = sea_ice_rheology)
     sea_ice = sea_ice_simulation(grid, ocean;
-                                 advection = WENO(order=7,
-                                 minimum_buffer_upwind_order=1))
+                                 advection = WENO(order=7, minimum_buffer_upwind_order=1))
 
     set!(sea_ice.model,
          h=Metadatum(:sea_ice_thickness; dataset=ECCO4Monthly(), dir=data_path),
@@ -643,11 +642,11 @@ end
 
 # To run
 # state = build_simulation(GPU(), 1; add_outputs=true, Δt=5minutes)
-# run_segment!(state; pickup=false, Δt=10minutes, stop_time = 1days)
+# run_segment!(state; pickup=false, Δt=5minutes, stop_time = 1days)
 
 # To rerun
 # state = nothing
 # reclaim_gpu_memory!()
 # state = build_simulation!(GPU(), 1; add_outputs=false)
-# run_segment!(state; pickup=true, Δt=10minutes, stop_time = 1days)
+# run_segment!(state; pickup=true, Δt=5minutes, stop_time = 1days)
 
