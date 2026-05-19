@@ -22,5 +22,8 @@ ProfileCanvas = "efd6af41-a80b-495e-886c-e51b0c7d77a3"
 SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
+[compat]
+NumericalEarth = "0.4.2"
+
 [extras]
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
