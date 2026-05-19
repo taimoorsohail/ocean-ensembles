@@ -536,7 +536,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     return nothing
 end
 
-function build_simulation(arch, run_id; add_outputs=true)
+function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     dates = ryf_dates()
     dataset = EN4Monthly()
     inputs = download_input_data!(dates, dataset)
@@ -564,7 +564,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     tracer_advection = WENO(order=7)
 
     @info "Defining ocean model"
-    @time ocean = ocean_simulation(grid; Δt=1minutes,
+    @time ocean = ocean_simulation(grid; Δt,
                                    momentum_advection,
                                    tracer_advection,
                                    timestepper=:SplitRungeKutta3,
@@ -596,18 +596,12 @@ function build_simulation(arch, run_id; add_outputs=true)
     land = JRA55PrescribedLand(arch; time_indices_in_memory)
 
     @info "Defining coupled model"
-    interfaces = ComponentInterfaces(atmosphere, ocean, sea_ice;
-    radiation,
-    sea_ice_ocean_salinity_flux = nothing)
-
-    @time coupled_model = OceanSeaIceModel(sea_ice, ocean;
-        atmosphere,
-        radiation,
-        interfaces)
+    interfaces = ComponentInterfaces(atmosphere, ocean, sea_ice; radiation, sea_ice_ocean_salinity_flux = nothing)
+    @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation, interfaces)
     # @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation)
     # @time coupled_model = OceanOnlyModel(ocean; atmosphere, land, radiation)
 
-    simulation = Simulation(coupled_model; Δt=10minutes)
+    simulation = Simulation(coupled_model; Δt)
     add_progress_callback!(simulation)
 
     if add_outputs
@@ -624,9 +618,13 @@ function build_simulation(arch, run_id; add_outputs=true)
     return (; simulation, ocean, run_id)
 end
 
-function run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, stop_iteration = nothing)
+function run_segment!(state; pickup=false, Δt=nothing, stop_time=nothing, stop_iteration=nothing)
     simulation = state.simulation
-    simulation.Δt = Δt
+
+    if Δt !== nothing
+        @info "Updating simulation time step to Δt=$(prettytime(Δt))"
+        simulation.Δt = Δt
+    end
     if isnothing(stop_time) && isnothing(stop_iteration)
         simulation.stop_time = state.run_id * 12 * (365 / 12)days
     elseif !isnothing(stop_iteration) && isnothing(stop_time)
@@ -644,7 +642,7 @@ function run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, st
 end
 
 # To run
-# state = build_simulation(GPU(), 1; add_outputs=true)
+# state = build_simulation(GPU(), 1; add_outputs=true, Δt=5minutes)
 # run_segment!(state; pickup=false, Δt=10minutes, stop_time = 1days)
 
 # To rerun
