@@ -558,7 +558,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     catke_closure = NumericalEarth.Oceans.default_ocean_closure()
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
-    @info "Defining free surface" #Try running w/o sea ice duna,mics, remove rivers and iceberges? 
+    @info "Defining free surface" #Try running w/o sea ice duna,mics, remove rivers and iceberges?
     free_surface = SplitExplicitFreeSurface(grid; substeps=70)
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
@@ -645,4 +645,11 @@ end
 
 # To run
 # state = build_simulation(GPU(), 1; add_outputs=true)
-# run_segment!(state; pickup=false, Δt=10minutes, stop_time = 1days
+# run_segment!(state; pickup=false, Δt=10minutes, stop_time = 1days)
+
+# To rerun
+# state = nothing
+# reclaim_gpu_memory!()
+# state = build_simulation!(GPU(), 1; add_outputs=false)
+# run_segment!(state; pickup=true, Δt=10minutes, stop_time = 1days)
+
