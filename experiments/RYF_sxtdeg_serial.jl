@@ -642,3 +642,7 @@ function run_segment!(state; pickup=false, Δt=5minutes, stop_time = nothing, st
 
     return nothing
 end
+
+# To run
+# state = build_simulation(GPU(), 1; add_outputs=true)
+# run_segment!(state; pickup=false, Δt=10minutes, stop_time = 1days
