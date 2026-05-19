@@ -5,8 +5,8 @@ files = [
     "RYF_sxtdeg_checkpoint_noSIatall_iteration144.jld2",
     "RYF_sxtdeg_checkpoint_noSIdyanamics_iteration144.jld2",
     "RYF_sxtdeg_checkpoint_noSIFW_iteration144.jld2",
-    "RYF_sxtdeg_checkpoint_noSIHFFW_iteration144.jld2"
-
+    "RYF_sxtdeg_checkpoint_noSIHFFW_iteration144.jld2", 
+    "RYF_sxtdeg_checkpoint_artefact_iteration144.jld2"
 ]
 
 labels = [
@@ -14,7 +14,7 @@ labels = [
     "No sea ice dynamics",
     "No sea ice salinity flux",
     "No sea ice thermodynamics",
-
+    "Coupled OSIM"
 ]
 
 basepath = "/data/gpfs/projects/punim2499/taimoor/ocean-ensembles/outputs/"
@@ -52,6 +52,7 @@ for (i, (w, label)) in enumerate(zip(w_list, valid_labels))
         colorrange = (-5e-4, 5e-4),
         colormap = :balance
     )
+    scatter!(ax, [1735-1600], [1085-894], color = :red)
 end
 
 save(joinpath(outpath, "w_plot_debugging.png"), fig, dpi=300)

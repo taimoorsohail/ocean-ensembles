@@ -42,9 +42,9 @@ const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
-checkpoint_interval = TimeInterval((365/48)days)
-output_interval = AveragedTimeInterval((365/48)days)
-diagnostic_surface_interval = TimeInterval((365/48)days)
+checkpoint_interval = TimeInterval(120minutes)
+output_interval = AveragedTimeInterval(1days)
+diagnostic_surface_interval = IterationInterval(1)
 callback_iteration_interval = 10
 
 function gpu_memory_status(prefix="")
@@ -198,6 +198,7 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
     start_wall_time = Ref(time_ns())
     wall_time = Ref(time_ns())
     callback_interval = IterationInterval(callback_iteration_interval)
+    target_cfl_site = (1735, 1085, 75)
 
     ocean_model = simulation.model.ocean.model
     grid = ocean_model.grid
@@ -222,54 +223,53 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         compute!(inverse_timescale_field)
         maximum_inverse_timescale, cfl_index = findmax_interior_field(inverse_timescale_field)
         i, j, k = Tuple(cfl_index)
+        ti, tj, tk = target_cfl_site
 
         inverse_timescale_u, inverse_timescale_v, inverse_timescale_w =
             maybe_allow_scalar() do
                 advective_inverse_timescale_componentsᶜᶜᶜ(i, j, k, grid, u, v, w)
             end
 
-        uC, vC, wC, wA, uE, vN =
+        target_longitude, target_latitude, target_depth =
             maybe_allow_scalar() do
-                (u[i, j, k],
-                 v[i, j, k],
-                 w[i, j, k],
-                 w[i, j, k+1],
-                 u[i+1, j, k],
-                 v[i, j+1, k])
+                (longitude_value(longitudes, ti, tj),
+                 latitude_value(latitudes, ti, tj),
+                 depth_value(depths, ti, tj, tk))
             end
 
-        bottom = grid.immersed_boundary.bottom_height
-        hC, hW, hE, hS, hN, local_Δz, local_Δz_above, local_cfl_w, local_cfl_w_above =
-            maybe_allow_scalar() do
-                Δz⁻¹ = Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
-                Δz⁻¹_above = Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid)
+        sea_ice_model = sim.model.sea_ice.model
+        sea_ice_ocean_interface = sim.model.interfaces.sea_ice_ocean_interface
+        sea_ice_ocean_fluxes = sea_ice_ocean_interface.fluxes
+        net_sea_ice_fluxes = sim.model.interfaces.net_fluxes.sea_ice
+        latent_heat = sea_ice_model.phase_transitions.reference_latent_heat
 
-                (bottom[i, j, 1],
-                 bottom[i-1, j, 1],
-                 bottom[i+1, j, 1],
-                 bottom[i, j-1, 1],
-                 bottom[i, j+1, 1],
-                 1 / Δz⁻¹,
-                 1 / Δz⁻¹_above,
-                 sim.Δt * abs(w[i, j, k]) * Δz⁻¹,
-                 sim.Δt * abs(w[i, j, k+1]) * Δz⁻¹_above)
+        target_T, target_S, target_η, uC, vC, wC, wA, ice_h, ice_hc, ice_ℵ, ice_S, ice_Ts,
+        interface_T, interface_S, interface_heat, frazil_heat, salt_flux, top_heat_flux, bottom_heat_flux =
+            maybe_allow_scalar() do
+                (T[ti, tj, tk],
+                 S[ti, tj, tk],
+                 η[ti, tj, grid.Nz + 1],
+                 u[ti, tj, tk],
+                 v[ti, tj, tk],
+                 w[ti, tj, tk],
+                 w[ti, tj, tk+1],
+                 sea_ice_model.ice_thickness[ti, tj, 1],
+                 sea_ice_model.ice_consolidation_thickness[ti, tj, 1],
+                 sea_ice_model.ice_concentration[ti, tj, 1],
+                 sea_ice_model.tracers.S[ti, tj, 1],
+                 sea_ice_model.ice_thermodynamics.top_surface_temperature[ti, tj, 1],
+                 sea_ice_ocean_interface.temperature[ti, tj, 1],
+                 sea_ice_ocean_interface.salinity[ti, tj, 1],
+                 sea_ice_ocean_fluxes.interface_heat[ti, tj, 1],
+                 sea_ice_ocean_fluxes.frazil_heat[ti, tj, 1],
+                 sea_ice_ocean_fluxes.salt[ti, tj, 1],
+                 net_sea_ice_fluxes.top.heat[ti, tj, 1],
+                 net_sea_ice_fluxes.bottom.heat[ti, tj, 1])
             end
 
-        cell_immersed, uC_peripheral, uE_peripheral, vC_peripheral, vN_peripheral =
-            maybe_allow_scalar() do
-                (immersed_cell(i, j, k, grid),
-                 peripheral_node(i, j, k, grid, Face(), Center(), Center()),
-                 peripheral_node(i+1, j, k, grid, Face(), Center(), Center()),
-                 peripheral_node(i, j, k, grid, Center(), Face(), Center()),
-                 peripheral_node(i, j+1, k, grid, Center(), Face(), Center()))
-            end
-
-        cell_above_immersed, wC_peripheral, wA_peripheral =
-            maybe_allow_scalar() do
-                (k < grid.Nz ? immersed_cell(i, j, k+1, grid) : false,
-                 peripheral_node(i, j, k, grid, Center(), Center(), Face()),
-                 peripheral_node(i, j, k+1, grid, Center(), Center(), Face()))
-            end
+        melt_rate = interface_heat / latent_heat
+        freezing_rate = frazil_heat / latent_heat
+        net_phase_rate = melt_rate + freezing_rate
 
         cfl_u = sim.Δt * inverse_timescale_u
         cfl_v = sim.Δt * inverse_timescale_v
@@ -306,19 +306,18 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         msg8 = @sprintf("SYPD: %.2f\n", (callback_iteration_interval * sim.Δt) / step_time / 365)
         msg9 = @sprintf("advective_cfl: %.2f at lat=%.2f, lon=%.2f, z=%.1f m, dominant=%s\n",
                         advective_cfl, cfl_latitude, cfl_longitude, cfl_depth, dominant_component)
-        msg10 = @sprintf("cfl components: u/v/w=(%.2f, %.2f, %.2f)\n",
-                         cfl_u, cfl_v, cfl_w)
-        msg11 = @sprintf("cfl-site velocities: uC/uE=(%.2e, %.2e), vC/vN=(%.2e, %.2e), wC/wA=(%.2e, %.2e)\n",
-                         uC, uE, vC, vN, wC, wA)
-        msg12 = @sprintf("cfl-site mask: cell_immersed=%s, uC/uE peripheral=(%s, %s), vC/vN peripheral=(%s, %s)\n",
-                         string(cell_immersed), string(uC_peripheral), string(uE_peripheral),
-                         string(vC_peripheral), string(vN_peripheral))
-        msg13 = @sprintf("cfl-site vertical mask: cell_above_immersed=%s, wC/wA peripheral=(%s, %s)\n",
-                         string(cell_above_immersed), string(wC_peripheral), string(wA_peripheral))
-        msg14 = @sprintf("cfl-site bottom hC/hW/hE/hS/hN=(%.1f, %.1f, %.1f, %.1f, %.1f) m\n",
-                         hC, hW, hE, hS, hN)
-        msg15 = @sprintf("cfl-site Δz/Δz_above=(%.2f, %.2f) m, cfl_w/cfl_w_above=(%.2f, %.2f)\n",
-                         local_Δz, local_Δz_above, local_cfl_w, local_cfl_w_above)
+        msg10 = @sprintf("target[%d, %d, %d] at lat=%.2f, lon=%.2f, z=%.1f m: T=%.3f C, S=%.3f g/kg, eta=%.3e m\n",
+                         ti, tj, tk, target_latitude, target_longitude, target_depth, target_T, target_S, target_η)
+        msg11 = @sprintf("target-site velocities: u/v/w/w_above=(%.2e, %.2e, %.2e, %.2e) m s^-1\n",
+                         uC, vC, wC, wA)
+        msg12 = @sprintf("target-site sea ice: h/hc=(%.3f, %.3f) m, concentration=%.3f, S_i=%.3f g/kg, T_sfc=%.3f C\n",
+                         ice_h, ice_hc, ice_ℵ, ice_S, ice_Ts)
+        msg13 = @sprintf("target-site interface: T*=%.3f C, S*=%.3f g/kg, Q_int=%.3e W m^-2, Q_frazil=%.3e W m^-2\n",
+                         interface_T, interface_S, interface_heat, frazil_heat)
+        msg14 = @sprintf("target-site phase rates: q_m=%.3e, q_f=%.3e, q_net=%.3e m s^-1(eqv), salt_flux=%.3e g/kg m s^-1\n",
+                         melt_rate, freezing_rate, net_phase_rate, salt_flux)
+        msg15 = @sprintf("target-site sea-ice heat: top=%.3e W m^-2, bottom=%.3e W m^-2\n",
+                         top_heat_flux, bottom_heat_flux)
 
         @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9 * msg10 * msg11 * msg12 * msg13 * msg14 * msg15
 
@@ -490,23 +489,33 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                                           with_halos=false,
                                                           overwrite_existing=true,
                                                           array_type=Array{Float32})
+
+        instantaneous_key = Symbol(spec.key, "_instantaneous")
+        @time ocean.output_writers[instantaneous_key] = JLD2Writer(ocean.model, outputs;
+                                                                   dir=output_path,
+                                                                   schedule=diagnostic_surface_interval,
+                                                                   filename="global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_instantaneous_run" * run_id_leading,
+                                                                   indices=(:, :, spec.ind_pln),
+                                                                   with_halos=false,
+                                                                   overwrite_existing=true,
+                                                                   array_type=Array{Float32})
     end
 
-    @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
-                                                  dir=output_path,
-                                                  schedule=output_interval,
-                                                  filename="global_ssh_fields_sxtdeg_RYF_run" * run_id_leading,
-                                                  with_halos=false,
-                                                  overwrite_existing=true,
-                                                  array_type=Array{Float32})
+    # @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
+    #                                               dir=output_path,
+    #                                               schedule=output_interval,
+    #                                               filename="global_ssh_fields_sxtdeg_RYF_run" * run_id_leading,
+    #                                               with_halos=false,
+    #                                               overwrite_existing=true,
+    #                                               array_type=Array{Float32})
 
-    @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
-                                                                  dir=output_path,
-                                                                  schedule=output_interval,
-                                                                  filename="global_surface_fluxes_sxtdeg_RYF_run" * run_id_leading,
-                                                                  with_halos=false,
-                                                                  overwrite_existing=true,
-                                                                  array_type=Array{Float32})
+    # @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
+    #                                                               dir=output_path,
+    #                                                               schedule=output_interval,
+    #                                                               filename="global_surface_fluxes_sxtdeg_RYF_run" * run_id_leading,
+    #                                                               with_halos=false,
+    #                                                               overwrite_existing=true,
+    #                                                               array_type=Array{Float32})
 
     # @time ocean.output_writers[:diagnostic_subsurface] = JLD2Writer(ocean.model, diagnostic_subsurface_outputs;
     #                                                                 dir=output_path,
@@ -527,11 +536,11 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     #                                                                   overwrite_existing=true,
     #                                                                   array_type=Array{Float32})
 
-    @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
-                                                       dir=output_path,
-                                                       schedule=output_interval,
-                                                       filename="global_tot_integrals_sxtdeg_RYF_run" * run_id_leading,
-                                                       overwrite_existing=true)
+    # @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
+    #                                                    dir=output_path,
+    #                                                    schedule=output_interval,
+    #                                                    filename="global_tot_integrals_sxtdeg_RYF_run" * run_id_leading,
+    #                                                    overwrite_existing=true)
 
     return nothing
 end
@@ -596,15 +605,15 @@ function build_simulation(arch, run_id; add_outputs=true)
     land = JRA55PrescribedLand(arch; backend=jra55_backend)
 
     @info "Defining coupled model"
-    interfaces = ComponentInterfaces(atmosphere, ocean, sea_ice;
-    radiation,
-    sea_ice_ocean_salinity_flux = nothing)
+    # interfaces = ComponentInterfaces(atmosphere, ocean, sea_ice;
+    # radiation,
+    # sea_ice_ocean_salinity_flux = nothing)
 
-    @time coupled_model = OceanSeaIceModel(sea_ice, ocean;
-        atmosphere,
-        radiation,
-        interfaces)
-    # @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation)
+    # @time coupled_model = OceanSeaIceModel(sea_ice, ocean;
+    #     atmosphere,
+    #     radiation,
+    #     interfaces)
+    @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation)
     # @time coupled_model = OceanOnlyModel(ocean; atmosphere, land, radiation)
 
     simulation = Simulation(coupled_model; Δt=10minutes)
@@ -617,7 +626,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model,
                                                                   schedule=checkpoint_interval,
                                                                   dir=output_path,
-                                                                  prefix="RYF_sxtdeg_checkpoint",
+                                                                  prefix="RYF_sxtdeg_checkpoint_artefact",
                                                                   overwrite_existing=true,
                                                                   cleanup=false)
 
