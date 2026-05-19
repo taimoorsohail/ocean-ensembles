@@ -42,9 +42,9 @@ const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
-checkpoint_interval = TimeInterval(120minutes)
-output_interval = AveragedTimeInterval(120minutes)
-diagnostic_surface_interval = TimeInterval(120minutes)
+checkpoint_interval = TimeInterval((365/48)days)
+output_interval = AveragedTimeInterval((365/48)days)
+diagnostic_surface_interval = TimeInterval((365/48)days)
 callback_iteration_interval = 10
 
 function gpu_memory_status(prefix="")
@@ -508,24 +508,24 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                                                   overwrite_existing=true,
                                                                   array_type=Array{Float32})
 
-    @time ocean.output_writers[:diagnostic_subsurface] = JLD2Writer(ocean.model, diagnostic_subsurface_outputs;
-                                                                    dir=output_path,
-                                                                    schedule=diagnostic_surface_interval,
-                                                                    filename="global_diagnostic_k$(diagnostic_surface_level)_fields_sxtdeg_RYF_run" * run_id_leading,
-                                                                    indices=(:, :, diagnostic_surface_level),
-                                                                    including=(),
-                                                                    with_halos=false,
-                                                                    overwrite_existing=true,
-                                                                    array_type=Array{Float32})
+    # @time ocean.output_writers[:diagnostic_subsurface] = JLD2Writer(ocean.model, diagnostic_subsurface_outputs;
+    #                                                                 dir=output_path,
+    #                                                                 schedule=diagnostic_surface_interval,
+    #                                                                 filename="global_diagnostic_k$(diagnostic_surface_level)_fields_sxtdeg_RYF_run" * run_id_leading,
+    #                                                                 indices=(:, :, diagnostic_surface_level),
+    #                                                                 including=(),
+    #                                                                 with_halos=false,
+    #                                                                 overwrite_existing=true,
+    #                                                                 array_type=Array{Float32})
 
-    @time simulation.output_writers[:diagnostic_surface] = JLD2Writer(simulation.model, build_diagnostic_surface_outputs(simulation);
-                                                                      dir=output_path,
-                                                                      schedule=diagnostic_surface_interval,
-                                                                      filename="global_diagnostic_surface_fields_sxtdeg_RYF_run" * run_id_leading,
-                                                                      including=(),
-                                                                      with_halos=false,
-                                                                      overwrite_existing=true,
-                                                                      array_type=Array{Float32})
+    # @time simulation.output_writers[:diagnostic_surface] = JLD2Writer(simulation.model, build_diagnostic_surface_outputs(simulation);
+    #                                                                   dir=output_path,
+    #                                                                   schedule=diagnostic_surface_interval,
+    #                                                                   filename="global_diagnostic_surface_fields_sxtdeg_RYF_run" * run_id_leading,
+    #                                                                   including=(),
+    #                                                                   with_halos=false,
+    #                                                                   overwrite_existing=true,
+    #                                                                   array_type=Array{Float32})
 
     @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
                                                        dir=output_path,
@@ -582,9 +582,8 @@ function build_simulation(arch, run_id; add_outputs=true)
     # sea_ice_rheology = ElastoViscoPlasticRheology(rheology_activation_concentration = (0.15, 0.80))
     # sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; rheology = sea_ice_rheology)
     sea_ice = sea_ice_simulation(grid, ocean;
-                                 dynamics = nothing,
                                  advection = WENO(order=7,
-                                                  minimum_buffer_upwind_order=1))
+                                 minimum_buffer_upwind_order=1))
 
     set!(sea_ice.model,
          h=Metadatum(:sea_ice_thickness; dataset=ECCO4Monthly(), dir=data_path),
@@ -597,18 +596,16 @@ function build_simulation(arch, run_id; add_outputs=true)
     land = JRA55PrescribedLand(arch; backend=jra55_backend)
 
     @info "Defining coupled model"
-    # interfaces = ComponentInterfaces(atmosphere, ocean, sea_ice;
-    # radiation,
-    # sea_ice_ocean_heat_flux = IceBathHeatFlux(),
-    # )
+    interfaces = ComponentInterfaces(atmosphere, ocean, sea_ice;
+    radiation,
+    sea_ice_ocean_salinity_flux = nothing)
 
-    # coupled_model = OceanSeaIceModel(sea_ice, ocean;
-    #     atmosphere,
-    #     radiation,
-    #     interfaces,
-    # )
+    @time coupled_model = OceanSeaIceModel(sea_ice, ocean;
+        atmosphere,
+        radiation,
+        interfaces)
     # @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation)
-    @time coupled_model = OceanOnlyModel(ocean; atmosphere, land, radiation)
+    # @time coupled_model = OceanOnlyModel(ocean; atmosphere, land, radiation)
 
     simulation = Simulation(coupled_model; Δt=10minutes)
     add_progress_callback!(simulation)
@@ -620,7 +617,7 @@ function build_simulation(arch, run_id; add_outputs=true)
     @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model,
                                                                   schedule=checkpoint_interval,
                                                                   dir=output_path,
-                                                                  prefix="RYF_sxtdeg_checkpoint_noSIatall",
+                                                                  prefix="RYF_sxtdeg_checkpoint",
                                                                   overwrite_existing=true,
                                                                   cleanup=false)
 
