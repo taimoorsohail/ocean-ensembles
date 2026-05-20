@@ -289,14 +289,7 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         msg8 = @sprintf("SYPD: %.2f\n", (callback_iteration_interval * sim.Δt) / step_time / 365)
         msg9 = @sprintf("advective_cfl: %.2f at lat=%.2f, lon=%.2f, z=%.1f m, dominant=%s\n",
                         advective_cfl, cfl_latitude, cfl_longitude, cfl_depth, dominant_component)
-        msg10 = "target-site 7x7 stencils\n"
-        msg11 = "target-site 7x7 stencil salt flux:    " * fmt_stencil(salt_flux_stencil) * "\n"
-        msg12 = "target-site 7x7 stencil ice conc:     " * fmt_stencil(ice_concentration_stencil) * "\n"
-        msg13 = "target-site 7x7 stencil ∂x_saltflux: " * fmt_stencil(salt_flux_xgrad_stencil) * "\n"
-        msg14 = "target-site 7x7 stencil ∂y_saltflux: " * fmt_stencil(salt_flux_ygrad_stencil) * "\n"
-        msg15 = "target-site 7x7 stencil ∂x_iceconc:  " * fmt_stencil(ice_concentration_xgrad_stencil) * "\n"
-        msg16 = "target-site 7x7 stencil ∂y_iceconc:  " * fmt_stencil(ice_concentration_ygrad_stencil) * "\n"
-        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9 * msg10 * msg11 * msg12 * msg13 * msg14 * msg15 * msg16
+        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9
         wall_time[] = current_wall_time
         return nothing
     end
