@@ -533,7 +533,7 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     catke_closure = NumericalEarth.Oceans.default_ocean_closure()
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
-    @info "Defining free surface" #Try running w/o sea ice duna,mics, remove rivers and iceberges?
+    @info "Defining free surface"
     free_surface = SplitExplicitFreeSurface(grid; substeps=70)
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
@@ -551,8 +551,8 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
 
     @info "Initialising with EN4"
     set!(ocean.model,
-         T=Metadata(:temperature; dates=first(dates), dataset=dataset, dir=data_path),
-         S=Metadata(:salinity; dates=first(dates), dataset=dataset, dir=data_path))
+         T=Metadata(:temperature; dates=first(dates), dataset, dir=data_path),
+         S=Metadata(:salinity; dates=first(dates), dataset, dir=data_path))
 
     @info "Creating sea ice model"
     # sea_ice_rheology = ElastoViscoPlasticRheology(rheology_activation_concentration = (0.15, 0.80))
@@ -560,9 +560,10 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     sea_ice = sea_ice_simulation(grid, ocean;
                                  advection = sea_ice_advection)
 
+    dataset_sea_ice = ECCO4Monthly()
     set!(sea_ice.model,
-         h=Metadatum(:sea_ice_thickness; dataset=ECCO4Monthly(), dir=data_path),
-         ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir=data_path))
+         h=Metadatum(:sea_ice_thickness; dataset=dataset_sea_ice, dir=data_path),
+         ℵ=Metadatum(:sea_ice_concentration; dataset=dataset_sea_ice, dir=data_path))
 
     @info "Defining Atmospheric state"
     radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory)
