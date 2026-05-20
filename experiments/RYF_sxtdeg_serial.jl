@@ -110,30 +110,28 @@ function download_input_data!(dates, dataset)
     return (; temperature, salinity, ETOPOmetadata)
 end
 
-function build_grid(arch, ETOPOmetadata)
+function build_grid(arch, bathymetry_metadata)
     @info "Defining vertical z faces"
-    z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true)
-    # z_surf = z_faces[Nz]
-    z_surf = z_faces.cᵃᵃᶠ(Nz)
+    z = ExponentialDiscretization(Nz, depth, 0, mutable=true)
 
-    @info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
+    @info "Top grid cell is $(Oceananigans.Utils.prettysummary(abs(z.cᵃᵃᶠ[Nz]))) m thick"
     @info "Grid dimensions: Nx = $Nx, Ny = $Ny, Nz = $Nz"
 
     @info "Defining tripolar grid"
     underlying_grid = TripolarGrid(arch;
                                    size=(Nx, Ny, Nz),
-                                   z=z_faces,
+                                   z,
                                    halo=(7, 7, 7))
 
     @info "Defining bottom bathymetry"
-    @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
+    @time bottom_height = regrid_bathymetry(underlying_grid, bathymetry_metadata;
                                             minimum_depth=15,
                                             interpolation_passes=25,
                                             major_basins=2)
 
     @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
-    return (; grid, z_surf)
+    return grid
 end
 
 @inline function advective_inverse_timescale_componentsᶜᶜᶜ(i, j, k, grid, u, v, w)
@@ -552,17 +550,16 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     inputs = download_input_data!(dates, dataset)
 
     @info "Defining grid"
-    grid_state = build_grid(arch, inputs.ETOPOmetadata)
-    grid = grid_state.grid
-    z_surf = grid_state.z_surf
+    grid = build_grid(arch, inputs.ETOPOmetadata)
+    z_surf = CUDA.@allowscalar grid.underlying_grid.z.cᵃᵃᶠ[grid.Nz]
 
     @info "Defining restoring rate"
     restoring_rate = 1 / 30days
-    mask(x, y, z, t) = z >= z_surf - 1
+    mask(x, y, z, t) = z ≥ z_surf - 1
 
     # Keep time caches small so pickup does not require a large transient memory budget.
     FS = DatasetRestoring(inputs.salinity, grid; mask, rate=restoring_rate, time_indices_in_memory)
-    forcing = (; S=FS)
+    forcing = (; S = FS)
 
     @info "Defining closures"
     catke_closure = NumericalEarth.Oceans.default_ocean_closure()
@@ -659,4 +656,3 @@ end
 # reclaim_gpu_memory!()
 # state = build_simulation!(GPU(), 1; add_outputs=false)
 # run_segment!(state; pickup=true, Δt=5minutes, stop_time = 1days)
-
