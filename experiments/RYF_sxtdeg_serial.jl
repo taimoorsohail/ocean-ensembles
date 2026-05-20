@@ -42,10 +42,12 @@ const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
-checkpoint_interval = TimeInterval(120minutes)
-output_interval = AveragedTimeInterval(1days)
-diagnostic_surface_interval = IterationInterval(1)
-callback_iteration_interval = 10
+checkpoint_interval = TimeInterval(10days)
+output_interval = AveragedTimeInterval(5days)
+callback_iteration_interval = TimeInterval(10days)
+default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
+default_mediaflux_archive_interval = 6days
+mediaflux_archive_submission_script = joinpath(@__DIR__, "submission_scripts", "mediaflux_archive_checkpoints.sh")
 
 function gpu_memory_status(prefix="")
     if !isdefined(Main, :CUDA)
@@ -92,6 +94,9 @@ end
 function ryf_dates()
     return vcat(collect(DateTime(1991, 1, 1):Month(1):DateTime(1991, 4, 1)),
                 collect(DateTime(1990, 5, 1):Month(1):DateTime(1990, 12, 1)))
+end
+function ecco_dates()
+    return collect(DateTime(1993, 1, 1):Month(1):DateTime(1993, 12, 1))
 end
 
 function download_input_data!(dates, dataset)
@@ -196,22 +201,7 @@ end
 function add_progress_callback!(simulation; callback_iteration_interval = callback_iteration_interval)
     start_wall_time = Ref(time_ns())
     wall_time = Ref(time_ns())
-    callback_interval = IterationInterval(callback_iteration_interval)
-    target_cfl_site = (1735, 1085, 75)
-
-    ocean_model = simulation.model.ocean.model
-    grid = ocean_model.grid
-    u, v, w = ocean_model.velocities
-
-    inverse_timescale_operation =
-        KernelFunctionOperation{Center, Center, Center}(advective_inverse_timescaleᶜᶜᶜ,
-                                                        grid, u, v, w)
-
-    inverse_timescale_field = Field(inverse_timescale_operation)
-
-    longitudes = λnodes(grid, Center(), Center(), Center(); with_halos=false)
-    latitudes = φnodes(grid, Center(), Center(), Center(); with_halos=false)
-    depths = znodes(grid, Center(), Center(), Center(); with_halos=false)
+    callback_interval = TimeInterval(callback_iteration_interval)
 
     function progress(sim)
         η = sim.model.ocean.model.free_surface.displacement
@@ -219,38 +209,10 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         T, S = sim.model.ocean.model.tracers
         iteration = Oceananigans.iteration(sim)
 
-        compute!(inverse_timescale_field)
-        maximum_inverse_timescale, cfl_index = findmax_interior_field(inverse_timescale_field)
-        i, j, k = Tuple(cfl_index)
-        ti, tj, tk = target_cfl_site
-        tni, tnj, tnk = ti - grid.Hx, tj - grid.Hy, tk - grid.Hz
-
-        inverse_timescale_u, inverse_timescale_v, inverse_timescale_w =
-            maybe_allow_scalar() do
-                advective_inverse_timescale_componentsᶜᶜᶜ(i, j, k, grid, u, v, w)
-            end
-
-        target_longitude, target_latitude, target_depth =
-            maybe_allow_scalar() do
-                (longitude_value(longitudes, tni, tnj),
-                 latitude_value(latitudes, tni, tnj),
-                 depth_value(depths, tni, tnj, tnk))
-            end
-
-        sea_ice_model = sim.model.sea_ice.model
-        sea_ice_ocean_fluxes = sim.model.interfaces.sea_ice_ocean_interface.fluxes
-        cfl_u = sim.Δt * inverse_timescale_u
-        cfl_v = sim.Δt * inverse_timescale_v
-        cfl_w = sim.Δt * inverse_timescale_w
+        # The CFL hotspot and dominant-term diagnostics were helpful for debugging,
+        # but they add an expensive full-field search and extra reductions/copies.
+        # Keep only the aggregate advective CFL in routine progress logging.
         advective_cfl = AdvectiveCFL(sim.Δt)(sim.model.ocean.model)
-        dominant_component = dominant_cfl_component(cfl_u, cfl_v, cfl_w)
-
-        cfl_longitude, cfl_latitude, cfl_depth =
-            maybe_allow_scalar() do
-                (longitude_value(longitudes, i, j),
-                 latitude_value(latitudes, i, j),
-                 depth_value(depths, i, j, k))
-            end
 
         Trange = (maximum(T), minimum(T))
         Srange = (maximum(S), minimum(S))
@@ -259,21 +221,6 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         umax = (maximum(abs, u),
                 maximum(abs, v),
                 maximum(abs, w))
-
-        i_stencil = max(first(axes(sea_ice_ocean_fluxes.salt, 1)), ti - 3):min(last(axes(sea_ice_ocean_fluxes.salt, 1)), ti + 3)
-        j_stencil = max(first(axes(sea_ice_ocean_fluxes.salt, 2)), tj - 3):min(last(axes(sea_ice_ocean_fluxes.salt, 2)), tj + 3)
-
-        salt_flux_stencil, ice_concentration_stencil, salt_flux_xgrad_stencil, salt_flux_ygrad_stencil, ice_concentration_xgrad_stencil, ice_concentration_ygrad_stencil =
-            maybe_allow_scalar() do
-                ([sea_ice_ocean_fluxes.salt[ii, jj, 1] for jj in j_stencil, ii in i_stencil],
-                 [sea_ice_model.ice_concentration[ii, jj, 1] for jj in j_stencil, ii in i_stencil],
-                 [∂xᶠᶜᶜ(ii, jj, 1, grid, sea_ice_ocean_fluxes.salt) for jj in j_stencil, ii in i_stencil],
-                 [∂yᶜᶠᶜ(ii, jj, 1, grid, sea_ice_ocean_fluxes.salt) for jj in j_stencil, ii in i_stencil],
-                 [∂xᶠᶜᶜ(ii, jj, 1, grid, sea_ice_model.ice_concentration) for jj in j_stencil, ii in i_stencil],
-                 [∂yᶜᶠᶜ(ii, jj, 1, grid, sea_ice_model.ice_concentration) for jj in j_stencil, ii in i_stencil])
-            end
-
-        fmt_stencil(A) = join(["[" * join([@sprintf("%.2e", A[row, col]) for col in axes(A, 2)], ", ") * "]" for row in axes(A, 1)], " ")
 
         current_wall_time = time_ns()
         step_time = 1e-9 * (current_wall_time - wall_time[])
@@ -287,14 +234,60 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         msg6 = @sprintf("wall time: %s\n", prettytime(step_time))
         msg7 = @sprintf("elapsed wall time: %s\n", prettytime(wall_progress))
         msg8 = @sprintf("SYPD: %.2f\n", (callback_iteration_interval * sim.Δt) / step_time / 365)
-        msg9 = @sprintf("advective_cfl: %.2f at lat=%.2f, lon=%.2f, z=%.1f m, dominant=%s\n",
-                        advective_cfl, cfl_latitude, cfl_longitude, cfl_depth, dominant_component)
+        msg9 = @sprintf("advective_cfl: %.2f\n", advective_cfl)
         @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9
         wall_time[] = current_wall_time
         return nothing
     end
 
     add_callback!(simulation, progress, callback_interval)
+    return nothing
+end
+function submit_mediaflux_archive_job!(; output_dir=output_path,
+                                         checkpoint_prefix=default_checkpoint_prefix)
+    if !isfile(mediaflux_archive_submission_script)
+        @warn "Mediaflux archive submission script not found; skipping archive submission" mediaflux_archive_submission_script
+        return nothing
+    end
+
+    required_env_vars = ("MEDIAFLUX_PROJ_PATH",)
+    missing_env_vars = [name for name in required_env_vars if isempty(get(ENV, name, ""))]
+    if !isempty(missing_env_vars)
+        @warn "Mediaflux archive submission skipped because required environment variables are missing" missing_env_vars
+        return nothing
+    end
+
+    export_arg = join((
+        "ALL",
+        "MEDIAFLUX_ARCHIVE_OUTPUT_PATH=$(output_dir)",
+        "MEDIAFLUX_ARCHIVE_CHECKPOINT_PREFIX=$(checkpoint_prefix)"), ",")
+
+    cmd = `sbatch --export=$export_arg $mediaflux_archive_submission_script`
+
+    try
+        @info "Submitting Mediaflux checkpoint archive job" command=string(cmd)
+        run(cmd)
+    catch err
+        @warn "Failed to submit Mediaflux checkpoint archive job" exception=(err, catch_backtrace())
+    end
+
+    return nothing
+end
+
+function add_mediaflux_archive_callback!(simulation;
+                                         archive_interval=default_mediaflux_archive_interval,
+                                         output_dir=output_path,
+                                         checkpoint_prefix=default_checkpoint_prefix)
+    archive_interval <= 0 && return nothing
+    archive_schedule = TimeInterval(archive_interval)
+
+    function submit_archive(sim)
+        @info "Mediaflux archive callback triggered" iteration=Oceananigans.iteration(sim) time=prettytime(sim)
+        submit_mediaflux_archive_job!(; output_dir, checkpoint_prefix)
+        return nothing
+    end
+
+    add_callback!(simulation, submit_archive, archive_schedule)
     return nothing
 end
 
@@ -439,8 +432,6 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     @info "Defining run-dependent output writers for run $run_id_leading"
 
     outputs = merge(ocean.model.tracers, ocean.model.velocities)
-    diagnostic_subsurface_outputs = merge(outputs, (; e=ocean.model.tracers.e))
-    diagnostic_surface_level = Nz - 1
     remove_existing_diagnostic_output_files!(run_id_leading)
     surface_height = (; surface_height=ocean.model.free_surface.displacement)
     # Surface flux diagnostics are disabled for the ocean-only run because these
@@ -460,21 +451,21 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                                           array_type=Array{Float32})
     end
 
-    # @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
-    #                                               dir=output_path,
-    #                                               schedule=output_interval,
-    #                                               filename="global_ssh_fields_sxtdeg_RYF_run" * run_id_leading,
-    #                                               with_halos=false,
-    #                                               overwrite_existing=true,
-    #                                               array_type=Array{Float32})
+    @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
+                                                  dir=output_path,
+                                                  schedule=output_interval,
+                                                  filename="global_ssh_fields_sxtdeg_RYF_run" * run_id_leading,
+                                                  with_halos=false,
+                                                  overwrite_existing=true,
+                                                  array_type=Array{Float32})
 
-    # @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
-    #                                                               dir=output_path,
-    #                                                               schedule=output_interval,
-    #                                                               filename="global_surface_fluxes_sxtdeg_RYF_run" * run_id_leading,
-    #                                                               with_halos=false,
-    #                                                               overwrite_existing=true,
-    #                                                               array_type=Array{Float32})
+    @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
+                                                                  dir=output_path,
+                                                                  schedule=output_interval,
+                                                                  filename="global_surface_fluxes_sxtdeg_RYF_run" * run_id_leading,
+                                                                  with_halos=false,
+                                                                  overwrite_existing=true,
+                                                                  array_type=Array{Float32})
 
     # @time ocean.output_writers[:diagnostic_subsurface] = JLD2Writer(ocean.model, diagnostic_subsurface_outputs;
     #                                                                 dir=output_path,
@@ -495,18 +486,23 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     #                                                                   overwrite_existing=true,
     #                                                                   array_type=Array{Float32})
 
-    # @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
-    #                                                    dir=output_path,
-    #                                                    schedule=output_interval,
-    #                                                    filename="global_tot_integrals_sxtdeg_RYF_run" * run_id_leading,
-    #                                                    overwrite_existing=true)
+    @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
+                                                       dir=output_path,
+                                                       schedule=output_interval,
+                                                       filename="global_tot_integrals_sxtdeg_RYF_run" * run_id_leading,
+                                                       overwrite_existing=true)
 
     return nothing
 end
 
-function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
-    dates = ryf_dates()
-    dataset = EN4Monthly()
+function build_simulation(arch, run_id;
+                          add_outputs=true,
+                          Δt=10minutes,
+                          enable_mediaflux_archive=!isempty(get(ENV, "MEDIAFLUX_PROJ_PATH", "")),
+                          mediaflux_archive_interval=default_mediaflux_archive_interval,
+                          checkpoint_prefix=default_checkpoint_prefix)
+    dates = ecco_dates()
+    dataset = ECCO4Monthly()
     time_indices_in_memory = 24
     inputs = download_input_data!(dates, dataset)
 
@@ -527,7 +523,7 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
     @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=70)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=100)
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
@@ -542,14 +538,12 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
                                    radiative_forcing=nothing,
                                    closure)
 
-    @info "Initialising with EN4"
+    @info "Initialising with ECCO4"
     set!(ocean.model,
          T=Metadata(:temperature; dates=first(dates), dataset, dir=data_path),
          S=Metadata(:salinity; dates=first(dates), dataset, dir=data_path))
 
     @info "Creating sea ice model"
-    # sea_ice_rheology = ElastoViscoPlasticRheology(rheology_activation_concentration = (0.15, 0.80))
-    # sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; rheology = sea_ice_rheology)
     sea_ice = sea_ice_simulation(grid, ocean;
                                  advection = sea_ice_advection)
 
@@ -564,13 +558,16 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     land = JRA55PrescribedLand(arch; time_indices_in_memory)
 
     @info "Defining coupled model"
-    # interfaces = ComponentInterfaces(atmosphere, ocean, sea_ice; radiation, sea_ice_ocean_salinity_flux = nothing)
-    # @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation, interfaces)
     @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation)
-    # @time coupled_model = OceanOnlyModel(ocean; atmosphere, land, radiation)
 
     simulation = Simulation(coupled_model; Δt)
     add_progress_callback!(simulation)
+    if enable_mediaflux_archive
+        add_mediaflux_archive_callback!(simulation;
+                                        archive_interval=mediaflux_archive_interval,
+                                        output_dir=output_path,
+                                        checkpoint_prefix=checkpoint_prefix)
+    end
 
     if add_outputs
         add_run_output_writers!(simulation, ocean, grid, run_id)
@@ -579,7 +576,7 @@ function build_simulation(arch, run_id; add_outputs=true, Δt=10minutes)
     @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model,
                                                                   schedule=checkpoint_interval,
                                                                   dir=output_path,
-                                                                  prefix="RYF_sxtdeg_checkpoint_artefact",
+                                                                  prefix=checkpoint_prefix,
                                                                   overwrite_existing=true,
                                                                   cleanup=false)
 

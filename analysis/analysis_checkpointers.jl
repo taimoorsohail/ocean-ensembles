@@ -14,7 +14,7 @@ labels = [
     "No sea ice dynamics",
     "No sea ice salinity flux",
     "No sea ice thermodynamics",
-    "Coupled OSIM"
+    "Coupled OSIM with ECCO4"
 ]
 
 basepath = "/data/gpfs/projects/punim2499/taimoor/ocean-ensembles/outputs/"
@@ -52,7 +52,7 @@ for (i, (w, label)) in enumerate(zip(w_list, valid_labels))
         colorrange = (-5e-4, 5e-4),
         colormap = :balance
     )
-    scatter!(ax, [1735-1600], [1085-894], color = :red)
+    # scatter!(ax, [1735-1600], [1085-894], color = :red)
 end
 
 save(joinpath(outpath, "w_plot_debugging.png"), fig, dpi=300)
