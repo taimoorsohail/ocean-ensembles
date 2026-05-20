@@ -33,7 +33,7 @@ Base.@kwdef struct Config
     include_radiation::Bool = false
     include_sea_ice::Bool = false
     include_restoring::Bool = false
-    momentum_advection = WENOVectorInvariant()
+    momentum_advection = nothing#WENOVectorInvariant()
     tracer_advection = WENO(order = 7)
     initial_ts_dataset = EN4Monthly()
     initial_momentum_dataset = ECCO4Monthly()

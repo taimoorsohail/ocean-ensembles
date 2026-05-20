@@ -15,7 +15,7 @@ using Oceananigans.Units
 using Oceananigans.DistributedComputations
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Operators: Ax, Ay, Az,
-                              Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ
+                              Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, div_xyᶜᶜᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.Fields: ReducedField, interior, ConstantField, ZeroField, OneField
 using Oceananigans.ImmersedBoundaries: immersed_cell, peripheral_node
 using Oceananigans.Architectures: on_architecture
@@ -194,6 +194,7 @@ function findmax_interior_field(field)
     return findmax(host_interior(field))
 end
 
+
 function add_progress_callback!(simulation; callback_iteration_interval = callback_iteration_interval)
     start_wall_time = Ref(time_ns())
     wall_time = Ref(time_ns())
@@ -224,6 +225,7 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         maximum_inverse_timescale, cfl_index = findmax_interior_field(inverse_timescale_field)
         i, j, k = Tuple(cfl_index)
         ti, tj, tk = target_cfl_site
+        tni, tnj, tnk = ti - grid.Hx, tj - grid.Hy, tk - grid.Hz
 
         inverse_timescale_u, inverse_timescale_v, inverse_timescale_w =
             maybe_allow_scalar() do
@@ -232,45 +234,13 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
 
         target_longitude, target_latitude, target_depth =
             maybe_allow_scalar() do
-                (longitude_value(longitudes, ti, tj),
-                 latitude_value(latitudes, ti, tj),
-                 depth_value(depths, ti, tj, tk))
+                (longitude_value(longitudes, tni, tnj),
+                 latitude_value(latitudes, tni, tnj),
+                 depth_value(depths, tni, tnj, tnk))
             end
 
         sea_ice_model = sim.model.sea_ice.model
-        sea_ice_ocean_interface = sim.model.interfaces.sea_ice_ocean_interface
-        sea_ice_ocean_fluxes = sea_ice_ocean_interface.fluxes
-        net_sea_ice_fluxes = sim.model.interfaces.net_fluxes.sea_ice
-        latent_heat = sea_ice_model.phase_transitions.reference_latent_heat
-
-        target_T, target_S, target_η, uC, vC, wC, wA, ice_h, ice_hc, ice_ℵ, ice_S, ice_Ts,
-        interface_T, interface_S, interface_heat, frazil_heat, salt_flux, top_heat_flux, bottom_heat_flux =
-            maybe_allow_scalar() do
-                (T[ti, tj, tk],
-                 S[ti, tj, tk],
-                 η[ti, tj, grid.Nz + 1],
-                 u[ti, tj, tk],
-                 v[ti, tj, tk],
-                 w[ti, tj, tk],
-                 w[ti, tj, tk+1],
-                 sea_ice_model.ice_thickness[ti, tj, 1],
-                 sea_ice_model.ice_consolidation_thickness[ti, tj, 1],
-                 sea_ice_model.ice_concentration[ti, tj, 1],
-                 sea_ice_model.tracers.S[ti, tj, 1],
-                 sea_ice_model.ice_thermodynamics.top_surface_temperature[ti, tj, 1],
-                 sea_ice_ocean_interface.temperature[ti, tj, 1],
-                 sea_ice_ocean_interface.salinity[ti, tj, 1],
-                 sea_ice_ocean_fluxes.interface_heat[ti, tj, 1],
-                 sea_ice_ocean_fluxes.frazil_heat[ti, tj, 1],
-                 sea_ice_ocean_fluxes.salt[ti, tj, 1],
-                 net_sea_ice_fluxes.top.heat[ti, tj, 1],
-                 net_sea_ice_fluxes.bottom.heat[ti, tj, 1])
-            end
-
-        melt_rate = interface_heat / latent_heat
-        freezing_rate = frazil_heat / latent_heat
-        net_phase_rate = melt_rate + freezing_rate
-
+        sea_ice_ocean_fluxes = sim.model.interfaces.sea_ice_ocean_interface.fluxes
         cfl_u = sim.Δt * inverse_timescale_u
         cfl_v = sim.Δt * inverse_timescale_v
         cfl_w = sim.Δt * inverse_timescale_w
@@ -292,6 +262,21 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
                 maximum(abs, v),
                 maximum(abs, w))
 
+        i_stencil = max(first(axes(sea_ice_ocean_fluxes.salt, 1)), ti - 3):min(last(axes(sea_ice_ocean_fluxes.salt, 1)), ti + 3)
+        j_stencil = max(first(axes(sea_ice_ocean_fluxes.salt, 2)), tj - 3):min(last(axes(sea_ice_ocean_fluxes.salt, 2)), tj + 3)
+
+        salt_flux_stencil, ice_concentration_stencil, salt_flux_xgrad_stencil, salt_flux_ygrad_stencil, ice_concentration_xgrad_stencil, ice_concentration_ygrad_stencil =
+            maybe_allow_scalar() do
+                ([sea_ice_ocean_fluxes.salt[ii, jj, 1] for jj in j_stencil, ii in i_stencil],
+                 [sea_ice_model.ice_concentration[ii, jj, 1] for jj in j_stencil, ii in i_stencil],
+                 [∂xᶠᶜᶜ(ii, jj, 1, grid, sea_ice_ocean_fluxes.salt) for jj in j_stencil, ii in i_stencil],
+                 [∂yᶜᶠᶜ(ii, jj, 1, grid, sea_ice_ocean_fluxes.salt) for jj in j_stencil, ii in i_stencil],
+                 [∂xᶠᶜᶜ(ii, jj, 1, grid, sea_ice_model.ice_concentration) for jj in j_stencil, ii in i_stencil],
+                 [∂yᶜᶠᶜ(ii, jj, 1, grid, sea_ice_model.ice_concentration) for jj in j_stencil, ii in i_stencil])
+            end
+
+        fmt_stencil(A) = join(["[" * join([@sprintf("%.2e", A[row, col]) for col in axes(A, 2)], ", ") * "]" for row in axes(A, 1)], " ")
+
         current_wall_time = time_ns()
         step_time = 1e-9 * (current_wall_time - wall_time[])
         wall_progress = 1e-9 * (current_wall_time - start_wall_time[])
@@ -306,21 +291,14 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         msg8 = @sprintf("SYPD: %.2f\n", (callback_iteration_interval * sim.Δt) / step_time / 365)
         msg9 = @sprintf("advective_cfl: %.2f at lat=%.2f, lon=%.2f, z=%.1f m, dominant=%s\n",
                         advective_cfl, cfl_latitude, cfl_longitude, cfl_depth, dominant_component)
-        msg10 = @sprintf("target[%d, %d, %d] at lat=%.2f, lon=%.2f, z=%.1f m: T=%.3f C, S=%.3f g/kg, eta=%.3e m\n",
-                         ti, tj, tk, target_latitude, target_longitude, target_depth, target_T, target_S, target_η)
-        msg11 = @sprintf("target-site velocities: u/v/w/w_above=(%.2e, %.2e, %.2e, %.2e) m s^-1\n",
-                         uC, vC, wC, wA)
-        msg12 = @sprintf("target-site sea ice: h/hc=(%.3f, %.3f) m, concentration=%.3f, S_i=%.3f g/kg, T_sfc=%.3f C\n",
-                         ice_h, ice_hc, ice_ℵ, ice_S, ice_Ts)
-        msg13 = @sprintf("target-site interface: T*=%.3f C, S*=%.3f g/kg, Q_int=%.3e W m^-2, Q_frazil=%.3e W m^-2\n",
-                         interface_T, interface_S, interface_heat, frazil_heat)
-        msg14 = @sprintf("target-site phase rates: q_m=%.3e, q_f=%.3e, q_net=%.3e m s^-1(eqv), salt_flux=%.3e g/kg m s^-1\n",
-                         melt_rate, freezing_rate, net_phase_rate, salt_flux)
-        msg15 = @sprintf("target-site sea-ice heat: top=%.3e W m^-2, bottom=%.3e W m^-2\n",
-                         top_heat_flux, bottom_heat_flux)
-
-        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9 * msg10 * msg11 * msg12 * msg13 * msg14 * msg15
-
+        msg10 = "target-site 7x7 stencils\n"
+        msg11 = "target-site 7x7 stencil salt flux:    " * fmt_stencil(salt_flux_stencil) * "\n"
+        msg12 = "target-site 7x7 stencil ice conc:     " * fmt_stencil(ice_concentration_stencil) * "\n"
+        msg13 = "target-site 7x7 stencil ∂x_saltflux: " * fmt_stencil(salt_flux_xgrad_stencil) * "\n"
+        msg14 = "target-site 7x7 stencil ∂y_saltflux: " * fmt_stencil(salt_flux_ygrad_stencil) * "\n"
+        msg15 = "target-site 7x7 stencil ∂x_iceconc:  " * fmt_stencil(ice_concentration_xgrad_stencil) * "\n"
+        msg16 = "target-site 7x7 stencil ∂y_iceconc:  " * fmt_stencil(ice_concentration_ygrad_stencil) * "\n"
+        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9 * msg10 * msg11 * msg12 * msg13 * msg14 * msg15 * msg16
         wall_time[] = current_wall_time
         return nothing
     end
