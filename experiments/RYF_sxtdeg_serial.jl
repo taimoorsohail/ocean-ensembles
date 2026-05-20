@@ -465,16 +465,6 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                                           with_halos=false,
                                                           overwrite_existing=true,
                                                           array_type=Array{Float32})
-
-        instantaneous_key = Symbol(spec.key, "_instantaneous")
-        @time ocean.output_writers[instantaneous_key] = JLD2Writer(ocean.model, outputs;
-                                                                   dir=output_path,
-                                                                   schedule=diagnostic_surface_interval,
-                                                                   filename="global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_instantaneous_run" * run_id_leading,
-                                                                   indices=(:, :, spec.ind_pln),
-                                                                   with_halos=false,
-                                                                   overwrite_existing=true,
-                                                                   array_type=Array{Float32})
     end
 
     # @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
