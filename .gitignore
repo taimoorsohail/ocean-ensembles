@@ -37,6 +37,10 @@ Manifest.toml
 *.e*
 experiments/run_logs/*
 experiments/submission_scripts/*.nsys*
+experiments/submission_scripts/*.so
+experiments/submission_scripts/run_sxtdeg.log
+experiments/submission_scripts/tmpi_*.log
+experiments/submission_scripts/logs/
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
@@ -51,9 +55,8 @@ experiments/submission_scripts/*.nsys*
 # Figures
 *.png
 figures/*.png
-figures/*.mp4
+*.mp4
 
 # SSH keys
 gha_ssh_key
 gha_ssh_key.pub
-

@@ -1,9 +1,3 @@
-using MPI
-using CUDA
-using CUDA: @allowscalar
-MPI.Init()
-atexit(MPI.Finalize)  
-
 using NumericalEarth
 
 using NumericalEarth.EN4
@@ -35,34 +29,14 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 # Argument is provided by the submission script!
 
-if isempty(ARGS)
-    println("No arguments provided. Please enter architecture (CPU/GPU):")
-    arch_input = readline()
-    if arch_input == "GPU"
-        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    elseif arch_input == "CPU"
-        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    else
-        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
-    end
-elseif ARGS[2] == "GPU" 
-    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-elseif ARGS[2] == "CPU"
-    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
-end    
-
-total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
-localrank = Integer(arch.local_rank)
-@info "Using architecture: " * string(arch)
+arch = CPU()
 
 # ### Download necessary files to run the code
 
 # ### ECCO files
 @info "Downloading/checking input data"
 
-dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 4, 1)),
              collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
 
 @info "We download the 1990-1991 data for an RYF implementation"
@@ -78,23 +52,23 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360*6)
-Ny = Integer(180*6)
-ny = Ny/total_ranks
-Nz = Integer(75)
+Nx = Integer(360/3)
+Ny = Integer(180/3)
+Nz = Integer(75/3)
 
 @info "Defining vertical z faces"
-depth = -6000.0 # Depth of the ocean in meters
+depth = -5500.0 # Depth of the ocean in meters
 z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true) # IMPORTANT: WE NEED TO ACCOUNT FOR THIS
 
 const z_surf = z_faces.cᵃᵃᶠ(Nz)
 @info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
+@info "Grid dimensions: Nx = " * string(Nx) * ", Ny = " * string(Ny) * ", Nz = " * string(Nz)
 
 @info "Defining tripolar grid"
 underlying_grid = TripolarGrid(arch;
                             size = (Nx, Ny, Nz),
                             z = z_faces,
-                            halo = (7, 7, 7))
+                            halo = (7,7,4))
 
 @info "Defining bottom bathymetry"
 
@@ -103,62 +77,8 @@ NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
 
 @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
                                 minimum_depth = 15,
-                                interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
+                                interpolation_passes = 1, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
                                 major_basins = 4)
-
-if total_ranks != 4 || Nx != Integer(360*6) || Ny != Integer(180*6)
-    @warn "Masking is only valid for 4 rank runs at 1080 x 2160, not opening Baltic Sea for $(total_ranks) ranks."
-else
-    @info "Applying bathymetry masks"
-    # Black + Caspian Seas
-    xs1 = [755, 1010, 1010, 755]
-    # We split the y-polygon because it stretches across two ranks [unique to 4 rank run :(]
-    ys1_1 = [800,  790,  809,  809]
-    ys1_2 = [810,  810,  920,  920]
-
-    # Baltic Sea / Danish Straits
-    xs2 = [679, 670-9, 679, 688+9]
-    ys2 = [872-10, 875+6, 882+5, 875+6]
-
-    nys1_1 = ys1_1/ny
-    ys1_1_floor = floor.(nys1_1)
-
-    nys1_2 = ys1_2/ny
-    ys1_2_floor = floor.(nys1_2)
-
-    nys2 = ys2/ny
-    ys2_floor = floor.(nys2)
-
-    length(unique(ys1_1_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_1_floor))")
-
-    length(unique(ys1_2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_2_floor))")
-
-    length(unique(ys2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys2_floor))")
-
-    if localrank == Integer(unique(ys1_1_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        ys1_1 = [ys1_1[1], ys1_1[2], ys1_1[3]+2, ys1_1[4]+2]
-        mask_blacksea_caspian_1 = section_mask(xs1, Int.(ys1_1 .- ny * localrank), ones(length(xs1)), underlying_grid)
-        idx = (CuArray(mask_blacksea_caspian_1) .== 1) .& (bh .<= 0)
-        bh[idx] .= 0;
-        interior(bottom_height) .= bh
-    end 
-
-    if localrank == Integer(unique(ys1_2_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        mask_blacksea_caspian_2 = section_mask(xs1, Int.(ys1_2 .- ny * localrank), ones(length(xs1)), underlying_grid)
-        idx = (CuArray(mask_blacksea_caspian_2) .== 1) .& (bh .<= 0)
-        bh[idx] .= 0;
-        interior(bottom_height) .= bh
-    end
-    if localrank == Integer(unique(ys2_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        mask_danish_strait = section_mask(xs2, Int.(ys2 .- ny * localrank), ones(length(xs2)).*2, underlying_grid)
-        idx = (CuArray(mask_danish_strait) .== 2) .& (bh .>= 0) .& (bh .<= 3)
-        bh[idx] .= -10;
-        interior(bottom_height) .= bh
-    end
-end
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
@@ -215,18 +135,20 @@ tracer_advection   = WENO(order = 7)
 
 @info "Initialising with EN4"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
-                  S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir = data_path),
+                  S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir = data_path))
 
 #####
 ##### A Prognostic Sea-ice model
 #####
 
 # Default sea-ice dynamics and salinity coupling are included in the defaults
+@info "Creating sea ice model"
+
 sea_ice = sea_ice_simulation(grid, ocean; advection=WENO(order=7)) 
 
-set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), dir=data_path),
-                    ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir=data_path))
+set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), dir = data_path),
+                    ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir = data_path))
 
 # ### Atmospheric forcing
 
@@ -234,7 +156,7 @@ set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), 
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), include_rivers_and_icebergs=true)
+atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory=100, include_rivers_and_icebergs=true)
 
 # ### Coupled simulation
 
@@ -304,10 +226,9 @@ velocities = ocean.model.velocities
 outputs = merge(tracers, velocities)
 
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
-surface_forcing = (; T_surf = ocean.model.tracers.T.boundary_conditions.top.condition, 
-                    S_surf = ocean.model.tracers.S.boundary_conditions.top.condition)
+surface_forcing = (; heat_flux = net_ocean_heat_flux(simulation.model), 
+                    fw_flux = net_ocean_freshwater_flux(simulation.model))
 
-outputs_surf = merge(surface_height, surface_forcing)
 
 @info "Defining total integral outputs"
 
@@ -372,8 +293,6 @@ depths = [0,-100, -500, -1000, -2000]
 
 symbols_slice = Symbol[]  # empty vector to store symbols
 
-@show run_id = lpad(ARGS[4], 4, '0')
-
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
     slice_level = ind_pln
@@ -381,11 +300,11 @@ for (ind, depth) in enumerate(depths)
     @show slice_level
     @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                                 dir = output_path,
-                                                                schedule = AveragedTimeInterval((365/12)days),
-                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id,
+                                                                schedule = IterationInterval(1),#AveragedTimeInterval((365/12)days),
+                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_threedeg_RYF",
                                                                 indices = (:, :, ind_pln),
                                                                 with_halos = false,
-                                                                including = [:grid, :coriolis, :buoyancy, :closure],
+                                                                including = [:buoyancy, :closure],
                                                                 overwrite_existing = true,
                                                                 array_type = Array{Float32})
 
@@ -393,21 +312,27 @@ end
 
 @info "Defining surface fields"
 
-@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, outputs_surf;
+@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
                                               dir = output_path,
-                                              schedule = AveragedTimeInterval((365/12)days),
-                                              filename = "global_forcing_fields_sxtdeg_RYF_run" * run_id,
-                                              including = [:grid, :coriolis, :buoyancy, :closure],
+                                              schedule = IterationInterval(1),#AveragedTimeInterval((365/12)days),
+                                              filename = "global_ssh_fields_threedeg_RYF",
+                                              including = [:buoyancy, :closure],
                                               with_halos = false,
                                               overwrite_existing = true,
                                               array_type = Array{Float32})
 
-@info "Defining all integrals"
+@time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
+                                                              dir = output_path,
+                                                              schedule = IterationInterval(1),#AveragedTimeInterval((365/48)days),
+                                                              filename = "global_surface_fluxes_threedeg_RYF",
+                                                              with_halos = false,
+                                                              overwrite_existing = true,
+                                                              array_type = Array{Float32})
 
 @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
                                                    dir = output_path,
                                                    schedule = AveragedTimeInterval((365/48)days),
-                                                   filename = "global_tot_integrals_sxtdeg_RYF_run" * run_id,
+                                                   filename = "global_tot_integrals_threedeg_RYF",
                                                    overwrite_existing = true)
 
 ################################### END OUTPUTTING ######################################
@@ -417,7 +342,7 @@ end
 @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
                                                               schedule = TimeInterval((365/12)days),  
                                                               dir = output_path, 
-                                                              prefix="RYF_sxtdeg_checkpoint_rank$localrank",
+                                                              prefix="RYF_threedeg_checkpoint",
                                                               overwrite_existing = true,
                                                               cleanup = false)
 
@@ -426,10 +351,5 @@ end
 @info "Running Simulation"
 
 simulation.Δt = 10minutes
-simulation.stop_time = parse(Int,ARGS[4]) * 13 * (365/12)days
-
-if parse(Int,ARGS[4]) > 1
-    run!(simulation, pickup=true, checkpoint_at_end=true)
-else
-    run!(simulation, pickup=false, checkpoint_at_end=true)
-end
+simulation.stop_time = 380days
+run!(simulation)

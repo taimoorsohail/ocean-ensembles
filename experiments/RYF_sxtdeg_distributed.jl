@@ -29,39 +29,60 @@ using Printf
 using Glob 
 using JLD2
 
-data_path = expanduser("../../data/")
-output_path = expanduser("../../outputs/")
-figdir = expanduser("../../figures/")
+function select_local_cuda_device!()
+    local_rank = parse(Int, get(ENV, "OMPI_COMM_WORLD_LOCAL_RANK", get(ENV, "MPI_LOCALRANKID", get(ENV, "SLURM_LOCALID", "0"))))
+    devices = collect(CUDA.devices())
+    device_index = mod(local_rank, length(devices))
+    CUDA.device!(devices[device_index + 1])
+    @info "Selected CUDA device" local_rank device_index device = CUDA.device()
+end
+
+data_path = expanduser("/home/tsohail/uom/ocean-ensembles/data/")
+output_path = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
+figdir = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
 
 # Argument is provided by the submission script!
 
-if isempty(ARGS)
-    println("No arguments provided. Please enter architecture (CPU/GPU):")
-    arch_input = readline()
-    if arch_input == "GPU"
-        arch = GPU()
-    elseif arch_input == "CPU"
-        arch = CPU()
+function get_arg(flag::String, default::Union{Nothing,String}=nothing)
+    i = findfirst(==(flag), ARGS)
+    if i === nothing
+        return default
+    elseif i == length(ARGS)
+        error("Missing value for $flag")
     else
-        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
+        return ARGS[i + 1]
     end
-elseif ARGS[2] == "GPU" 
+end
+
+arch_str = get_arg("--arch")
+if arch_str === nothing
+    println("No architecture provided. Please enter architecture (CPU/GPU):")
+    arch_str = readline()
+end
+
+run_str = get_arg("--run")
+if run_str === nothing
+    println("No run number provided. Please enter run number:")
+    run_str = readline()
+end
+
+if arch_str == "GPU"
     arch = GPU()
-elseif ARGS[2] == "CPU"
+elseif arch_str == "CPU"
     arch = CPU()
 else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
-end    
+    error("Invalid architecture. Must be 'CPU' or 'GPU'.")
+end
 
-@info "Using architecture: " * string(arch)
+total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
+localrank = Integer(arch.local_rank)
 
 # ### Download necessary files to run the code
 
 # ### ECCO files
 @info "Downloading/checking input data"
 
-dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 5, 1)),
-             collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
+dates = vcat(collect(DateTime(1991, 1, 1): Month(1): DateTime(1991, 4, 1)), collect(DateTime(1990, 5, 1): Month(1): DateTime(1990, 12, 1)))
 
 @info "We download the 1990-1991 data for an RYF implementation"
 
@@ -76,16 +97,18 @@ download_dataset(salinity)
 # ### Grid and Bathymetry
 @info "Defining grid"
 
-Nx = Integer(360)
-Ny = Integer(180)
+Nx = Integer(360*6)
+Ny = Integer(180*6)
+ny = div(Ny, total_ranks)
 Nz = Integer(75)
 
 @info "Defining vertical z faces"
-depth = -6000.0 # Depth of the ocean in meters
+depth = -5500.0 # Depth of the ocean in meters
 z_faces = ExponentialDiscretization(Nz, depth, 0, mutable=true) # IMPORTANT: WE NEED TO ACCOUNT FOR THIS
 
 const z_surf = z_faces.cᵃᵃᶠ(Nz)
 @info "Top grid cell is " * string(abs(round(z_surf))) * "m thick"
+@info "Grid dimensions: Nx = " * string(Nx) * ", Ny = " * string(Ny) * ", Nz = " * string(Nz)
 
 @info "Defining tripolar grid"
 underlying_grid = TripolarGrid(arch;
@@ -102,60 +125,6 @@ NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
                                 minimum_depth = 15,
                                 interpolation_passes = 25, # 75 interpolation passes smooth the bathymetry near Florida so that the Gulf Stream is able to flow
                                 major_basins = 4)
-
-if Nx != Integer(360*6) || Ny != Integer(180*6)
-    @warn "Masking is only valid for 4 rank runs at 1080 x 2160, not opening Baltic Sea."
-else
-    @info "Applying bathymetry masks"
-    # Black + Caspian Seas
-    xs1 = [755, 1010, 1010, 755]
-    # We split the y-polygon because it stretches across two ranks [unique to 4 rank run :(]
-    ys1_1 = [800,  790,  809,  809]
-    ys1_2 = [810,  810,  920,  920]
-
-    # Baltic Sea / Danish Straits
-    xs2 = [679, 670-9, 679, 688+9]
-    ys2 = [872-10, 875+6, 882+5, 875+6]
-
-    nys1_1 = ys1_1/ny
-    ys1_1_floor = floor.(nys1_1)
-
-    nys1_2 = ys1_2/ny
-    ys1_2_floor = floor.(nys1_2)
-
-    nys2 = ys2/ny
-    ys2_floor = floor.(nys2)
-
-    length(unique(ys1_1_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_1_floor))")
-
-    length(unique(ys1_2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys1_2_floor))")
-
-    length(unique(ys2_floor)) == 1 || error("Mask must all lie in the same rank! Currently they lie in ranks $(unique(ys2_floor))")
-
-    if localrank == Integer(unique(ys1_1_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        ys1_1 = [ys1_1[1], ys1_1[2], ys1_1[3]+2, ys1_1[4]+2]
-        mask_blacksea_caspian_1 = section_mask(xs1, Int.(ys1_1 .- ny * localrank), ones(length(xs1)), underlying_grid)
-        idx = (CuArray(mask_blacksea_caspian_1) .== 1) .& (bh .<= 0)
-        bh[idx] .= 0;
-        interior(bottom_height) .= bh
-    end 
-
-    if localrank == Integer(unique(ys1_2_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        mask_blacksea_caspian_2 = section_mask(xs1, Int.(ys1_2 .- ny * localrank), ones(length(xs1)), underlying_grid)
-        idx = (CuArray(mask_blacksea_caspian_2) .== 1) .& (bh .<= 0)
-        bh[idx] .= 0;
-        interior(bottom_height) .= bh
-    end
-    if localrank == Integer(unique(ys2_floor)[1])
-        bh = interior(bottom_height)[:,:,1]
-        mask_danish_strait = section_mask(xs2, Int.(ys2 .- ny * localrank), ones(length(xs2)).*2, underlying_grid)
-        idx = (CuArray(mask_danish_strait) .== 2) .& (bh .>= 0) .& (bh .<= 3)
-        bh[idx] .= -10;
-        interior(bottom_height) .= bh
-    end
-end
 
 @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
@@ -178,13 +147,9 @@ forcing = (; S=FS)
 
 @info "Defining closures"
 
-@inline νhb(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, λ) = Oceananigans.Operators.Az(i, j, k, grid, ℓx, ℓy, ℓz)^2 / λ
-
-horizontal_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters=40days)
-
 catke_closure = NumericalEarth.Oceans.default_ocean_closure()  #RiBasedVerticalDiffusivity()#
 
-closure = (catke_closure, horizontal_viscosity, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
+closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
 # ### Ocean simulation
 # Now we bring everything together to construct the ocean simulation.
@@ -216,18 +181,20 @@ tracer_advection   = WENO(order = 7)
 
 @info "Initialising with EN4"
 
-set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir=data_path),
-                  S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir=data_path))
+set!(ocean.model, T=Metadata(:temperature; dates=first(dates), dataset = dataset, dir = data_path),
+                  S=Metadata(:salinity;    dates=first(dates), dataset = dataset, dir = data_path))
 
 #####
 ##### A Prognostic Sea-ice model
 #####
 
 # Default sea-ice dynamics and salinity coupling are included in the defaults
+@info "Creating sea ice model"
+
 sea_ice = sea_ice_simulation(grid, ocean; advection=WENO(order=7)) 
 
-set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), dir=data_path),
-                    ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir=data_path))
+set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), dir = data_path),
+                    ℵ=Metadatum(:sea_ice_concentration; dataset=ECCO4Monthly(), dir = data_path))
 
 # ### Atmospheric forcing
 
@@ -235,7 +202,7 @@ set!(sea_ice.model, h=Metadatum(:sea_ice_thickness;     dataset=ECCO4Monthly(), 
 @info "Defining Atmospheric state"
 
 radiation  = Radiation(arch)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend=JRA55NetCDFBackend(100), include_rivers_and_icebergs=true)
+atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory=100, include_rivers_and_icebergs=true)
 
 # ### Coupled simulation
 
@@ -297,56 +264,16 @@ add_callback!(simulation, progress, callback_interval)
 
 ################################### START OUTPUTTING ######################################
 
-ARGS = ["", "", "", "20"]
+@info "Defining output variables"
 
-heat_flux = net_ocean_heat_flux(coupled_model)
-fw_flux = net_ocean_freshwater_flux(coupled_model)
 tracers = ocean.model.tracers
 velocities = ocean.model.velocities
 
 outputs = merge(tracers, velocities)
 
-# @info "Regridding output variables"
-
-# dst_grid = LatitudeLongitudeGrid(size=(Nx, Ny, Nz),
-#                                  longitude=(-180, 180),
-#                                  latitude=(-90, 90),
-#                                  z=z_faces)
-
-# u_latlon = XFaceField(dst_grid)
-# v_latlon = YFaceField(dst_grid)
-# w_latlon = ZFaceField(dst_grid)
-# T_latlon = CenterField(dst_grid)
-# S_latlon = CenterField(dst_grid)
-# HF_latlon = Field{Center, Center, Nothing}(dst_grid)
-# FW_latlon = Field{Center, Center, Nothing}(dst_grid)
-# η_latlon  = Field{Center, Center, Nothing}(dst_grid)  # or ZFaceField(..., indices=(:, :, Nz+1)) for true η location
-# @time Rvel = ConservativeRegridding.VelocityLineIntegralRegridder(u_latlon, v_latlon, velocities.u, velocities.v)
-# @time Rtrac = ConservativeRegridding.Regridder(dst_grid, underlying_grid)
-
-# ConservativeRegridding.regrid_velocity_transport!(u_latlon, v_latlon, Rvel, velocities.u, velocities.v)
-# function regrid_horiz_levels!(dst, src, R)
-#     @assert size(dst, 3) == size(src, 3)
-#     for k in 1:size(src, 3)
-#         ConservativeRegridding.regrid!(vec(interior(dst, :, :, k)),
-#                                        R,
-#                                        vec(interior(src, :, :, k)))
-#     end
-#     fill_halo_regions!(dst)
-#     return nothing
-# end
-
-# regrid_horiz_levels!(w_latlon, ocean.model.velocities.w, Rtrac)
-# regrid_horiz_levels!(T_latlon, ocean.model.tracers.T, Rtrac)
-# regrid_horiz_levels!(S_latlon, ocean.model.tracers.S, Rtrac)
-# ConservativeRegridding.regrid!(vec(interior(HF_latlon, :, :, 1)), Rtrac, vec(interior(heat_flux, :, :, 1)))
-# ConservativeRegridding.regrid!(vec(interior(FW_latlon, :, :, 1)), Rtrac, vec(interior(fw_flux,   :, :, 1)))
-# ConservativeRegridding.regrid!(vec(interior(η_latlon,  :, :, 1)), Rtrac, vec(interior(ocean.model.free_surface.displacement,     :, :, 1)))
-
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
-flux_outputs = (fw_flux = fw_flux, heat_flux = heat_flux)
-
-outputs_surf = merge(surface_height, flux_outputs)
+surface_forcing = (; heat_flux = Field(net_ocean_heat_flux(simulation.model)), 
+                    fw_flux = Field(net_ocean_freshwater_flux(simulation.model)))
 
 @info "Defining total integral outputs"
 
@@ -411,7 +338,7 @@ depths = [0,-100, -500, -1000, -2000]
 
 symbols_slice = Symbol[]  # empty vector to store symbols
 
-@show run_id = lpad(ARGS[4], 4, '0')
+@show run_id = lpad(parse(Int, run_str), 4, '0')
 
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
@@ -420,11 +347,10 @@ for (ind, depth) in enumerate(depths)
     @show slice_level
     @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
                                                                 dir = output_path,
-                                                                schedule = AveragedTimeInterval((365/12)days),
-                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_onedeg_RYF_run" * run_id,
+                                                                schedule = AveragedTimeInterval((365/48)days),
+                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id,
                                                                 indices = (:, :, ind_pln),
                                                                 with_halos = false,
-                                                                including = [:grid, :coriolis, :buoyancy, :closure],
                                                                 overwrite_existing = true,
                                                                 array_type = Array{Float32})
 
@@ -432,40 +358,26 @@ end
 
 @info "Defining surface fields"
 
-@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, outputs_surf;
+@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
                                               dir = output_path,
-                                              schedule = AveragedTimeInterval((365/12)days),
-                                              filename = "global_forcing_fields_onedeg_RYF_run" * run_id,
-                                              including = [:grid, :coriolis, :buoyancy, :closure],
+                                              schedule = AveragedTimeInterval((365/48)days),
+                                              filename = "global_ssh_fields_sxtdeg_RYF_run" * run_id,
                                               with_halos = false,
                                               overwrite_existing = true,
                                               array_type = Array{Float32})
 
-
-@info "Defining sea-ice surface fields"
-
-sea_ice_surface_outputs = (
-    ice_thickness = sea_ice.model.ice_thickness,
-    ice_concentration = sea_ice.model.ice_concentration,
-    top_surface_temperature = sea_ice.model.ice_thermodynamics.top_surface_temperature,
-    u_ice = sea_ice.model.velocities.u,
-    v_ice = sea_ice.model.velocities.v)
-
-@time sea_ice.output_writers[:sea_ice_surface] = JLD2Writer(sea_ice.model, sea_ice_surface_outputs;
-                                                            dir = output_path,
-                                                            schedule = AveragedTimeInterval((365/12)days),
-                                                            filename = "global_sea_ice_surface_onedeg_RYF_run" * run_id,
-                                                            including = [:grid],
-                                                            with_halos = false,
-                                                            overwrite_existing = true,
-                                                            array_type = Array{Float32})
-
-@info "Defining all integrals"
+@time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
+                                                              dir = output_path,
+                                                              schedule = AveragedTimeInterval((365/48)days),
+                                                              filename = "global_surface_fluxes_sxtdeg_RYF_run" * run_id,
+                                                              with_halos = false,
+                                                              overwrite_existing = true,
+                                                              array_type = Array{Float32})
 
 @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
                                                    dir = output_path,
                                                    schedule = AveragedTimeInterval((365/48)days),
-                                                   filename = "global_tot_integrals_onedeg_RYF_run" * run_id,
+                                                   filename = "global_tot_integrals_sxtdeg_RYF_run" * run_id,
                                                    overwrite_existing = true)
 
 ################################### END OUTPUTTING ######################################
@@ -473,9 +385,9 @@ sea_ice_surface_outputs = (
 ################################### START CHECKPOINTING ######################################
 
 @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
-                                                              schedule = TimeInterval((365/12)days),  
+                                                              schedule = TimeInterval((365/48)days),  
                                                               dir = output_path, 
-                                                              prefix="RYF_onedeg_checkpoint",
+                                                              prefix="RYF_sxtdeg_checkpoint_rank$localrank",
                                                               overwrite_existing = true,
                                                               cleanup = false)
 
@@ -484,9 +396,9 @@ sea_ice_surface_outputs = (
 @info "Running Simulation"
 
 simulation.Δt = 10minutes
-simulation.stop_time = parse(Int,ARGS[4]) * 13 * (365/12)days
+simulation.stop_time = parse(Int, run_str) * 11 * (365/12)days
 
-if parse(Int,ARGS[4]) > 1
+if parse(Int, run_str) > 1
     run!(simulation, pickup=true, checkpoint_at_end=true)
 else
     run!(simulation, pickup=false, checkpoint_at_end=true)

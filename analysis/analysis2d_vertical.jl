@@ -4,20 +4,51 @@ using Statistics
 using JLD2
 using Glob
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
+output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
 figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
-resolution = "onedeg"
+resolution = "sxtdeg"
+
+function copy_files_to_tempdir(files::Vector{String}; prefix::String)
+    copy_dir = mktempdir(; prefix)
+    copied = String[]
+
+    try
+        for file in files
+            dest = joinpath(copy_dir, basename(file))
+            cp(file, dest; force = true)
+            push!(copied, dest)
+        end
+    catch
+        rm(copy_dir; recursive = true, force = true)
+        rethrow()
+    end
+
+    @info "Copied analysis inputs." source_files = length(files) copy_dir
+    return copied, copy_dir
+end
+
+function cleanup_copied_outputs!(copy_dir::Union{Nothing, String})
+    if copy_dir !== nothing && isdir(copy_dir)
+        rm(copy_dir; recursive = true, force = true)
+        @info "Deleted copied analysis inputs." copy_dir
+    end
+    return nothing
+end
+
+run_number(path::AbstractString) = begin
+    m = match(r"run(\d+)", basename(path))
+    m === nothing ? -1 : parse(Int, m.captures[1])
+end
 
 # Example: get all matching files in a folder
 files = glob("global_tot*$(resolution)_RYF_run*.jld2", output_path)
 
 # --- Extract iteration numbers ---
-iterations = [parse(Int, match(r"run(\d+)", f).captures[1]) 
-              for f in files if occursin(r"run\d+", f)]
+iterations = [run_number(f) for f in files if run_number(f) >= 0]
 unique_iterations = sort(unique(iterations))
 
-tot_files = []
+tot_files = String[]
 
 for iteration in unique_iterations
     it_id = lpad(iteration, 4, '0')
@@ -28,38 +59,13 @@ for iteration in unique_iterations
     else
         @warn "No files found for iteration: $iteration"
     end
-
 end
 
-times = Float64[]
-iters = Int[]
+sort!(tot_files; by = run_number)
 
-for filename in tot_files
-    data = jldopen(filename, "r")
-    try
-        timeiters = sort(parse.(Int, collect(keys(data["timeseries/t/"]))))
-
-        for iter in timeiters
-            t = data["timeseries/t/$(iter)"]  # scalar time
-            push!(times, Float64(t))
-            push!(iters, iter)
-        end
-    finally
-        close(data)
-    end
-end
-
-# --- keep LAST occurrence of each iter ---
-rev_iters = reverse(iters)
-idxs_rev  = unique(i -> rev_iters[i], eachindex(rev_iters))   # indices in reversed arrays
-
-# map indices back to original order
-idxs = length(iters) .- idxs_rev .+ 1
-sort!(idxs)  # chronological by original position
-
-# mask both arrays the same way
-iters = iters[idxs]
-times = times[idxs]
+copied_tot_dir = nothing
+tot_files, copied_tot_dir = copy_files_to_tempdir(tot_files; prefix = "analysis2d_vertical_")
+atexit(() -> cleanup_copied_outputs!(copied_tot_dir))
 
  vars_vertint = ["T_vertintegral",
  "S_vertintegral",
@@ -73,13 +79,15 @@ times = times[idxs]
  time = ["t"]
 
 vars = vcat(vars_vertint, vols_vertint)
-data0 = jldopen(tot_files[1])
-Lz = data0["grid/underlying_grid/z/cᵃᵃᶜ"][7:end-7]
+Lz = jldopen(tot_files[1], "r") do data0
+    data0["grid/underlying_grid/z/cᵃᵃᶜ"][7:end-7]
+end
 
 using JLD2
 
 function create_dict(vars, path)
     dicts = Dict{String, Any}()
+    run = run_number(path)
     data = jldopen(path, "r")
     try
         for var in vars
@@ -98,9 +106,10 @@ function create_dict(vars, path)
                     v = grp[string(it)][1, 1, :][7:end-7]
                     values_vert[i] = vec(v)
                 end
-                values_matrix = hcat(values_vert...)'   # (nt × nz)
+                values_matrix = permutedims(hcat(values_vert...))   # (nt × nz)
 
                 dicts[var] = (
+                    run = run,
                     iterations = iterations,
                     times      = times,
                     values     = values_matrix
@@ -128,29 +137,41 @@ end
 concatted_timeseries = Dict{String, Any}()
 
 for var in vars
-    all_iters  = vcat((slice[var].iterations for slice in slice_times)...)
-    all_times  = vcat((slice[var].times      for slice in slice_times)...)
-    all_values = vcat((slice[var].values     for slice in slice_times)...)
+    by_time = Dict{Float64, NamedTuple{(:run, :iter, :value), Tuple{Int, Int, Vector{Float32}}}}()
+    replaced_duplicates = 0
 
-    @assert length(all_iters) == length(all_times) == size(all_values, 1)
+    for slice in slice_times
+        run = slice[var].run
+        for i in eachindex(slice[var].times)
+            t = slice[var].times[i]
+            iter = slice[var].iterations[i]
+            value = collect(@view slice[var].values[i, :])
 
-    # reverse so unique keeps the last occurrence in original order
-    rev_iters  = reverse(all_iters)
-    rev_times  = reverse(all_times)
-    rev_values = reverse(all_values; dims=1)
+            existing = get(by_time, t, nothing)
+            if isnothing(existing) || run > existing.run || (run == existing.run && iter >= existing.iter)
+                replaced_duplicates += !isnothing(existing) && run > existing.run ? 1 : 0
+                by_time[t] = (run = run, iter = iter, value = value)
+            end
+        end
+    end
 
-    idxs = unique(i -> rev_iters[i], eachindex(rev_iters))  # indices in reversed arrays
+    uniq_times = sort(collect(keys(by_time)))
+    isempty(uniq_times) && error("No timesteps found after deduplication for variable $var.")
 
-    uniq_iters  = rev_iters[idxs]
-    uniq_times  = rev_times[idxs]
-    uniq_values = rev_values[idxs, :]
+    nlevels = length(by_time[uniq_times[1]].value)
+    uniq_values = Matrix{Float32}(undef, length(uniq_times), nlevels)
+    uniq_iters = Vector{Int}(undef, length(uniq_times))
+    for (i, t) in enumerate(uniq_times)
+        uniq_iters[i] = by_time[t].iter
+        uniq_values[i, :] = by_time[t].value
+    end
 
-    # flip back to chronological (by original order)
     concatted_timeseries[var] = (
-        iterations = reverse(uniq_iters),
-        times      = reverse(uniq_times),
-        values     = reverse(uniq_values; dims=1)
+        iterations = uniq_iters,
+        times      = uniq_times,
+        values     = uniq_values
     )
+    @info "Merged variable with run-priority deduplication." variable = var unique_steps = length(uniq_times) replaced_duplicates
 end
 
 totint = Dict(var => concatted_timeseries[var].values for var in vars)
@@ -255,3 +276,5 @@ ylims!(ax4, -1000, 0)
 ylims!(ax5, -1000, 0)
 
 save(figdir * "integrated_props_z_$(resolution).png", fig, px_per_unit=3)
+cleanup_copied_outputs!(copied_tot_dir)
+copied_tot_dir = nothing

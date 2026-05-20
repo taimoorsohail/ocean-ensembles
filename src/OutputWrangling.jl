@@ -11,10 +11,10 @@ export combine_ranks, identify_combination_targets, create_grid, read_bathymetry
 
 function grid_metrics(prefix, ranks)
     file   = jldopen(prefix * "_rank$(ranks[1]).jld2")
-    data   = file["grid/underlying_grid"]
-    Nx, Ny, Nz = data["Nx"], data["Ny"]*Integer(length(ranks)), data["Nz"]
-    Hx, Hy, Hz = data["Hx"], data["Hy"], data["Hz"]
-    Lz = data["Lz"]
+    data   = file["serialized/grid"].underlying_grid
+    Nx, Ny, Nz = data.Nx, data.Ny * Integer(length(ranks)), data.Nz
+    Hx, Hy, Hz = data.Hx, data.Hy, data.Hz
+    Lz = data.Lz
 
     nx = Integer(Nx / length(ranks))
     ny = Integer(Ny / length(ranks))
@@ -26,10 +26,10 @@ end
 
 function grid_metrics(prefix)
     file   = jldopen(prefix* ".jld2")
-    data   = file["grid/underlying_grid"]
-    Nx, Ny, Nz = data["Nx"], data["Ny"], data["Nz"]
-    Hx, Hy, Hz = data["Hx"], data["Hy"], data["Hz"]
-    Lz = data["Lz"]
+    data   = file["serialized/grid"].underlying_grid
+    Nx, Ny, Nz = data.Nx, data.Ny, data.Nz
+    Hx, Hy, Hz = data.Hx, data.Hy, data.Hz
+    Lz = data.Lz
 
     depth = -Lz # Depth of the ocean in meters
     z_faces = ExponentialDiscretization(Nz, depth, 0)
@@ -62,6 +62,14 @@ function create_grid(prefix, ranks; gridtype = "TripolarGrid")
 end
 
 function create_grid(prefix; gridtype = "TripolarGrid")
+    file = jldopen(prefix * ".jld2", "r")
+    if haskey(file, "serialized/grid")
+        grid = file["serialized/grid"]
+        close(file)
+        return grid
+    end
+    close(file)
+
     Nx, Ny, Nz, Hx, Hy, Hz, Lz, z_faces = grid_metrics(prefix)
     if gridtype == "LatitudeLongitudeGrid"
         grid = LatitudeLongitudeGrid(CPU();
@@ -69,7 +77,7 @@ function create_grid(prefix; gridtype = "TripolarGrid")
                                      z = z_faces,
                                      halo = (Hx, Hy, Hz),
                                      latitude  = (-75, 75),
-                                     longitude = (0, 360))        
+                                     longitude = (0, 360))
     elseif gridtype == "TripolarGrid"
         grid = TripolarGrid(CPU();
                             size = (Nx, Ny, Nz),
@@ -81,7 +89,7 @@ function create_grid(prefix; gridtype = "TripolarGrid")
 
     bottom_height = read_bathymetry(prefix)
 
-    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
     return grid
 end
 
@@ -94,7 +102,7 @@ function read_bathymetry(prefix, ranks)
     for rank in ranks
         irange = ny * rank + 1 : ny * (rank + 1)
         file   = jldopen(prefix * "_rank$(rank).jld2")
-        data   = file["grid/immersed_boundary/bottom_height"][Hx+1:Nx+Hx, Hy+1:ny+Hy,  1]
+        data   = file["serialized/grid"].immersed_boundary.bottom_height[Hx+1:Nx+Hx, Hy+1:ny+Hy,  1]
         bottom_height[:, irange] .= data
         close(file)
     end
@@ -108,7 +116,7 @@ function read_bathymetry(prefix)
     bottom_height = zeros(Nx, Ny)
 
     file   = jldopen(prefix * ".jld2")
-    data   = file["grid/immersed_boundary/bottom_height"][Hx+1:Nx+Hx, Hy+1:Ny+Hy,  1]
+    data   = file["serialized/grid"].immersed_boundary.bottom_height[Hx+1:Nx+Hx, Hy+1:Ny+Hy,  1]
     bottom_height .= data
     close(file)
 

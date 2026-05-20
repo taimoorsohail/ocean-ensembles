@@ -8,7 +8,8 @@ module BasinMask
     using StaticArrays
     using Oceananigans.Architectures: architecture
 
-    export basin_mask, get_coords_from_grid, section_mask, regrid_bathymetry
+    export basin_mask, get_coords_from_grid, section_mask, regrid_bathymetry,
+           apply_polygon_mask!
 
     const SomeTripolarGrid = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
     const TripolarOrLatLonGrid = Union{SomeTripolarGrid, LatitudeLongitudeGrid}
@@ -156,6 +157,91 @@ module BasinMask
         end
 
         return mask
+    end
+
+
+    function rank_y_bounds(rank, Ny, total_ranks)
+        base, remainder = divrem(Ny, total_ranks)
+
+        if rank < remainder
+            local_ny = base + 1
+            y_start = rank * (base + 1) + 1
+        else
+            local_ny = base
+            y_start = remainder * (base + 1) + (rank - remainder) * base + 1
+        end
+
+        y_end = y_start + local_ny - 1
+        return y_start, y_end
+    end
+
+    @inline point_inside_lower(y, ymin) = y ≥ ymin
+    @inline point_inside_upper(y, ymax) = y ≤ ymax
+
+    function clip_polygon_against_y(xs, ys, y_limit; keep_above)
+        N = length(xs)
+        N == 0 && return Float64[], Float64[]
+
+        x_out = Float64[]
+        y_out = Float64[]
+
+        inside(y) = keep_above ? point_inside_lower(y, y_limit) : point_inside_upper(y, y_limit)
+
+        for n in 1:N
+            n_next = n == N ? 1 : n + 1
+
+            x1 = Float64(xs[n])
+            y1 = Float64(ys[n])
+            x2 = Float64(xs[n_next])
+            y2 = Float64(ys[n_next])
+
+            inside1 = inside(y1)
+            inside2 = inside(y2)
+
+            if inside1 && inside2
+                push!(x_out, x2)
+                push!(y_out, y2)
+            elseif inside1 && !inside2
+                t = (y_limit - y1) / (y2 - y1)
+                push!(x_out, x1 + t * (x2 - x1))
+                push!(y_out, y_limit)
+            elseif !inside1 && inside2
+                t = (y_limit - y1) / (y2 - y1)
+                push!(x_out, x1 + t * (x2 - x1))
+                push!(y_out, y_limit)
+                push!(x_out, x2)
+                push!(y_out, y2)
+            end
+        end
+
+        return x_out, y_out
+    end
+
+    function clip_polygon_to_rank(xs, ys, y_start, y_end)
+        x_clip, y_clip = clip_polygon_against_y(xs, ys, y_start; keep_above=true)
+        x_clip, y_clip = clip_polygon_against_y(x_clip, y_clip, y_end; keep_above=false)
+        return x_clip, y_clip
+    end
+
+    function apply_polygon_mask!(bottom_height, underlying_grid, xs, ys, mask_id, replacement, condition, localrank, Ny, total_ranks, arch)
+        y_start, y_end = rank_y_bounds(localrank, Ny, total_ranks)
+        x_clip, y_clip = clip_polygon_to_rank(xs, ys, y_start, y_end)
+
+        length(x_clip) < 3 && return nothing
+
+        local_ny = y_end - y_start + 1
+        x_local = clamp.(round.(Int, x_clip), 1, underlying_grid.Nx)
+        y_local = clamp.(round.(Int, y_clip .- y_start .+ 1), 1, local_ny)
+
+        mask_cpu = section_mask(x_local, y_local, fill(mask_id, length(x_local)), underlying_grid)
+
+        bh = Array(interior(bottom_height)[:, :, 1])
+        idx = (mask_cpu .== mask_id) .& condition(bh)
+        bh[idx] .= replacement
+
+        interior(bottom_height)[:, :, 1] .= bh
+
+        return nothing
     end
 
     # function regrid_bathymetry_masked(target_grid::DistributedGrid, metadata;

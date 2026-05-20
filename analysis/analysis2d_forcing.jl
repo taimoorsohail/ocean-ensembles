@@ -2,29 +2,67 @@ using CairoMakie
 using JLD2
 using Glob
 
-const output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/saved_fields/onedeg/")
-const figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
-const resolution = "onedeg"
+const OUTPUT_PATH = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
+const FIGDIR = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60
 const COLOR_SIGMA_MULTIPLE = 3.0
 const MAX_COLOR_SAMPLES = 1_000_000
 const MAX_COLOR_FRAMES = 240
-const SURFACE_VAR = "surface_height"
+const PROGRESS_UPDATES = 20
+const forcing_timesteps_days = Float64[]
 const SWAPPABLE_PAIRS = Dict(
     :surface_tracers => ["T_surf", "S_surf"],
-    :fluxes => ["total_heat_flux", "total_freshwater_flux", "ocean_heat_flux", "ocean_freshwater_flux", "sea_ice_heat_flux", "sea_ice_freshwater_flux"])
+    :fluxes => ["fw_flux", "heat_flux"])
 # Current default: surface height + T_surf + S_surf.
 # To switch later, set e.g. ACTIVE_PAIR = :fluxes
-const ACTIVE_PAIR = :surface_tracers
+const ACTIVE_PAIR = :fluxes
+
+function copy_files_to_tempdir(files::Vector{String}; prefix::String)
+    copy_dir = mktempdir(; prefix)
+    copied = String[]
+
+    try
+        for file in files
+            dest = joinpath(copy_dir, basename(file))
+            cp(file, dest; force = true)
+            push!(copied, dest)
+        end
+    catch
+        rm(copy_dir; recursive = true, force = true)
+        rethrow()
+    end
+
+    @info "Copied analysis inputs." source_files = length(files) copy_dir
+    return copied, copy_dir
+end
+
+function cleanup_copied_outputs!(copy_dir::Union{Nothing, String})
+    if copy_dir !== nothing && isdir(copy_dir)
+        rm(copy_dir; recursive = true, force = true)
+        @info "Deleted copied analysis inputs." copy_dir
+    end
+    return nothing
+end
+
 const VAR_TITLES = Dict(
     "surface_height" => "Surface Height (m)",
-    "total_heat_flux" => "Total Heat Flux (W m⁻²)",
-    "total_freshwater_flux" => "Total Mass Flux (kg m⁻² s⁻¹)",
+    "heat_flux" => "Total Heat Flux (W m⁻²)",
+    "fw_flux" => "Total Mass Flux (kg m⁻² s⁻¹)",
     "ocean_heat_flux" => "Ocean Heat Flux (W m⁻²)",
     "ocean_freshwater_flux" => "Ocean Mass Flux (kg m⁻² s⁻¹)", 
     "sea_ice_heat_flux" => "Sea Ice Heat Flux (W m⁻²)", 
     "sea_ice_freshwater_flux" => "Sea Ice Mass Flux (kg m⁻² s⁻¹)"
 )
+
+@inline function report_progress_step(i::Int, total::Int; label::AbstractString)
+    stride = max(1, cld(total, PROGRESS_UPDATES))
+    if i == 1 || i == total || i % stride == 0
+        pct = round(100 * i / total; digits = 1)
+        @info label progress = "$(i)/$(total)" percent = pct
+    end
+    return nothing
+end
 
 function run_id(path::AbstractString)
     m = match(r"run(\d+)", basename(path))
@@ -32,9 +70,9 @@ function run_id(path::AbstractString)
 end
 
 function forcing_files(path::AbstractString)
-    files = glob("global_forcing_fields_*_RYF_run*.jld2", path)
+    files = glob("global_surface_fluxes_$(RESOLUTION)*_RYF_run*.jld2", path)
     files = filter(files) do f
-        !occursin("_rank", f) && occursin("forcing_field", f) && run_id(f) >= 0
+        !occursin("_rank", f) && occursin("surface_fluxes", f) && run_id(f) >= 0
     end
     sort!(files; by = run_id)
     return files
@@ -44,6 +82,7 @@ struct FrameRef
     file::String
     key::Int
     time::Float64
+    run::Int
 end
 
 mutable struct RunningStats
@@ -75,12 +114,16 @@ function copy_2d_to!(dest::Matrix{Float32}, raw)
 end
 
 function collect_frame_refs(files::Vector{String}, vars::Vector{String})
-    isempty(files) && error("No forcing files found in $output_path.")
-    frames = FrameRef[]
+    isempty(files) && error("No forcing files found in $OUTPUT_PATH.")
+    frame_by_time = Dict{Float64, FrameRef}()
     used_files = 0
+    replaced_duplicates = 0
 
-    for file in files
-        @info "Scanning $file"
+    @info "Collecting frame references" file_count = length(files)
+
+    for (file_index, file) in enumerate(files)
+        run = run_id(file)
+        @info "Scanning file" file_index total_files = length(files) file
         jldopen(file, "r") do f
             haskey(f, "timeseries/t") || return
             ts_available = filter(k -> k != "t", collect(keys(f["timeseries"])))
@@ -90,18 +133,27 @@ function collect_frame_refs(files::Vector{String}, vars::Vector{String})
                 return
             end
 
-            ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))))
+            ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))) )
             for key in ts_keys
                 tval = Float64(f["timeseries/t/$key"])
-                push!(frames, FrameRef(file, key, tval))
+                candidate = FrameRef(file, key, tval, run)
+                existing = get(frame_by_time, tval, nothing)
+                if isnothing(existing) || run > existing.run || (run == existing.run && key >= existing.key)
+                    replaced_duplicates += !isnothing(existing) && run > existing.run ? 1 : 0
+                    frame_by_time[tval] = candidate
+                end
             end
             used_files += 1
         end
+
+        report_progress_step(file_index, length(files); label = "File scan")
     end
 
     used_files == 0 && error("No valid forcing files contained all required variables: $(join(vars, ", ")).")
-    isempty(frames) && error("No timesteps found in forcing files.")
+    isempty(frame_by_time) && error("No timesteps found in forcing files.")
+    frames = collect(values(frame_by_time))
     sort!(frames; by = frame -> frame.time)
+    @info "Finished collecting frame references" valid_files = used_files frames = length(frames) replaced_duplicates
     return frames
 end
 
@@ -117,6 +169,7 @@ function allocate_frame_buffers(vars::Vector{String}, first_frame::FrameRef)
             buffers[var] = A
         end
     end
+    @info "Allocated frame buffers" vars dimensions = Dict(var => size(buffers[var]) for var in keys(buffers))
     return buffers
 end
 
@@ -134,6 +187,8 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
     frame_step = max(1, cld(length(frames), MAX_COLOR_FRAMES))
     sampled_count = cld(length(frames), frame_step)
 
+    @info "Sampling colormap limits" sampled_frames = sampled_count total_frames = length(frames) frame_step
+
     stats = Dict{String, RunningStats}(var => RunningStats() for var in vars)
     strides = Dict{String, Int}()
     for var in vars
@@ -143,8 +198,10 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
 
     current_file = ""
     handle = nothing
+    sample_indices = 1:frame_step:length(frames)
+
     try
-        for i in 1:frame_step:length(frames)
+        for (sample_index, i) in enumerate(sample_indices)
             frame = frames[i]
             if frame.file != current_file
                 handle !== nothing && close(handle)
@@ -157,6 +214,8 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
                 ok || error("Inconsistent array shape for variable=$var in $(frame.file), key=$(frame.key).")
                 update_stats!(stats[var], buffers[var], strides[var])
             end
+
+            report_progress_step(sample_index, sampled_count; label = "Colormap sampling")
         end
     finally
         handle !== nothing && close(handle)
@@ -171,6 +230,7 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
         limits[var] = (:balance, (-kσ, kσ))
     end
 
+    @info "Finished colormap limit sampling"
     return limits
 end
 
@@ -181,57 +241,77 @@ function load_frame!(buffers::Dict{String, Matrix{Float32}}, file, vars::Vector{
     end
 end
 
-function make_forcing_animation(; outname = figdir * "forcing_fields_$(resolution)_all_runs.mp4", framerate = 6)
-    files = forcing_files(output_path)
-    @info "Using files:\n$(join(files, '\n'))"
+function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTION)_all_runs.mp4", framerate = 6)
+    @info "Starting forcing animation build" output = outname framerate
 
-    haskey(SWAPPABLE_PAIRS, ACTIVE_PAIR) || error("ACTIVE_PAIR=$(ACTIVE_PAIR) not found. Valid options: $(join(string.(collect(keys(SWAPPABLE_PAIRS))), ", "))")
-    selected_vars = vcat([SURFACE_VAR], SWAPPABLE_PAIRS[ACTIVE_PAIR])
-    frames = collect_frame_refs(files, selected_vars)
-    buffers = allocate_frame_buffers(selected_vars, frames[1])
-    colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
+    copy_dir = nothing
 
-    nframes = length(frames)
-
-    fig = Figure(size = (1800, 700))
-    title = Label(fig[0, :], "Loading...", tellwidth = false)
-
-    observables = Dict{String, Observable{Matrix{Float32}}}()
-    for (i, var) in enumerate(selected_vars)
-        ax = Axis(fig[1, i], title = get(VAR_TITLES, var, var))
-        observables[var] = Observable(copy(buffers[var]))
-        cmap, clim = colormap_limits[var]
-        hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim)
-        Colorbar(fig[2, i], hm, vertical = false)
-    end
-    resize_to_layout!(fig)
-
-    years = [frame.time for frame in frames] ./ SECONDS_PER_YEAR
-
-    current_file = Ref("")
-    handle = Ref{Any}(nothing)
     try
-        record(fig, outname, 1:nframes; framerate) do frame_index
-            frame = frames[frame_index]
-            if frame.file != current_file[]
-                handle[] !== nothing && close(handle[])
-                handle[] = jldopen(frame.file, "r")
-                current_file[] = frame.file
-            end
+        live_files = forcing_files(OUTPUT_PATH)
+        files, copy_dir = copy_files_to_tempdir(live_files; prefix = "analysis2d_forcing_")
+        @info "Using copied forcing files" count = length(files)
 
-            load_frame!(buffers, handle[], selected_vars, frame.key)
-            title.text = "Global surface forcing fields (divergent scale, ±1σ) | Year = $(round(years[frame_index], digits=2))"
-            for var in selected_vars
-                copyto!(observables[var][], buffers[var])
-                notify(observables[var])
-            end
+        haskey(SWAPPABLE_PAIRS, ACTIVE_PAIR) || error("ACTIVE_PAIR=$(ACTIVE_PAIR) not found. Valid options: $(join(string.(collect(keys(SWAPPABLE_PAIRS))), ", "))")
+        selected_vars = vcat(SWAPPABLE_PAIRS[ACTIVE_PAIR])
+        @info "Selected variables" selected_vars
+
+        frames = collect_frame_refs(files, selected_vars)
+        buffers = allocate_frame_buffers(selected_vars, frames[1])
+        colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
+
+        nframes = length(frames)
+        @info "Preparing figure and render loop" nframes
+
+        fig = Figure(size = (1800, 700))
+        title = Label(fig[0, :], "Loading...", tellwidth = false)
+
+        observables = Dict{String, Observable{Matrix{Float32}}}()
+        for (i, var) in enumerate(selected_vars)
+            ax = Axis(fig[1, i], title = get(VAR_TITLES, var, var))
+            observables[var] = Observable(copy(buffers[var]))
+            cmap, clim = colormap_limits[var]
+            hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim)
+            Colorbar(fig[2, i], hm, vertical = false)
         end
-    finally
-        handle[] !== nothing && close(handle[])
-    end
+        resize_to_layout!(fig)
 
-    @info "Saved animation to $outname"
-    return outname
+        timesteps_days = [frame.time for frame in frames] ./ (24 * 3600)
+        empty!(forcing_timesteps_days)
+        append!(forcing_timesteps_days, timesteps_days)
+        years = timesteps_days ./ 365
+
+        current_file = Ref("")
+        handle = Ref{Any}(nothing)
+        @info "Starting MP4 render" outname
+
+        try
+            record(fig, outname, 1:nframes; framerate) do frame_index
+                frame = frames[frame_index]
+                if frame.file != current_file[]
+                    handle[] !== nothing && close(handle[])
+                    handle[] = jldopen(frame.file, "r")
+                    current_file[] = frame.file
+                end
+
+                load_frame!(buffers, handle[], selected_vars, frame.key)
+                title.text = "Global surface forcing fields (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(years[frame_index], digits=2))"
+                for var in selected_vars
+                    copyto!(observables[var][], buffers[var])
+                    notify(observables[var])
+                end
+
+                report_progress_step(frame_index, nframes; label = "Frame render")
+            end
+        finally
+            handle[] !== nothing && close(handle[])
+        end
+
+        @info "Saved animation" outname nframes
+        @info "Forcing timesteps (days)" forcing_timesteps_days
+        return outname
+    finally
+        cleanup_copied_outputs!(copy_dir)
+    end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
