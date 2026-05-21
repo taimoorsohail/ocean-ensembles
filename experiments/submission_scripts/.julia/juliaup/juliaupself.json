@@ -1,5 +1,0 @@
-{
-  "StartupSelfUpdateInterval": 1440,
-  "ModifyPath": true,
-  "JuliaupChannel": "release"
-}
