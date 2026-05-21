@@ -44,9 +44,9 @@ output_depths = [0, -100, -500, -1000, -2000]
 
 checkpoint_interval = TimeInterval(10days)
 output_interval = AveragedTimeInterval(5days)
-callback_iteration_interval = TimeInterval(10days)
+callback_iteration_interval = 720
 default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
-default_mediaflux_archive_interval = 6days
+default_mediaflux_archive_interval = 365days
 mediaflux_archive_submission_script = joinpath(@__DIR__, "submission_scripts", "mediaflux_archive_checkpoints.sh")
 
 function gpu_memory_status(prefix="")
@@ -201,7 +201,7 @@ end
 function add_progress_callback!(simulation; callback_iteration_interval = callback_iteration_interval)
     start_wall_time = Ref(time_ns())
     wall_time = Ref(time_ns())
-    callback_interval = TimeInterval(callback_iteration_interval)
+    callback_interval = IterationInterval(callback_iteration_interval)
 
     function progress(sim)
         η = sim.model.ocean.model.free_surface.displacement
@@ -523,7 +523,7 @@ function build_simulation(arch, run_id;
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
     @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=100)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=70)
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
@@ -598,6 +598,12 @@ function run_segment!(state; pickup=false, Δt=nothing, stop_time=nothing, stop_
         simulation.stop_time = stop_time
     elseif !isnothing(stop_iteration) && !isnothing(stop_time)
         error("Only one of stop_time or stop_iteration should be provided")
+    end
+    fs = SplitExplicitFreeSurface(state.simulation.model.ocean.model.grid; cfl=0.8, fixed_Δt=Δt)
+    @show substeps_rec = length(fs.substepping.averaging_weights)
+    @show substeps_actual = length(state.simulation.model.ocean.model.free_surface.substepping.averaging_weights)
+    if substeps_rec > substeps_actual
+        @warn "Actual number of substeps ($(substeps_actual)) is less than the recommended number of free surface substeps ($(substeps_rec)) for cfl=0.8."
     end
 
     @info "Running simulation" state.run_id pickup stop_time=prettytime(simulation.stop_time)
