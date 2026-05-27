@@ -13,8 +13,8 @@ const cₚ = isdefined(Oceananigans, :heat_capacity) ?
            Oceananigans.heat_capacity(ocean_eos) :
            EarthSystemModels.heat_capacity(ocean_eos)
 
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+output_path = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
+figdir = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
 
 function copy_files_to_tempdir(files::Vector{String}; prefix::String)
     copy_dir = mktempdir(; prefix)
@@ -226,6 +226,8 @@ for run_idx in eachindex(files_surface)
     Nt = min(length(heat_fts), length(fw_fts))
 
     for t_idx in 1:Nt
+        @show t_idx
+        @show heat_fts
         t = Float64(heat_fts.times[t_idx])
 
         # Horizontal-only integral: `dims=(1,2)` integrates with dA, not dz.

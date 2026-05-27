@@ -2,7 +2,6 @@ using NumericalEarth
 
 using NumericalEarth.EN4
 using NumericalEarth.ECCO
-using NumericalEarth.DataWrangling: download_dataset
 using NumericalEarth.DataWrangling.ETOPO
 using NumericalEarth.EarthSystemModels.InterfaceComputations: IceBathHeatFlux
 
@@ -42,12 +41,10 @@ const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
-checkpoint_interval = TimeInterval(10days)
-output_interval = AveragedTimeInterval(5days)
-callback_iteration_interval = TimeInterval(10days)
+checkpoint_interval = TimeInterval(5days)
+output_interval = TimeInterval(1days)
+callback_iteration_interval = 100
 default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
-default_mediaflux_archive_interval = 6days
-mediaflux_archive_submission_script = joinpath(@__DIR__, "submission_scripts", "mediaflux_archive_checkpoints.sh")
 
 function gpu_memory_status(prefix="")
     if !isdefined(Main, :CUDA)
@@ -106,11 +103,7 @@ function download_input_data!(dates, dataset)
     temperature = Metadata(:temperature; dates, dataset=dataset, dir=data_path)
     salinity = Metadata(:salinity; dates, dataset=dataset, dir=data_path)
 
-    download_dataset(temperature)
-    download_dataset(salinity)
-
     ETOPOmetadata = Metadatum(:bottom_height, dataset=ETOPO2022(), dir=data_path)
-    NumericalEarth.DataWrangling.download_dataset(ETOPOmetadata)
 
     return (; temperature, salinity, ETOPOmetadata)
 end
@@ -126,7 +119,8 @@ function build_grid(arch, bathymetry_metadata)
     underlying_grid = TripolarGrid(arch;
                                    size=(Nx, Ny, Nz),
                                    z,
-                                   halo=(7, 7, 7))
+                                   halo=(7, 7, 7),
+                                   fold_topology=RightFaceFolded)
 
     @info "Defining bottom bathymetry"
     @time bottom_height = regrid_bathymetry(underlying_grid, bathymetry_metadata;
@@ -201,7 +195,7 @@ end
 function add_progress_callback!(simulation; callback_iteration_interval = callback_iteration_interval)
     start_wall_time = Ref(time_ns())
     wall_time = Ref(time_ns())
-    callback_interval = TimeInterval(callback_iteration_interval)
+    callback_interval = IterationInterval(callback_iteration_interval)
 
     function progress(sim)
         η = sim.model.ocean.model.free_surface.displacement
@@ -243,54 +237,6 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
     add_callback!(simulation, progress, callback_interval)
     return nothing
 end
-function submit_mediaflux_archive_job!(; output_dir=output_path,
-                                         checkpoint_prefix=default_checkpoint_prefix)
-    if !isfile(mediaflux_archive_submission_script)
-        @warn "Mediaflux archive submission script not found; skipping archive submission" mediaflux_archive_submission_script
-        return nothing
-    end
-
-    required_env_vars = ("MEDIAFLUX_PROJ_PATH",)
-    missing_env_vars = [name for name in required_env_vars if isempty(get(ENV, name, ""))]
-    if !isempty(missing_env_vars)
-        @warn "Mediaflux archive submission skipped because required environment variables are missing" missing_env_vars
-        return nothing
-    end
-
-    export_arg = join((
-        "ALL",
-        "MEDIAFLUX_ARCHIVE_OUTPUT_PATH=$(output_dir)",
-        "MEDIAFLUX_ARCHIVE_CHECKPOINT_PREFIX=$(checkpoint_prefix)"), ",")
-
-    cmd = `sbatch --export=$export_arg $mediaflux_archive_submission_script`
-
-    try
-        @info "Submitting Mediaflux checkpoint archive job" command=string(cmd)
-        run(cmd)
-    catch err
-        @warn "Failed to submit Mediaflux checkpoint archive job" exception=(err, catch_backtrace())
-    end
-
-    return nothing
-end
-
-function add_mediaflux_archive_callback!(simulation;
-                                         archive_interval=default_mediaflux_archive_interval,
-                                         output_dir=output_path,
-                                         checkpoint_prefix=default_checkpoint_prefix)
-    archive_interval <= 0 && return nothing
-    archive_schedule = TimeInterval(archive_interval)
-
-    function submit_archive(sim)
-        @info "Mediaflux archive callback triggered" iteration=Oceananigans.iteration(sim) time=prettytime(sim)
-        submit_mediaflux_archive_job!(; output_dir, checkpoint_prefix)
-        return nothing
-    end
-
-    add_callback!(simulation, submit_archive, archive_schedule)
-    return nothing
-end
-
 function build_global_outputs(ocean, grid)
     outputs = merge(ocean.model.tracers, ocean.model.velocities)
 
@@ -498,8 +444,6 @@ end
 function build_simulation(arch, run_id;
                           add_outputs=true,
                           Δt=10minutes,
-                          enable_mediaflux_archive=!isempty(get(ENV, "MEDIAFLUX_PROJ_PATH", "")),
-                          mediaflux_archive_interval=default_mediaflux_archive_interval,
                           checkpoint_prefix=default_checkpoint_prefix)
     dates = ecco_dates()
     dataset = ECCO4Monthly()
@@ -523,7 +467,7 @@ function build_simulation(arch, run_id;
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
     @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=100)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=70)
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
@@ -558,16 +502,10 @@ function build_simulation(arch, run_id;
     land = JRA55PrescribedLand(arch; time_indices_in_memory)
 
     @info "Defining coupled model"
-    @time coupled_model = OceanSeaIceModel(sea_ice, ocean; atmosphere, radiation)
+    @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 
     simulation = Simulation(coupled_model; Δt)
     add_progress_callback!(simulation)
-    if enable_mediaflux_archive
-        add_mediaflux_archive_callback!(simulation;
-                                        archive_interval=mediaflux_archive_interval,
-                                        output_dir=output_path,
-                                        checkpoint_prefix=checkpoint_prefix)
-    end
 
     if add_outputs
         add_run_output_writers!(simulation, ocean, grid, run_id)

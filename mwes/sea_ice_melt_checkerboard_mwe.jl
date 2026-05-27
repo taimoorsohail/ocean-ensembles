@@ -17,9 +17,9 @@ arch = GPU()
 @info "Running sea ice melt checkerboard MWE on $arch"
 # Small, fast coastal-channel style setup:
 # periodic in x, bounded in y, shallow in z, with a compact ice patch hugging the south wall.
-Nx = 1500
-Ny = 1500
-Nz = 75
+Nx = 150
+Ny = 150
+Nz = 15
 @info "Grid size: $(Nx) x $(Ny) x $(Nz)"
 Lx = 6.4kilometers
 Ly = 3.2kilometers
@@ -77,13 +77,12 @@ vᵢ(x, y, z) = 1e-2 * cos(2π * x / Lx) * sin(2π * y / Ly)
 
 hᵢ(x, y) = ice_patch(x, y) ? 0.25 : 0.0
 ℵᵢ(x, y) = ice_patch(x, y) ? 1.0 : 0.0
-@info "Defined initial conditions for ocean temperature, salinity, and velocities, and for ice thickness and concentration with a checkerboard pattern"
+@info "Defined initial conditions for ocean temperature, salinity, and velocities, and for ice thickness and concentration"
 set!(ocean.model, u = uᵢ, v = vᵢ, T = Tᵢ, S = Sᵢ)
 set!(ice.model, h = hᵢ, ℵ = ℵᵢ)
 @info "Set initial conditions in ocean and ice models"
 coupled_model = OceanSeaIceModel(ice, ocean)
 simulation = Simulation(coupled_model; Δt, stop_time, verbose = false)
-@info "Created coupled ocean-sea ice simulation with time step $(Δt) and stop time $(stop_time)"
 h = ice.model.ice_thickness
 T = ocean.model.tracers.T
 Q_interface = ice.model.external_heat_fluxes.bottom
@@ -96,6 +95,7 @@ times = Float64[]
 max_heat_flux = Float64[]
 max_melt_rate = Float64[]
 checkerboard_ratio = Float64[]
+advective_cfls = Float64[]
 
 previous_h = Ref{Union{Nothing, Matrix{Float64}}}(nothing)
 previous_time = Ref{Float64}(0.0)
@@ -115,6 +115,7 @@ function save_state(sim)
     push!(wt, wn)
     push!(times, t)
     push!(max_heat_flux, maximum(abs, Qn))
+    push!(advective_cfls, AdvectiveCFL(sim.Δt)(sim.model.ocean.model))
 
     if isnothing(previous_h[])
         push!(max_melt_rate, 0.0)
@@ -137,12 +138,13 @@ function progress(sim)
     n = length(times)
     n == 0 && return nothing
 
-    msg = @sprintf("iter: %4d, time: %8s, max|Q_interface|: %8.2f W m⁻², max melt: %.3e m s⁻¹, checkerboard ratio: %.3f",
+    msg = @sprintf("iter: %4d, time: %8s, max|Q_interface|: %8.2f W m⁻², max melt: %.3e m s⁻¹, checkerboard ratio: %.3f, advective CFL: %.2f",
                    iteration(sim),
                    prettytime(sim),
                    max_heat_flux[n],
                    max_melt_rate[n],
-                   checkerboard_ratio[n])
+                   checkerboard_ratio[n],
+                   advective_cfls[n])
     @info msg
     return nothing
 end
@@ -157,6 +159,7 @@ run!(simulation)
 @info @sprintf("Peak max|Q_interface| = %.2f W m⁻²", maximum(max_heat_flux))
 @info @sprintf("Peak max melt rate   = %.3e m s⁻¹", maximum(max_melt_rate))
 @info @sprintf("Minimum checkerboard ratio = %.3f", minimum(checkerboard_ratio))
+@info @sprintf("Peak advective CFL = %.2f", maximum(advective_cfls))
 
 Nt = length(times)
 x = xnodes(ice_grid, Center()) ./ 1e3
@@ -173,10 +176,11 @@ fig = Figure(size = (1400, 900))
 frame = Observable(1)
 
 current_time = @lift prettytime(times[$frame])
-current_summary = @lift @sprintf("max |Q_interface| = %.1f W m⁻²   max melt = %.3e m s⁻¹   checkerboard ratio = %.3f",
+current_summary = @lift @sprintf("max |Q_interface| = %.1f W m⁻²   max melt = %.3e m s⁻¹   checkerboard ratio = %.3f   advective CFL = %.2f",
                                  max_heat_flux[$frame],
                                  max_melt_rate[$frame],
-                                 checkerboard_ratio[$frame])
+                                 checkerboard_ratio[$frame],
+                                 advective_cfls[$frame])
 
 Label(fig[0, 1:2], @lift("Warm-under-ice MWE at " * $current_time), fontsize = 26)
 

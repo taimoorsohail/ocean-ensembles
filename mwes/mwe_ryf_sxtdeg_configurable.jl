@@ -20,9 +20,9 @@ using JLD2
 const data_path = expanduser("/home/tsohail/uom/ocean-ensembles/data/")
 const output_path = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
 
-const Nx = Integer(360 * 6)
-const Ny = Integer(180 * 6)
-const Nz = Integer(75)
+const Nx = Integer(360)
+const Ny = Integer(180)
+const Nz = round(Int, 75)
 const depth = -5500.0
 
 const RUN_LABEL = "mwe_ryf_sxtdeg_configurable"
@@ -33,7 +33,8 @@ Base.@kwdef struct Config
     include_radiation::Bool = false
     include_sea_ice::Bool = false
     include_restoring::Bool = false
-    momentum_advection = nothing#WENOVectorInvariant()
+    include_bathymetry::Bool = true
+    momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order = 7)
     initial_ts_dataset = EN4Monthly()
     initial_momentum_dataset = ECCO4Monthly()
@@ -41,9 +42,9 @@ Base.@kwdef struct Config
     ocean_timestep = 1minutes
     coupled_timestep = 10minutes
     stop_time = 1days
-    output_schedule = IterationInterval(1)
+    output_schedule = IterationInterval(5)
     progress_schedule = IterationInterval(10)
-    tendency_record::Bool = true
+    tendency_record::Bool = false
     surface_level::Int = Nz
     run_label::String = RUN_LABEL
 end
@@ -53,26 +54,49 @@ function ryf_dates()
                 collect(DateTime(1990, 5, 1):Month(1):DateTime(1990, 12, 1)))
 end
 
-function build_grid(arch, ETOPOmetadata)
+function analytical_immersed_grid(underlying_grid::TripolarGrid; radius = 5, active_cells_map = false) # degrees
+    λp = underlying_grid.conformal_mapping.first_pole_longitude
+    φp = underlying_grid.conformal_mapping.north_poles_latitude
+    φm = underlying_grid.conformal_mapping.southernmost_latitude
+
+    Lz = underlying_grid.Lz
+
+    # We need a bottom height field that ``masks'' the singularities
+    bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
+                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map)
+
+    return grid
+end
+
+function add_realistic_bathymetry(underlying_grid, ETOPOmetadata)
+@time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
+                                            minimum_depth = 15,
+                                            interpolation_passes = 25,
+                                            major_basins = 2)
+
+    @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map = true)    
+    return grid
+end
+
+function build_grid(config::Config, arch, ETOPOmetadata)
     z_faces = ExponentialDiscretization(Nz, depth, 0, mutable = true)
 
     underlying_grid = TripolarGrid(arch;
                                    size = (Nx, Ny, Nz),
                                    z = z_faces,
-                                   halo = (7, 7, 7))
-
-    @time bottom_height = regrid_bathymetry(underlying_grid, ETOPOmetadata;
-                                            minimum_depth = 15,
-                                            interpolation_passes = 25,
-                                            major_basins = 2)
-
-    @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map = true)
-
+                                   halo = (7, 7, 7),
+                                   fold_topology = RightCenterFolded)
+    if isnothing(config.include_bathymetry) || !config.include_bathymetry
+        grid = analytical_immersed_grid(underlying_grid; radius = 5, active_cells_map = true) # degrees
+    else
+        grid = add_realistic_bathymetry(underlying_grid, ETOPOmetadata) # degrees
+    end
     return grid
 end
 
 function maybe_download!(metadata)
-    NumericalEarth.DataWrangling.download_dataset(metadata)
     return metadata
 end
 
@@ -203,10 +227,10 @@ function add_progress_callback!(config::Config, simulation)
     return nothing
 end
 
-function add_surface_output_writer!(config::Config, ocean)
-    outputs = merge(ocean.model.tracers, ocean.model.velocities)
+function add_surface_output_writer!(config::Config, simulation)
+    outputs = merge(simulation.model.velocities, simulation.model.tracers)
 
-    ocean.output_writers[:surface] = JLD2Writer(ocean.model, outputs;
+    simulation.output_writers[:surface] = JLD2Writer(simulation.model, outputs;
                                                 dir = output_path,
                                                 schedule = config.output_schedule,
                                                 filename = config.run_label * "_surface_k$(config.surface_level)",
@@ -271,19 +295,23 @@ end
 
 function main(; config = Config())
     @info "Building configurable RYF sxtdeg MWE" config
-
+    @info "Building grid and loading inputs"
     inputs = input_metadata(config)
-    grid = build_grid(config.arch, inputs.bathymetry)
+    @info "Building ocean grid with bathymetry:" config.include_bathymetry
+    grid = build_grid(config, config.arch, inputs.bathymetry)
+    @info "Building ocean model"
     @time ocean = build_ocean(config, grid, inputs)
+    @info "Building sea ice model:" config.include_sea_ice
     sea_ice = build_sea_ice(config, grid, ocean)
+    @info "Building atmosphere and radiation models:" config.include_atmosphere, config.include_radiation
     @time atmosphere_state = build_atmosphere(config)
     @time radiation = build_radiation(config)
-
+    @info "Building coupled model and simulation"
     model = build_model(ocean, sea_ice, atmosphere_state.atmosphere, atmosphere_state.land, radiation)
     simulation = Simulation(model; Δt = config.coupled_timestep, stop_time = config.stop_time)
 
     add_progress_callback!(config, simulation)
-    add_surface_output_writer!(config, ocean)
+    add_surface_output_writer!(config, simulation)
     add_tendency_callback!(config, simulation)
 
     @info "Running configurable MWE" stop_time = prettytime(config.stop_time) output_schedule = config.output_schedule
@@ -298,5 +326,6 @@ end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     using .MWERYFSxtdegConfigurable
-    MWERYFSxtdegConfigurable.main()
+    cfg = MWERYFSxtdegConfigurable.Config()
+    sim = MWERYFSxtdegConfigurable.main()
 end
