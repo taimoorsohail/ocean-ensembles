@@ -41,10 +41,10 @@ const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
-checkpoint_interval = TimeInterval(5days)
-output_interval = TimeInterval(1days)
-callback_iteration_interval = 100
-default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
+checkpoint_interval = TimeInterval((365/24)days)
+output_interval = IterationInterval(1)
+callback_iteration_interval = 10
+default_checkpoint_prefix = "RYF_sxtdeg_checkpoint_current_grid"
 
 function gpu_memory_status(prefix="")
     if !isdefined(Main, :CUDA)
@@ -207,7 +207,8 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         # but they add an expensive full-field search and extra reductions/copies.
         # Keep only the aggregate advective CFL in routine progress logging.
         advective_cfl = AdvectiveCFL(sim.Δt)(sim.model.ocean.model)
-
+        # diffusive_cfl = DiffusiveCFL(sim.Δt)(sim.model.ocean.model)
+        
         Trange = (maximum(T), minimum(T))
         Srange = (maximum(S), minimum(S))
         ηrange = (maximum(η), minimum(η))

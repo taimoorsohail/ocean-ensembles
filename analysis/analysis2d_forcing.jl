@@ -2,14 +2,16 @@ using CairoMakie
 using JLD2
 using Glob
 
-const OUTPUT_PATH = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-const FIGDIR = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+const OUTPUT_PATH = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
+const FIGDIR = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
 const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60
 const COLOR_SIGMA_MULTIPLE = 3.0
 const MAX_COLOR_SAMPLES = 1_000_000
 const MAX_COLOR_FRAMES = 240
 const PROGRESS_UPDATES = 20
+const DEFAULT_COLORRANGE = (0f0, 1f0)
+const NAN_PLOT_COLOR = :lightgray
 const forcing_timesteps_days = Float64[]
 const SWAPPABLE_PAIRS = Dict(
     :surface_tracers => ["T_surf", "S_surf"],
@@ -73,6 +75,15 @@ function forcing_files(path::AbstractString)
     files = glob("global_surface_fluxes_$(RESOLUTION)*_RYF_run*.jld2", path)
     files = filter(files) do f
         !occursin("_rank", f) && occursin("surface_fluxes", f) && run_id(f) >= 0
+    end
+    sort!(files; by = run_id)
+    return files
+end
+
+function ssh_files(path::AbstractString)
+    files = glob("global_ssh_fields_$(RESOLUTION)_RYF_run*.jld2", path)
+    files = filter(files) do f
+        !occursin("_rank", f) && occursin("ssh_fields", f) && run_id(f) >= 0
     end
     sort!(files; by = run_id)
     return files
@@ -176,6 +187,7 @@ end
 @inline function update_stats!(stats::RunningStats, A::Matrix{Float32}, stride::Int)
     @inbounds for i in 1:stride:length(A)
         x = Float64(A[i])
+        isfinite(x) || continue
         stats.n += 1
         δ = x - stats.mean
         stats.mean += δ / stats.n
@@ -224,6 +236,12 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
     limits = Dict{String, Tuple{Symbol, Tuple{Float32, Float32}}}()
     for var in vars
         s = stats[var]
+        if s.n == 0
+            @warn "No finite values found for colormap limits; using default range." variable = var default = DEFAULT_COLORRANGE
+            limits[var] = (:balance, DEFAULT_COLORRANGE)
+            continue
+        end
+
         σ = s.n > 1 ? sqrt(s.m2 / (s.n - 1)) : 0.0
         σ = max(σ, eps(Float64))
         kσ = Float32(COLOR_SIGMA_MULTIPLE * σ)
@@ -270,7 +288,7 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
             ax = Axis(fig[1, i], title = get(VAR_TITLES, var, var))
             observables[var] = Observable(copy(buffers[var]))
             cmap, clim = colormap_limits[var]
-            hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim)
+            hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
             Colorbar(fig[2, i], hm, vertical = false)
         end
         resize_to_layout!(fig)
@@ -314,6 +332,70 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
     end
 end
 
+function make_ssh_animation(; outname = FIGDIR * "ssh_fields_$(RESOLUTION)_all_runs.mp4", framerate = 6)
+    @info "Starting SSH animation build" output = outname framerate
+
+    copy_dir = nothing
+
+    try
+        live_files = ssh_files(OUTPUT_PATH)
+        files, copy_dir = copy_files_to_tempdir(live_files; prefix = "analysis2d_ssh_")
+        @info "Using copied SSH files" count = length(files)
+
+        selected_vars = ["surface_height"]
+        frames = collect_frame_refs(files, selected_vars)
+        buffers = allocate_frame_buffers(selected_vars, frames[1])
+        colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
+
+        nframes = length(frames)
+        @info "Preparing SSH figure and render loop" nframes
+
+        fig = Figure(size = (900, 700))
+        title = Label(fig[0, :], "Loading...", tellwidth = false)
+
+        ssh = "surface_height"
+        ax = Axis(fig[1, 1], title = get(VAR_TITLES, ssh, ssh))
+        observable = Observable(copy(buffers[ssh]))
+        cmap, clim = colormap_limits[ssh]
+        hm = heatmap!(ax, observable, colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
+        Colorbar(fig[2, 1], hm, vertical = false)
+        resize_to_layout!(fig)
+
+        timesteps_days = [frame.time for frame in frames] ./ (24 * 3600)
+        years = timesteps_days ./ 365
+
+        current_file = Ref("")
+        handle = Ref{Any}(nothing)
+        @info "Starting SSH MP4 render" outname
+
+        try
+            record(fig, outname, 1:nframes; framerate) do frame_index
+                frame = frames[frame_index]
+                if frame.file != current_file[]
+                    handle[] !== nothing && close(handle[])
+                    handle[] = jldopen(frame.file, "r")
+                    current_file[] = frame.file
+                end
+
+                load_frame!(buffers, handle[], selected_vars, frame.key)
+                title.text = "Global SSH (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(years[frame_index], digits=2))"
+                copyto!(observable[], buffers[ssh])
+                notify(observable)
+
+                report_progress_step(frame_index, nframes; label = "SSH frame render")
+            end
+        finally
+            handle[] !== nothing && close(handle[])
+        end
+
+        @info "Saved SSH animation" outname nframes
+        return outname
+    finally
+        cleanup_copied_outputs!(copy_dir)
+    end
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__
     make_forcing_animation()
+    make_ssh_animation()
 end
