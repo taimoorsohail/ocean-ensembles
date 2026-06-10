@@ -1,63 +1,50 @@
 using CairoMakie
 using NumericalEarth
-using NumericalEarth.EN4
-using NumericalEarth.ECCO
-using NumericalEarth.DataWrangling.ETOPO
-using ClimaSeaIce
-using CUDA
 using Oceananigans
-using Oceananigans.Units
-using Oceananigans.Fields: interior
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 
-const Nx = Integer(360)
-const Ny = Integer(180)
-const Nz = round(Int, 75)
-const depth = -5500.0
+const Nx = 120
+const Ny = 60
+const Nz = 1
 
-function analytical_immersed_grid(underlying_grid::TripolarGrid; radius = 5, active_cells_map = false) # degrees
-    λp = underlying_grid.conformal_mapping.first_pole_longitude
-    φp = underlying_grid.conformal_mapping.north_poles_latitude
-    φm = underlying_grid.conformal_mapping.southernmost_latitude
+grid = TripolarGrid(CPU();
+                    size = (Nx, Ny, Nz),
+                    z = (-1, 0),
+                    halo = (7, 7, 7))
 
-    Lz = underlying_grid.Lz
+atmosphere = PrescribedAtmosphere(grid, [0.0])
+ocean = HydrostaticFreeSurfaceModel(grid; free_surface = SplitExplicitFreeSurface(grid, substeps=20))
 
-    # We need a bottom height field that ``masks'' the singularities
-    bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+u_field_atmos = atmosphere.velocities.u[1]
+v_field_atmos = atmosphere.velocities.v[1]
 
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map)
+u_field_ocean = ocean.velocities.u
+v_field_ocean = ocean.velocities.v
 
-    return grid
-end
+set!(u_field_atmos, 1)
+set!(v_field_atmos, 0)
 
+set!(u_field_ocean, 1)
+set!(v_field_ocean, 0)
 
-time_indices_in_memory = 24
-arch = GPU()
+fill_halo_regions!(u_field_ocean)
+fill_halo_regions!(v_field_ocean)
+fill_halo_regions!(u_field_atmos)
+fill_halo_regions!(v_field_atmos)
 
-underlying_grid = TripolarGrid(arch;
-                               size = (Nx, Ny, Nz),
-                               z = (-100, 0),
-                               halo = (7, 7, 7))
+fig = Figure(size = (1200, 900))
 
-grid = analytical_immersed_grid(underlying_grid; radius = 5, active_cells_map = true) # degrees
+ax1 = Axis(fig[1, 1],
+           title = "Prescribed atmosphere u at the tripolar seam",
+           xlabel = "Seam index",
+           ylabel = "Velocity")
 
-@time ocean = ocean_simulation(grid; free_surface=SplitExplicitFreeSurface(grid, substeps=70))
+lines!(ax1, u_field_atmos[:,Ny]; label = "Prescribed Atmosphere", linewidth = 3, color = :dodgerblue)
+lines!(ax1, u_field_ocean[:,Ny,1]; label = "Ocean", linewidth = 3, color = :orangered)
 
-radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory)
-atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory)
+outname = "simple_tripolar_OAM_seam.png"
+axislegend(ax1, position = :rb)
 
-model = OceanOnlyModel(ocean; atmosphere, radiation)
-simulation = Simulation(model, Δt=10minutes)
+save(outname, fig)
 
-surface_forcing = (; heat_flux=(net_ocean_heat_flux(simulation.model)),
-                    fw_flux=(net_ocean_freshwater_flux(simulation.model)))
-
-@time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
-                                                                schedule=IterationInterval(1),
-                                                                filename="test_surface_luxes_plotting",
-                                                                with_halos=false,
-                                                                overwrite_existing=true,
-                                                                array_type=Array{Float32})
-
-simulation.stop_iteration = 5
-run!(simulation)
+@info "Saved seam plot" outname
