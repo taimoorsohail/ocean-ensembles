@@ -42,9 +42,9 @@ const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
 checkpoint_interval = TimeInterval((365/24)days)
-output_interval = IterationInterval(1)
-callback_iteration_interval = 10
-default_checkpoint_prefix = "RYF_sxtdeg_checkpoint_current_grid"
+output_interval = AveragedTimeInterval(1days)
+callback_iteration_interval = 100
+default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
 
 function gpu_memory_status(prefix="")
     if !isdefined(Main, :CUDA)
@@ -377,14 +377,19 @@ end
 function add_run_output_writers!(simulation, ocean, grid, run_id)
     run_id_leading = lpad(string(run_id), 4, '0')
     @info "Defining run-dependent output writers for run $run_id_leading"
+    sea_ice_model = simulation.model.sea_ice.model
 
+    sea_ice_outputs = (; ice_thickness=sea_ice_model.ice_thickness,
+                       ice_concentration=sea_ice_model.ice_concentration)
     outputs = merge(ocean.model.tracers, ocean.model.velocities)
     remove_existing_diagnostic_output_files!(run_id_leading)
     surface_height = (; surface_height=ocean.model.free_surface.displacement)
     # Surface flux diagnostics are disabled for the ocean-only run because these
     # helpers assume a sea-ice-ocean interface exists in this NumericalEarth version.
-    surface_forcing = (; heat_flux=Field(net_ocean_heat_flux(simulation.model)),
-                       fw_flux=Field(net_ocean_freshwater_flux(simulation.model)))
+    # Store surface flux diagnostics with the same sign convention as the
+    # integrated content tendencies: positive surface input increases content.
+    surface_forcing = (; heat_flux=Field(-net_ocean_heat_flux(simulation.model)),
+                       fw_flux=Field(-net_ocean_freshwater_flux(simulation.model)))
 
     for spec in slice_output_specs(grid)
         slice_level = spec.slice_level
@@ -398,41 +403,14 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                                           array_type=Array{Float32})
     end
 
-    @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
-                                                  dir=output_path,
-                                                  schedule=output_interval,
-                                                  filename="global_ssh_fields_sxtdeg_RYF_run" * run_id_leading,
-                                                  with_halos=false,
-                                                  overwrite_existing=true,
-                                                  array_type=Array{Float32})
-
-    @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
+    @time simulation.output_writers[:surface_conditions] = JLD2Writer(simulation.model, merge(surface_forcing, sea_ice_outputs, surface_height);
                                                                   dir=output_path,
                                                                   schedule=output_interval,
                                                                   filename="global_surface_fluxes_sxtdeg_RYF_run" * run_id_leading,
                                                                   with_halos=false,
                                                                   overwrite_existing=true,
                                                                   array_type=Array{Float32})
-
-    # @time ocean.output_writers[:diagnostic_subsurface] = JLD2Writer(ocean.model, diagnostic_subsurface_outputs;
-    #                                                                 dir=output_path,
-    #                                                                 schedule=diagnostic_surface_interval,
-    #                                                                 filename="global_diagnostic_k$(diagnostic_surface_level)_fields_sxtdeg_RYF_run" * run_id_leading,
-    #                                                                 indices=(:, :, diagnostic_surface_level),
-    #                                                                 including=(),
-    #                                                                 with_halos=false,
-    #                                                                 overwrite_existing=true,
-    #                                                                 array_type=Array{Float32})
-
-    # @time simulation.output_writers[:diagnostic_surface] = JLD2Writer(simulation.model, build_diagnostic_surface_outputs(simulation);
-    #                                                                   dir=output_path,
-    #                                                                   schedule=diagnostic_surface_interval,
-    #                                                                   filename="global_diagnostic_surface_fields_sxtdeg_RYF_run" * run_id_leading,
-    #                                                                   including=(),
-    #                                                                   with_halos=false,
-    #                                                                   overwrite_existing=true,
-    #                                                                   array_type=Array{Float32})
-
+                                                                  
     @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
                                                        dir=output_path,
                                                        schedule=output_interval,
@@ -469,8 +447,8 @@ function build_simulation(arch, run_id;
 
     @info "Defining free surface"
     free_surface = SplitExplicitFreeSurface(grid; substeps=70)
-    momentum_advection = WENOVectorInvariant()
-    tracer_advection = WENO(order=7)
+    momentum_advection = WENOVectorInvariant()#time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+    tracer_advection = WENO(order=7)#, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
 
     @info "Defining ocean model"

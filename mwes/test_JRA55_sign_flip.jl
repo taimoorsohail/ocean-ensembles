@@ -43,10 +43,10 @@ t = coupled_model.clock.time
 time_itp = cpu_interpolating_time_indices(CPU(), times, time_indexing, t)
 
 Hx, Hy, Hz = halo_size(grid)
-i_indices = 1:Nx
-j_south = Ny - 1
-j_seam  = Ny
-j_halo  = Ny + 1
+i_indices = Hx + 1:Hx + Nx
+j_south = Hy + Ny - 1
+j_seam  = Hy + Ny
+j_halo  = Hy + Ny + 1
 k = 1
 kN = size(grid, 3)
 
@@ -92,8 +92,8 @@ function row_diagnostics(j_row)
     rnorm = zeros(Float64, Nx)
 
     for (n, ii) in enumerate(i_indices)
-        fi = @inbounds regridder.i[ii, j_row, 1]
-        fj = @inbounds regridder.j[ii, j_row, 1]
+        fi = @inbounds parent(regridder.i)[ii, j_row, 1]
+        fj = @inbounds parent(regridder.j)[ii, j_row, 1]
         x_itp = FractionalIndices(fi, fj, nothing)
 
         u_ext = oc_interpolate(x_itp, time_itp, ua.data, backend, time_indexing)
@@ -105,8 +105,8 @@ function row_diagnostics(j_row)
         v_pre[n] = v_ext
         u_rot[n] = u_int
         v_rot[n] = v_int
-        tau_x[n] = @inbounds fluxes.x_momentum[ii, j_row, k]
-        tau_y[n] = @inbounds fluxes.y_momentum[ii, j_row, k]
+        tau_x[n] = @inbounds parent(fluxes.x_momentum)[ii, j_row, k]
+        tau_y[n] = @inbounds parent(fluxes.y_momentum)[ii, j_row, k]
         angle[n] = rot.θ
         rcos[n] = rot.Rcosθ
         rsin[n] = rot.Rsinθ
@@ -152,7 +152,7 @@ net_tau_v_rows = (; south = logical_row(net_ocean_fluxes.v, j_south),
 
 for jj in (j_south, j_seam, j_halo)
     row_name = jj == j_south ? "south" : jj == j_seam ? "seam" : "north_halo"
-    for ii in (Nx - 1, Nx)
+    for ii in (Hx + Nx - 1, Hx + Nx)
         rot = raw_rotation_terms(ii, jj)
         @info("Raw rotation terms",
               row = row_name,

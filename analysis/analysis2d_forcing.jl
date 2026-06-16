@@ -1,6 +1,8 @@
 using CairoMakie
 using JLD2
 using Glob
+using Oceananigans
+using NumericalEarth
 
 const OUTPUT_PATH = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
 const FIGDIR = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
@@ -10,6 +12,7 @@ const COLOR_SIGMA_MULTIPLE = 3.0
 const MAX_COLOR_SAMPLES = 1_000_000
 const MAX_COLOR_FRAMES = 240
 const PROGRESS_UPDATES = 20
+const GC_INTERVAL = 12
 const DEFAULT_COLORRANGE = (0f0, 1f0)
 const NAN_PLOT_COLOR = :lightgray
 const forcing_timesteps_days = Float64[]
@@ -19,33 +22,6 @@ const SWAPPABLE_PAIRS = Dict(
 # Current default: surface height + T_surf + S_surf.
 # To switch later, set e.g. ACTIVE_PAIR = :fluxes
 const ACTIVE_PAIR = :fluxes
-
-function copy_files_to_tempdir(files::Vector{String}; prefix::String)
-    copy_dir = mktempdir(; prefix)
-    copied = String[]
-
-    try
-        for file in files
-            dest = joinpath(copy_dir, basename(file))
-            cp(file, dest; force = true)
-            push!(copied, dest)
-        end
-    catch
-        rm(copy_dir; recursive = true, force = true)
-        rethrow()
-    end
-
-    @info "Copied analysis inputs." source_files = length(files) copy_dir
-    return copied, copy_dir
-end
-
-function cleanup_copied_outputs!(copy_dir::Union{Nothing, String})
-    if copy_dir !== nothing && isdir(copy_dir)
-        rm(copy_dir; recursive = true, force = true)
-        @info "Deleted copied analysis inputs." copy_dir
-    end
-    return nothing
-end
 
 const VAR_TITLES = Dict(
     "surface_height" => "Surface Height (m)",
@@ -72,7 +48,7 @@ function run_id(path::AbstractString)
 end
 
 function forcing_files(path::AbstractString)
-    files = glob("global_surface_fluxes_$(RESOLUTION)*_RYF_run*.jld2", path)
+    files = glob("combined_global_surface_fluxes_$(RESOLUTION)*_RYF_run*.jld2", path)
     files = filter(files) do f
         !occursin("_rank", f) && occursin("surface_fluxes", f) && run_id(f) >= 0
     end
@@ -81,9 +57,9 @@ function forcing_files(path::AbstractString)
 end
 
 function ssh_files(path::AbstractString)
-    files = glob("global_ssh_fields_$(RESOLUTION)_RYF_run*.jld2", path)
+    files = glob("combined_global_surface_fluxes_$(RESOLUTION)_RYF_run*.jld2", path)
     files = filter(files) do f
-        !occursin("_rank", f) && occursin("ssh_fields", f) && run_id(f) >= 0
+        !occursin("_rank", f) && occursin("surface_fluxes", f) && run_id(f) >= 0
     end
     sort!(files; by = run_id)
     return files
@@ -227,6 +203,9 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
                 update_stats!(stats[var], buffers[var], strides[var])
             end
 
+            if sample_index % GC_INTERVAL == 0
+                GC.gc(false)
+            end
             report_progress_step(sample_index, sampled_count; label = "Colormap sampling")
         end
     finally
@@ -259,15 +238,36 @@ function load_frame!(buffers::Dict{String, Matrix{Float32}}, file, vars::Vector{
     end
 end
 
+function bottom_height_matrix(filepath::AbstractString)
+    return jldopen(filepath, "r") do f
+        haskey(f, "serialized/grid") || return nothing
+        grid = f["serialized/grid"]
+        hasproperty(grid, :immersed_boundary) || return nothing
+        immersed_boundary = getproperty(grid, :immersed_boundary)
+        hasproperty(immersed_boundary, :bottom_height) || return nothing
+        bottom_height_field = getproperty(immersed_boundary, :bottom_height)
+        bottom_height = Array(interior(bottom_height_field, :, :, 1))
+        Float32.(bottom_height)
+    end
+end
+
+surface_ocean_mask(bottom_height::Union{Nothing, AbstractMatrix}) = isnothing(bottom_height) ? nothing : bottom_height .< 0f0
+
+function mask_field_with_plot_mask!(dest::Matrix{Float32}, src::Matrix{Float32}, plot_mask::Union{Nothing, AbstractMatrix{Bool}})
+    size(dest) == size(src) || error("Destination/src size mismatch: $(size(dest)) vs $(size(src)).")
+    isnothing(plot_mask) && return copyto!(dest, src)
+    size(dest) == size(plot_mask) || error("Plot mask shape mismatch: got $(size(plot_mask)) expected $(size(dest)).")
+    @inbounds for i in eachindex(dest, src, plot_mask)
+        dest[i] = plot_mask[i] ? src[i] : NaN32
+    end
+    return dest
+end
+
 function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTION)_all_runs.mp4", framerate = 6)
     @info "Starting forcing animation build" output = outname framerate
 
-    copy_dir = nothing
-
-    try
-        live_files = forcing_files(OUTPUT_PATH)
-        files, copy_dir = copy_files_to_tempdir(live_files; prefix = "analysis2d_forcing_")
-        @info "Using copied forcing files" count = length(files)
+    files = forcing_files(OUTPUT_PATH)
+    @info "Using forcing files in place" count = length(files)
 
         haskey(SWAPPABLE_PAIRS, ACTIVE_PAIR) || error("ACTIVE_PAIR=$(ACTIVE_PAIR) not found. Valid options: $(join(string.(collect(keys(SWAPPABLE_PAIRS))), ", "))")
         selected_vars = vcat(SWAPPABLE_PAIRS[ACTIVE_PAIR])
@@ -275,6 +275,8 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
 
         frames = collect_frame_refs(files, selected_vars)
         buffers = allocate_frame_buffers(selected_vars, frames[1])
+        bottom_height = bottom_height_matrix(frames[1].file)
+        surface_mask = surface_ocean_mask(bottom_height)
         colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
 
         nframes = length(frames)
@@ -286,17 +288,20 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
         observables = Dict{String, Observable{Matrix{Float32}}}()
         for (i, var) in enumerate(selected_vars)
             ax = Axis(fig[1, i], title = get(VAR_TITLES, var, var))
-            observables[var] = Observable(copy(buffers[var]))
+            initial = copy(buffers[var])
+            mask_field_with_plot_mask!(initial, buffers[var], surface_mask)
+            observables[var] = Observable(initial)
             cmap, clim = colormap_limits[var]
             hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
             Colorbar(fig[2, i], hm, vertical = false)
         end
         resize_to_layout!(fig)
 
-        timesteps_days = [frame.time for frame in frames] ./ (24 * 3600)
         empty!(forcing_timesteps_days)
-        append!(forcing_timesteps_days, timesteps_days)
-        years = timesteps_days ./ 365
+        sizehint!(forcing_timesteps_days, nframes)
+        for frame in frames
+            push!(forcing_timesteps_days, frame.time / (24 * 3600))
+        end
 
         current_file = Ref("")
         handle = Ref{Any}(nothing)
@@ -312,39 +317,38 @@ function make_forcing_animation(; outname = FIGDIR * "forcing_fields_$(RESOLUTIO
                 end
 
                 load_frame!(buffers, handle[], selected_vars, frame.key)
-                title.text = "Global surface forcing fields (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(years[frame_index], digits=2))"
+                year = frame.time / SECONDS_PER_YEAR
+                title.text = "Global surface forcing fields (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(year, digits=2))"
                 for var in selected_vars
-                    copyto!(observables[var][], buffers[var])
+                    mask_field_with_plot_mask!(observables[var][], buffers[var], surface_mask)
                     notify(observables[var])
                 end
 
+                if frame_index % GC_INTERVAL == 0
+                    GC.gc(false)
+                end
                 report_progress_step(frame_index, nframes; label = "Frame render")
             end
         finally
             handle[] !== nothing && close(handle[])
         end
 
-        @info "Saved animation" outname nframes
-        @info "Forcing timesteps (days)" forcing_timesteps_days
-        return outname
-    finally
-        cleanup_copied_outputs!(copy_dir)
-    end
+    @info "Saved animation" outname nframes
+    @info "Forcing timesteps (days)" forcing_timesteps_days
+    return outname
 end
 
 function make_ssh_animation(; outname = FIGDIR * "ssh_fields_$(RESOLUTION)_all_runs.mp4", framerate = 6)
     @info "Starting SSH animation build" output = outname framerate
 
-    copy_dir = nothing
-
-    try
-        live_files = ssh_files(OUTPUT_PATH)
-        files, copy_dir = copy_files_to_tempdir(live_files; prefix = "analysis2d_ssh_")
-        @info "Using copied SSH files" count = length(files)
+    files = ssh_files(OUTPUT_PATH)
+    @info "Using SSH files in place" count = length(files)
 
         selected_vars = ["surface_height"]
         frames = collect_frame_refs(files, selected_vars)
         buffers = allocate_frame_buffers(selected_vars, frames[1])
+        bottom_height = bottom_height_matrix(frames[1].file)
+        surface_mask = surface_ocean_mask(bottom_height)
         colormap_limits = sampled_colormap_limits(frames, selected_vars, buffers)
 
         nframes = length(frames)
@@ -355,14 +359,14 @@ function make_ssh_animation(; outname = FIGDIR * "ssh_fields_$(RESOLUTION)_all_r
 
         ssh = "surface_height"
         ax = Axis(fig[1, 1], title = get(VAR_TITLES, ssh, ssh))
-        observable = Observable(copy(buffers[ssh]))
+        initial = copy(buffers[ssh])
+        mask_field_with_plot_mask!(initial, buffers[ssh], surface_mask)
+        observable = Observable(initial)
         cmap, clim = colormap_limits[ssh]
         hm = heatmap!(ax, observable, colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
         Colorbar(fig[2, 1], hm, vertical = false)
         resize_to_layout!(fig)
 
-        timesteps_days = [frame.time for frame in frames] ./ (24 * 3600)
-        years = timesteps_days ./ 365
 
         current_file = Ref("")
         handle = Ref{Any}(nothing)
@@ -378,21 +382,22 @@ function make_ssh_animation(; outname = FIGDIR * "ssh_fields_$(RESOLUTION)_all_r
                 end
 
                 load_frame!(buffers, handle[], selected_vars, frame.key)
-                title.text = "Global SSH (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(years[frame_index], digits=2))"
-                copyto!(observable[], buffers[ssh])
+                year = frame.time / SECONDS_PER_YEAR
+                title.text = "Global SSH (divergent scale, ±1σ) | Run $(frame.run) | Year = $(round(year, digits=2))"
+                mask_field_with_plot_mask!(observable[], buffers[ssh], surface_mask)
                 notify(observable)
 
+                if frame_index % GC_INTERVAL == 0
+                    GC.gc(false)
+                end
                 report_progress_step(frame_index, nframes; label = "SSH frame render")
             end
         finally
             handle[] !== nothing && close(handle[])
         end
 
-        @info "Saved SSH animation" outname nframes
-        return outname
-    finally
-        cleanup_copied_outputs!(copy_dir)
-    end
+    @info "Saved SSH animation" outname nframes
+    return outname
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
