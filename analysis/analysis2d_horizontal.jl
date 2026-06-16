@@ -17,33 +17,6 @@ const DEPTH_FILE_RUN_PREFIX = "_fields_$(RESOLUTION)_RYF_run"
 const DEFAULT_COLORRANGE = (0f0, 1f0)
 const NAN_PLOT_COLOR = :lightgray
 
-function copy_files_to_tempdir(files::Vector{String}; prefix::String)
-    copy_dir = mktempdir(; prefix)
-    copied = String[]
-
-    try
-        for file in files
-            dest = joinpath(copy_dir, basename(file))
-            cp(file, dest; force = true)
-            push!(copied, dest)
-        end
-    catch
-        rm(copy_dir; recursive = true, force = true)
-        rethrow()
-    end
-
-    @info "Copied analysis inputs." source_files = length(files) copy_dir
-    return with_trailing_slash(copy_dir), copied
-end
-
-function cleanup_copied_outputs!(copy_dir::Union{Nothing, String})
-    if copy_dir !== nothing && isdir(copy_dir)
-        rm(copy_dir; recursive = true, force = true)
-        @info "Deleted copied analysis inputs." copy_dir
-    end
-    return nothing
-end
-
 const VAR_TITLES = Dict(
     "T" => "Temperature (degC)",
     "S" => "Salinity (g/kg)",
@@ -54,10 +27,6 @@ const VAR_TITLES = Dict(
     "dv_dt" => "dv/dt (m/s^2)",
     "dw_dt" => "dw/dt (m/s^2)",
     "speed" => "Horizontal Speed (m/s)",
-    "ice_thickness" => "Ice Thickness (m)",
-    "ice_concentration" => "Ice Concentration (%)",
-    "u_ice" => "Zonal Velocity (m/s)",
-    "v_ice" => "Meridional Velocity (m/s)",
 )
 
 pretty_var_name(var::String) = get(VAR_TITLES, var, replace(var, "_" => " "))
@@ -118,7 +87,7 @@ function speed_matrix_or_nothing(u::AbstractMatrix, v::AbstractMatrix; context::
 end
 
 function depth_slice_files(path::AbstractString)
-    files = glob("*$(DEPTH_FILE_RUN_PREFIX)*.jld2", path)
+    files = glob("combined_*$(DEPTH_FILE_RUN_PREFIX)*.jld2", path)
     files = filter(files) do f
         !occursin("_rank", f) && occursin(r"global_\d+_fields_", basename(f)) && run_id(f) >= 0
     end
@@ -126,25 +95,16 @@ function depth_slice_files(path::AbstractString)
     return files
 end
 
-function sea_ice_surface_files(path::AbstractString)
-    files = glob("global_sea_ice_surface_$(RESOLUTION)_RYF_run*.jld2", path)
-    files = filter(files) do f
-        !occursin("_rank", f) && run_id(f) >= 0
-    end
-    sort!(files; by = run_id)
-    return files
-end
 
 function top_surface_files(path::AbstractString)
-    files = glob("*surface*.jld2", path)
+    files = glob("combined_*surface*.jld2", path)
     files = filter(files) do f
         !occursin("_rank", f) &&
-        !occursin("sea_ice_surface", basename(f)) &&
         !occursin("surface_fluxes", basename(f))
     end
 
     if isempty(files)
-        files = glob("*$(DEPTH_FILE_RUN_PREFIX)*.jld2", path)
+        files = glob("combined_*$(DEPTH_FILE_RUN_PREFIX)*.jld2", path)
         files = filter(files) do f
             !occursin("_rank", f)
         end
@@ -228,6 +188,7 @@ function discover_animation_variables(files::Vector{String})
     first_file = first(files)
     return file_has_timeseries_layout(first_file) ? discover_timeseries_variables(first_file) : discover_top_level_matrix_variables(first_file)
 end
+
 
 function load_top_level_timeseries(files::Vector{String}, vars::Vector{String})
     records_by_time = Dict{Float64, NamedTuple{(:file_index, :fields), Tuple{Int, Dict{String, Matrix{Float32}}}}}()
@@ -315,7 +276,7 @@ function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterat
 
         for (iter_index, iteration) in enumerate(iterations)
             run = lpad(string(iteration), 4, '0')
-            filepath = joinpath(path, "global_$(depth)$(DEPTH_FILE_RUN_PREFIX)$(run).jld2")
+            filepath = joinpath(path, "combined_global_$(depth)$(DEPTH_FILE_RUN_PREFIX)$(run).jld2")
             isfile(filepath) || continue
 
             jldopen(filepath, "r") do f
@@ -380,7 +341,7 @@ function load_surface_timeseries(files::Vector{String}, vars::Vector{String})
             has_t = haskey(f, "timeseries/t")
             missing = [v for v in vars if !haskey(f, "timeseries/$v")]
             if !has_t || !isempty(missing)
-                @warn "Skipping sea-ice file: required fields missing." file missing
+                @warn "Skipping surface-timeseries file: required fields missing." file missing
                 return
             end
 
@@ -513,18 +474,105 @@ function depth_color_settings(var::String, all_depth_data::Vector{Vector{Matrix{
     end
 end
 
-function sea_ice_color_settings(var::String, A::Matrix{Float32})
-    if var == "u_ice" || var == "v_ice"
-        return :balance, (-0.5f0, 0.5f0)
-    elseif var == "ice_concentration"
-        vmax = finite_maximum_from_values((x for x in A); default = 1f0, context = "sea-ice concentration")
-        return :ice, vmax <= 1.2f0 ? (0f0, 1f0) : (0f0, 100f0)
-    elseif var == "ice_thickness"
-        vmax = finite_maximum_from_values((x for x in A); default = 1f0, context = "sea-ice thickness")
-        return :ice, (0f0, max(1f0, vmax))
-    else
-        return :viridis, finite_colorrange_from_values((x for x in A); context = "sea-ice variable $(var)")
+
+function make_depth_variable_video(var::String,
+                                   depths::Vector{Int},
+                                   depths_actual::Vector,
+                                   iterations::Vector{Int};
+                                   output_path::AbstractString = OUTPUT_PATH,
+                                   bottom_height = nothing,
+                                   outname::Union{Nothing, String} = nothing,
+                                   framerate::Int = VIDEO_FRAMERATE)
+    all_depth_times, all_depth_data = load_depth_variable_timeseries(var, depths, iterations; path = output_path)
+    any(!isempty, all_depth_times) || error("No depth-timeseries frames found for variable=$(var).")
+
+    reference_index = findfirst(!isempty, all_depth_times)
+    reference_times = all_depth_times[reference_index]
+    nframes = length(reference_times)
+    alignment = [isempty(times) ? Int[] : nearest_time_indices(reference_times, times) for times in all_depth_times]
+    depth_masks = [depth_ocean_mask(depth_value, bottom_height) for depth_value in depths_actual]
+    cmap, clim = depth_color_settings(var, all_depth_data)
+
+    initial_fields = Matrix{Float32}[]
+    for depth_index in eachindex(depths)
+        data = all_depth_data[depth_index]
+        isempty(data) && error("No frames found for variable=$(var) at depth index $(depths[depth_index]).")
+        push!(initial_fields, mask_field_with_plot_mask(data[alignment[depth_index][1]], depth_masks[depth_index]))
     end
+
+    npanels = length(depths)
+    ncols = min(3, npanels)
+    nrows = cld(npanels, ncols)
+    fig = Figure(size = (500 * ncols, 380 * nrows))
+    title = Label(fig[0, :], "Loading...", tellwidth = false)
+    observables = Observable.(initial_fields)
+
+    for (panel_index, depth_index) in enumerate(eachindex(depths))
+        row = cld(panel_index, ncols)
+        col = mod1(panel_index, ncols)
+        depth_label = round(abs(Float64(depths_actual[depth_index])); digits = 1)
+        ax = Axis(fig[row, col], title = "Depth $(depth_label) m")
+        hm = heatmap!(ax, observables[depth_index], colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
+        Colorbar(fig[row + nrows, col], hm, vertical = false)
+    end
+    resize_to_layout!(fig)
+
+    outname = isnothing(outname) ? FIGDIR * "$(var)_$(RESOLUTION)_all_depths.mp4" : outname
+    years = reference_times ./ SECONDS_PER_YEAR
+    progress_step = max(1, cld(nframes, PROGRESS_UPDATES))
+
+    record(fig, outname, 1:nframes; framerate = framerate) do frame
+        title.text = "$(pretty_var_name(var)) | Year = $(round(years[frame], digits = 2))"
+        for depth_index in eachindex(depths)
+            source_index = alignment[depth_index][frame]
+            observables[depth_index][] = mask_field_with_plot_mask(all_depth_data[depth_index][source_index], depth_masks[depth_index])
+        end
+        if frame == 1 || frame == nframes || frame % progress_step == 0
+            log_record_progress("depth_$(var)", frame, nframes)
+        end
+    end
+
+    @info "Saved depth animation." variable = var outname nframes
+    return outname
+end
+
+function make_top_surface_variable_video(var::String,
+                                         files::Vector{String};
+                                         bottom_height = nothing,
+                                         outname::Union{Nothing, String} = nothing,
+                                         framerate::Int = VIDEO_FRAMERATE)
+    times, all_data = load_general_surface_timeseries(files, [var])
+    nframes = length(times)
+    nframes > 0 || error("No top-surface frames found for variable=$(var).")
+
+    fields = all_data[var]
+    surface_mask = surface_ocean_mask(bottom_height)
+    cmap, clim = var == "speed" ?
+                 (:speed, (0f0, max(0.7f0, finite_maximum_from_values((x for A in fields for x in A); default = 0.7f0, context = "surface speed")))) :
+                 (:viridis, finite_colorrange_from_values((x for A in fields for x in A); context = "surface variable $(var)"))
+
+    fig = Figure(size = (1000, 760))
+    title = Label(fig[0, :], "Loading...", tellwidth = false)
+    ax = Axis(fig[1, 1], title = pretty_var_name(var))
+    observable = Observable(mask_field_with_plot_mask(fields[1], surface_mask))
+    hm = heatmap!(ax, observable, colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
+    Colorbar(fig[2, 1], hm, vertical = false)
+    resize_to_layout!(fig)
+
+    outname = isnothing(outname) ? FIGDIR * "$(var)_$(RESOLUTION)_top_surface.mp4" : outname
+    years = times ./ SECONDS_PER_YEAR
+    progress_step = max(1, cld(nframes, PROGRESS_UPDATES))
+
+    record(fig, outname, 1:nframes; framerate = framerate) do frame
+        title.text = "$(pretty_var_name(var)) | Year = $(round(years[frame], digits = 2))"
+        observable[] = mask_field_with_plot_mask(fields[frame], surface_mask)
+        if frame == 1 || frame == nframes || frame % progress_step == 0
+            log_record_progress("surface_$(var)", frame, nframes)
+        end
+    end
+
+    @info "Saved top-surface animation." variable = var outname nframes
+    return outname
 end
 
 function center_lon_lat(grid)
@@ -544,365 +592,88 @@ function center_lon_lat(grid)
     return Float32.(λA), Float32.(φA)
 end
 
-function stereographic_projection(hemisphere::Symbol)
-    if hemisphere === :north
-        return "+proj=stere +lat_0=90 +lat_ts=70 +lon_0=0 +datum=WGS84"
-    elseif hemisphere === :south
-        return "+proj=stere +lat_0=-90 +lat_ts=-70 +lon_0=0 +datum=WGS84"
-    else
-        throw(ArgumentError("`hemisphere` must be :north or :south."))
-    end
+function bottom_height_matrix(grid)
+    isnothing(grid) && return nothing
+    hasproperty(grid, :immersed_boundary) || return nothing
+
+    immersed_boundary = getproperty(grid, :immersed_boundary)
+    hasproperty(immersed_boundary, :bottom_height) || return nothing
+
+    bottom_height_field = getproperty(immersed_boundary, :bottom_height)
+    bottom_height = Array(interior(bottom_height_field, :, :, 1))
+    return Float32.(bottom_height)
 end
 
-function make_depth_variable_video(var::String,
-                                   depths::Vector{Int},
-                                   depths_actual::Vector{Float64},
-                                   iterations::Vector{Int};
-                                   output_path::AbstractString = OUTPUT_PATH,
-                                   outname::Union{Nothing, String} = nothing,
-                                   sea_ice_files::Vector{String} = String[],
-                                   overlay_surface_ice::Bool = false,
-                                   framerate::Int = VIDEO_FRAMERATE)
-    all_depth_times, all_depth_data = load_depth_variable_timeseries(var, depths, iterations; path = output_path)
-    any(isempty, all_depth_data) && error("At least one depth has zero frames for $var.")
-
-    nframes_by_depth = length.(all_depth_data)
-    nframes = minimum(nframes_by_depth)
-    nframes > 0 || error("No frames available for $var.")
-    if any(n != nframes for n in nframes_by_depth)
-        @warn "Depth frame counts differ; truncating to shortest series." variable = var nframes_by_depth nframes
+function mask_field_with_plot_mask(A::AbstractMatrix, plot_mask::Union{Nothing, AbstractMatrix{Bool}})
+    masked = Float32.(A)
+    isnothing(plot_mask) && return masked
+    size(masked) == size(plot_mask) || error("Plot mask shape mismatch: got $(size(plot_mask)) expected $(size(masked)).")
+    @inbounds for i in eachindex(masked, plot_mask)
+        plot_mask[i] || (masked[i] = NaN32)
     end
-
-    nd = length(depths)
-    ncols = min(3, nd)
-    nrows = cld(nd, ncols)
-    times = all_depth_times[1][1:nframes]
-    years = times ./ SECONDS_PER_YEAR
-
-    cmap, clim = depth_color_settings(var, all_depth_data)
-    @info "Depth color settings selected." variable = var colormap = cmap colorrange = clim
-    Z = [Observable(all_depth_data[d][1]) for d in 1:nd]
-    overlay_ice = nothing
-    empty_ice_overlay = fill(NaN32, size(all_depth_data[1][1]))
-
-    if overlay_surface_ice
-        if isempty(sea_ice_files)
-            @warn "Sea-ice files were not provided; skipping ice overlay on $(var) depth animation."
-        else
-            ice_times, ice_data = load_surface_timeseries(sea_ice_files, ["ice_thickness"])
-            ice_frames = length(ice_data["ice_thickness"])
-            if ice_frames == 0
-                @warn "No ice thickness frames found; skipping ice overlay on $(var) depth animation."
-            else
-                idx = nearest_time_indices(times, ice_times)
-                overlay_ice = Vector{Union{Nothing, Matrix{Float32}}}(undef, nframes)
-
-                positive_dts = filter(>(0), diff(ice_times))
-                max_mismatch = isempty(positive_dts) ? 0.0 : 0.51 * minimum(positive_dts)
-                has_ice = false
-
-                for frame in 1:nframes
-                    ii = idx[frame]
-                    t = times[frame]
-                    δt = abs(ice_times[ii] - t)
-                    in_time_range = first(ice_times) <= t <= last(ice_times)
-                    close_enough = max_mismatch == 0.0 ? (δt == 0.0) : (δt <= max_mismatch)
-
-                    if in_time_range && close_enough
-                        overlay_ice[frame] = ice_data["ice_thickness"][ii]
-                        has_ice = true
-                    else
-                        overlay_ice[frame] = nothing
-                    end
-                end
-
-                if !has_ice
-                    @warn "No matching ice timesteps found for depth frames; skipping ice overlay on $(var) depth animation."
-                    overlay_ice = nothing
-                else
-                    first_ice_frame = findfirst(!isnothing, overlay_ice)
-                    ice_first = overlay_ice[first_ice_frame]
-                    if size(ice_first) != size(all_depth_data[1][1])
-                        @warn "Ice thickness shape does not match depth field shape; skipping ice overlay." depth_size = size(all_depth_data[1][1]) ice_size = size(ice_first)
-                        overlay_ice = nothing
-                    end
-                end
-            end
-        end
-    end
-
-    fig = Figure(size = (550 * ncols, 320 * nrows + 120))
-    hms = Heatmap[]
-    Zice = nothing
-    hm_ice = nothing
-
-    for k in 1:nd
-        i = cld(k, ncols)
-        j = (k - 1) % ncols + 1
-        ax = Axis(fig[i, j], title = "Depth $(round(depths_actual[k], digits=1)) m")
-        hm = heatmap!(ax, Z[k], colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
-        if k == 1 && overlay_ice !== nothing
-            available_ice = filter(!isnothing, overlay_ice)
-            initial_ice = isnothing(overlay_ice[1]) ? empty_ice_overlay : overlay_ice[1]
-            Zice = Observable(initial_ice)
-            clim_ice = (0f0, max(1f0, finite_maximum_from_values((x for ice in available_ice for x in ice); default = 1f0, context = "surface ice overlay")))
-            hm_ice = heatmap!(ax, Zice, colormap = :ice, colorrange = clim_ice, alpha = 0.45)
-        end
-        push!(hms, hm)
-    end
-
-    fig_title = Label(fig[0, :], "Loading...", tellwidth = false)
-    Colorbar(fig[nrows + 1, :], hms[1], label = pretty_var_name(var), vertical = false)
-    if hm_ice !== nothing
-        Colorbar(fig[1, ncols + 1], hm_ice, label = pretty_var_name("ice_thickness"))
-    end
-    resize_to_layout!(fig)
-
-    isnothing(outname) && (outname = FIGDIR * "$(var)_$(RESOLUTION)_all_depths.mp4")
-
-    @info "Recording depth animation..." variable = var outname nframes framerate
-    progress_step = max(1, cld(nframes, 20))
-    record(fig, outname, 1:nframes; framerate = framerate) do frame
-        fig_title.text = "$(pretty_var_name(var)) | Year = $(round(years[frame], digits = 2))"
-        for d in 1:nd
-            Z[d][] = all_depth_data[d][frame]
-        end
-        if Zice !== nothing
-            Zice[] = isnothing(overlay_ice[frame]) ? empty_ice_overlay : overlay_ice[frame]
-        end
-        if frame == 1 || frame == nframes || frame % progress_step == 0
-            log_record_progress(var, frame, nframes)
-        end
-    end
-
-    @info "Saved depth animation." variable = var outname
-    return outname
+    return masked
 end
 
-function make_top_surface_variable_video(var::String,
-                                         files::Vector{String};
-                                         outname::Union{Nothing, String} = nothing,
-                                         framerate::Int = VIDEO_FRAMERATE)
-    vars = var == "speed" ? ["u", "v"] : [var]
-    all_time, all_data = load_general_surface_timeseries(files, vars)
-    nframes = length(all_time)
-    nframes > 0 || error("No frames available for top-surface variable $var.")
+surface_ocean_mask(bottom_height::Union{Nothing, AbstractMatrix}) = isnothing(bottom_height) ? nothing : bottom_height .< 0f0
 
-    data, years = if var == "speed"
-        speed_data = Matrix{Float32}[]
-        speed_years = Float64[]
-        for i in 1:nframes
-            u = all_data["u"][i]
-            v = all_data["v"][i]
-            S = speed_matrix_or_nothing(u, v; context = "top-surface speed frame $(i)")
-            S === nothing && continue
-            push!(speed_data, S)
-            push!(speed_years, all_time[i] / SECONDS_PER_YEAR)
-        end
-        isempty(speed_data) && error("No valid top-surface speed frames available after filtering mismatched u/v shapes.")
-        speed_data, speed_years
-    else
-        all_data[var], all_time ./ SECONDS_PER_YEAR
-    end
+depth_ocean_mask(depth::Real, bottom_height::Union{Nothing, AbstractMatrix}) =
+    isnothing(bottom_height) ? nothing : bottom_height .< -Float32(depth)
 
-    cmap, clim = depth_color_settings(var, [data])
-    Z = Observable(data[1])
-
-    fig = Figure(size = (900, 700))
-    ax = Axis(fig[1, 1], title = "Top surface")
-    hm = heatmap!(ax, Z, colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
-    fig_title = Label(fig[0, 1], "Loading...", tellwidth = false)
-    Colorbar(fig[2, 1], hm, label = pretty_var_name(var), vertical = false)
-    resize_to_layout!(fig)
-
-    isnothing(outname) && (outname = FIGDIR * "$(var)_$(RESOLUTION)_top_surface.mp4")
-
-    @info "Recording top-surface animation..." variable = var outname nframes = length(data) framerate
-    progress_step = max(1, cld(length(data), 20))
-    record(fig, outname, 1:length(data); framerate = framerate) do frame
-        fig_title.text = "$(pretty_var_name(var)) | Top surface | Year = $(round(years[frame], digits = 2))"
-        Z[] = data[frame]
-        if frame == 1 || frame == length(data) || frame % progress_step == 0
-            log_record_progress(var * "_surface", frame, length(data))
-        end
-    end
-
-    @info "Saved top-surface animation." variable = var outname
-    return outname
-end
-
-function make_sea_ice_surface_polar_animation(files::Vector{String},
-                                              grid;
-                                              hemisphere::Symbol = :north,
-                                              latitude_cutoff::Real = 50,
-                                              vars::Vector{String} = ["ice_thickness", "ice_concentration", "u_ice", "v_ice"],
-                                              outname::Union{Nothing, String} = nothing,
-                                              framerate::Int = VIDEO_FRAMERATE)
-    times, all_data = load_general_surface_timeseries(files, vars)
-    nframes = minimum(length.(values(all_data)))
-    nframes > 0 || error("No sea-ice surface frames found for requested variables.")
-    if any(length(all_data[v]) != nframes for v in vars)
-        @warn "Sea-ice variables have inconsistent frame counts; truncating to shortest." nframes
-    end
-
-    lon, lat = center_lon_lat(grid)
-    cutoff = Float32(latitude_cutoff)
-    mask = hemisphere === :north ? lat .>= cutoff : lat .<= -cutoff
-    any(mask) || error("No points found for hemisphere=$(hemisphere) with cutoff=$(latitude_cutoff).")
-
-    source_proj = "+proj=longlat +datum=WGS84"
-    dest_proj = stereographic_projection(hemisphere)
-
-    observables = Dict{String, Observable{Matrix{Float32}}}()
-    for var in vars
-        size(all_data[var][1]) == size(lon) ||
-            error("Sea-ice field size mismatch for $var: got $(size(all_data[var][1])) expected $(size(lon)).")
-        observables[var] = Observable(ifelse.(mask, all_data[var][1], NaN32))
-    end
-
-    hemi_title = hemisphere === :north ? "Arctic" : "Southern Ocean"
-    fig = Figure(size = (1400, 900))
-    fig_title = Label(fig[0, :], "$(hemi_title) loading...", tellwidth = false)
-
-    axs = GeoAxis[]
-    for (panel_idx, var) in enumerate(vars)
-        row = cld(panel_idx, 2)
-        col = (panel_idx - 1) % 2 + 1
-        ax = GeoAxis(fig[row, col];
-                     source = source_proj,
-                     dest = dest_proj,
-                     title = "$(pretty_var_name(var)) ($(hemi_title))")
-        push!(axs, ax)
-        hidedecorations!(ax)
-        hidespines!(ax)
-        cmap, clim = sea_ice_color_settings(var, all_data[var][1])
-        hm = surface!(ax,
-                      lon,
-                      lat,
-                      zeros(Float32, size(lon));
-                      color = observables[var],
-                      shading = NoShading,
-                      colormap = cmap,
-                      colorrange = clim)
-        Colorbar(fig[row + 2, col], hm, vertical = false)
-    end
-
-    for ax in axs
-        xlims!(ax, -180, 180)
-        if hemisphere === :north
-            ylims!(ax, latitude_cutoff, 90)
-        else
-            ylims!(ax, -90, -latitude_cutoff)
-        end
-    end
-
-    resize_to_layout!(fig)
-    if isnothing(outname)
-        hemi_suffix = hemisphere === :north ? "arctic" : "southern_ocean"
-        outname = FIGDIR * "sea_ice_surface_$(RESOLUTION)_$(hemi_suffix)_all_runs.mp4"
-    end
-
-    years = times[1:nframes] ./ SECONDS_PER_YEAR
-    @info "Recording sea-ice animation..." hemisphere outname nframes framerate
-    progress_step = max(1, cld(nframes, 20))
-    record(fig, outname, 1:nframes; framerate = framerate) do frame
-        fig_title.text = "$(hemi_title) sea-ice surface fields | Year = $(round(years[frame], digits = 2))"
-        for var in vars
-            observables[var][] = ifelse.(mask, all_data[var][frame], NaN32)
-        end
-        if frame == 1 || frame == nframes || frame % progress_step == 0
-            log_record_progress("sea_ice_$(Symbol(hemisphere))", frame, nframes)
-        end
-    end
-
-    @info "Saved sea-ice polar animation." hemisphere outname
-    return outname
-end
 function run_all_animations(selected_run::Union{Nothing, Int} = parse_selected_run())
     selected_run === :help && return print_usage()
     selected_run = validate_selected_run(selected_run)
 
     @info "Starting horizontal analysis animations." output_path = OUTPUT_PATH resolution = RESOLUTION
 
-    copy_output_path = nothing
+    depth_files = filter_files_by_run(depth_slice_files(OUTPUT_PATH), selected_run)
+    top_surface_only_files = filter_files_by_run(top_surface_files(OUTPUT_PATH), selected_run)
 
-    try
-        live_depth_files = filter_files_by_run(depth_slice_files(OUTPUT_PATH), selected_run)
-        live_sea_ice_files = filter_files_by_run(sea_ice_surface_files(OUTPUT_PATH), selected_run)
-        live_top_surface_files = filter_files_by_run(top_surface_files(OUTPUT_PATH), selected_run)
+    if !isnothing(selected_run) &&
+       isempty(depth_files) &&
+       isempty(top_surface_only_files)
+        error("No animation inputs found for requested run $(run_suffix(selected_run)) in $(OUTPUT_PATH).")
+    end
 
-        if !isnothing(selected_run) &&
-           isempty(live_depth_files) &&
-           isempty(live_sea_ice_files) &&
-           isempty(live_top_surface_files)
-            error("No animation inputs found for requested run $(run_suffix(selected_run)) in $(OUTPUT_PATH).")
+    if isempty(depth_files) && isempty(top_surface_only_files)
+        error("No depth-slice or top-surface files found in $(OUTPUT_PATH).")
+    end
+
+    grid_file = !isempty(depth_files) ? first(depth_files) : first(top_surface_only_files)
+    grid = load_grid_from_output_file(grid_file)
+    isnothing(grid) || @info "Loaded grid for animations." grid_file
+    bottom_height = isnothing(grid) ? nothing : bottom_height_matrix(grid)
+
+    output_suffix = isnothing(selected_run) ? "all_runs" : run_suffix(selected_run)
+
+    if !isempty(depth_files)
+        depths = selected_depth_levels(depth_files)
+        runs = isnothing(selected_run) ? unique_iterations(depth_files) : [selected_run]
+        depths_actual = abs.(grid.z.cᵃᵃᶠ[depths])
+
+        @info "Prepared depth animation inputs." depth_files = length(depth_files) runs = length(runs) depths selected_run
+
+        depth_vars = discover_animation_variables(depth_files)
+        @info "Discovered depth animation variables." variables = depth_vars
+        for var in depth_vars
+            (var == "speed" || !occursin("_dt", var)) || continue
+            var in ("u", "v") && continue
+            @info "Processing depth variable..." variable = var
+            make_depth_variable_video(var, depths, depths_actual, runs;
+                                      output_path = OUTPUT_PATH,
+                                      bottom_height = bottom_height,
+                                      outname = FIGDIR * "$(var)_$(RESOLUTION)_all_depths_$(output_suffix).mp4")
         end
-
-        analysis_inputs = if isempty(live_depth_files)
-            isempty(live_top_surface_files) && error("No depth-slice or top-surface files found in $(OUTPUT_PATH).")
-            unique(vcat(live_top_surface_files, live_sea_ice_files))
-        else
-            unique(vcat(live_depth_files, live_sea_ice_files))
+    else
+        @info "No depth-coded files found; falling back to top-surface plotting." top_surface_files = length(top_surface_only_files)
+        surface_vars = discover_animation_variables(top_surface_only_files)
+        @info "Discovered top-surface animation variables." variables = surface_vars
+        for var in surface_vars
+            var in ("u", "v") && continue
+            @info "Processing top-surface variable..." variable = var
+            make_top_surface_variable_video(var, top_surface_only_files;
+                                            bottom_height = bottom_height,
+                                            outname = FIGDIR * "$(var)_$(RESOLUTION)_top_surface_$(output_suffix).mp4")
         end
-
-        copy_output_path, _ = copy_files_to_tempdir(analysis_inputs; prefix = "analysis2d_horizontal_")
-
-        depth_files = depth_slice_files(copy_output_path)
-        sea_ice_files = sea_ice_surface_files(copy_output_path)
-        top_surface_only_files = top_surface_files(copy_output_path)
-
-        grid_file = !isempty(depth_files) ? first(depth_files) : first(top_surface_only_files)
-        grid = load_grid_from_output_file(grid_file)
-        isnothing(grid) || @info "Loaded grid for animations." grid_file
-
-        output_suffix = isnothing(selected_run) ? "all_runs" : run_suffix(selected_run)
-
-        if !isempty(depth_files)
-            depths = selected_depth_levels(depth_files)
-            runs = isnothing(selected_run) ? unique_iterations(depth_files) : [selected_run]
-            depths_actual = abs.(grid.z.cᵃᵃᶠ[depths])
-
-            @info "Prepared depth animation inputs." depth_files = length(depth_files) runs = length(runs) depths sea_ice_files = length(sea_ice_files) selected_run
-
-            depth_vars = discover_animation_variables(depth_files)
-            @info "Discovered depth animation variables." variables = depth_vars
-            for var in depth_vars
-                (var == "speed" || !occursin("_dt", var)) || continue
-                @info "Processing depth variable..." variable = var
-                make_depth_variable_video(var, depths, depths_actual, runs;
-                                          output_path = copy_output_path,
-                                          sea_ice_files = sea_ice_files,
-                                          overlay_surface_ice = (var == "T" || var == "S" || var == "speed"),
-                                          outname = FIGDIR * "$(var)_$(RESOLUTION)_all_depths_$(output_suffix).mp4")
-            end
-        else
-            @info "No depth-coded files found; falling back to top-surface plotting." top_surface_files = length(top_surface_only_files)
-            surface_vars = discover_animation_variables(top_surface_only_files)
-            @info "Discovered top-surface animation variables." variables = surface_vars
-            for var in surface_vars
-                @info "Processing top-surface variable..." variable = var
-                make_top_surface_variable_video(var, top_surface_only_files;
-                                                outname = FIGDIR * "$(var)_$(RESOLUTION)_top_surface_$(output_suffix).mp4")
-            end
-        end
-
-        if isempty(sea_ice_files)
-            @warn "No sea-ice surface files found. Skipping sea-ice animation."
-        elseif isnothing(grid)
-            @warn "Grid is unavailable for top-level file layout. Skipping sea-ice polar animation."
-        else
-            make_sea_ice_surface_polar_animation(sea_ice_files, grid;
-                                                 hemisphere = :north,
-                                                 latitude_cutoff = 50,
-                                                 outname = FIGDIR * "sea_ice_surface_$(RESOLUTION)_arctic_$(output_suffix).mp4")
-
-            make_sea_ice_surface_polar_animation(sea_ice_files, grid;
-                                                 hemisphere = :south,
-                                                 latitude_cutoff = 50,
-                                                 outname = FIGDIR * "sea_ice_surface_$(RESOLUTION)_southern_ocean_$(output_suffix).mp4")
-        end
-    finally
-        cleanup_copied_outputs!(copy_output_path)
     end
 
     @info "Completed all horizontal animations."
