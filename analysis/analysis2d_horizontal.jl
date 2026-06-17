@@ -1,21 +1,29 @@
 using CairoMakie
 using JLD2
 using Glob
+using Statistics: median
 using Oceananigans
 using Oceananigans.Fields: location
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 with_trailing_slash(path) = endswith(path, Base.Filesystem.path_separator) ? path : path * Base.Filesystem.path_separator
 
-const OUTPUT_PATH = with_trailing_slash(expanduser(get(ENV, "OUTPUT_PATH", "/home/tsohail/uom/ocean-ensembles/outputs/")))
+const OUTPUT_PATH = with_trailing_slash(expanduser(get(ENV, "OUTPUT_PATH", "/home/tsohail/uom/ocean-ensembles/outputs/saved/")))
 const FIGDIR = with_trailing_slash(expanduser(get(ENV, "FIGDIR", "/home/tsohail/uom/ocean-ensembles/figures/")))
 const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60
-const VIDEO_FRAMERATE = 12 # 12 frames per second for all videos
+const VIDEO_FRAMERATE = 12
+const VIDEO_SIM_YEARS_PER_SECOND = 0.2
+const MIN_VIDEO_FRAMERATE = 1.0
+const MAX_VIDEO_FRAMERATE = 60.0
 const TARGET_DEPTH_LEVELS = [75, 57, 37, 27, 17] # surface -> deeper
 const PROGRESS_UPDATES = 20
+const GC_INTERVAL = 12
+const VIDEO_CHUNK_SIZE = 120
 const DEPTH_FILE_RUN_PREFIX = "_fields_$(RESOLUTION)_RYF_run"
 const DEFAULT_COLORRANGE = (0f0, 1f0)
 const NAN_PLOT_COLOR = :lightgray
+const DEFAULT_ANIMATION_VARS = ["T", "S", "e", "speed", "w"]
 
 const VAR_TITLES = Dict(
     "T" => "Temperature (degC)",
@@ -64,18 +72,35 @@ function filter_files_by_run(files::Vector{String}, selected_run::Union{Nothing,
     return filter(f -> run_id(f) == selected_run, files)
 end
 
-@inline function extract_2d_f32(raw)
+@inline function extract_2d(raw)
     if ndims(raw) == 2
-        return Float32.(raw)
+        return raw
     elseif ndims(raw) == 3
-        return Float32.(raw[:, :, 1])
+        return view(raw, :, :, 1)
     end
     return nothing
 end
 
+@inline function extract_2d_f32(raw)
+    src = extract_2d(raw)
+    src === nothing && return nothing
+    return Float32.(src)
+end
+
+function copy_2d_to!(dest::Matrix{Float32}, raw)
+    src = extract_2d(raw)
+    src === nothing && return false
+    size(dest) == size(src) || return false
+
+    @inbounds for i in eachindex(dest, src)
+        dest[i] = Float32(src[i])
+    end
+    return true
+end
+
 function speed_matrix_or_nothing(u::AbstractMatrix, v::AbstractMatrix; context::AbstractString)
     if size(u) != size(v)
-        @warn "Skipping speed frame because u and v shapes differ." context u_size = size(u) v_size = size(v)
+        @warn "Skipping speed frame because u and v shapes differ and no grid metadata was available." context u_size = size(u) v_size = size(v)
         return nothing
     end
 
@@ -84,6 +109,33 @@ function speed_matrix_or_nothing(u::AbstractMatrix, v::AbstractMatrix; context::
         S[i] = sqrt(u[i]^2 + v[i]^2)
     end
     return S
+end
+
+@inline surface_matrix_3d(A::AbstractMatrix) = reshape(A, size(A, 1), size(A, 2), 1)
+
+function speed_workspace(grid)
+    ufield = XFaceField(grid)
+    vfield = YFaceField(grid)
+    speed_field = @at (Center, Center, Nothing) sqrt(ufield^2 + vfield^2) |> Field
+    return (; ufield, vfield, speed_field)
+end
+
+function centered_speed_matrix_or_nothing(raw_u, raw_v, grid; context::AbstractString, workspace = nothing)
+    u2 = extract_2d_f32(raw_u)
+    v2 = extract_2d_f32(raw_v)
+    (u2 === nothing || v2 === nothing) && return nothing
+
+    if isnothing(grid)
+        return speed_matrix_or_nothing(u2, v2; context)
+    end
+
+    workspace = isnothing(workspace) ? speed_workspace(grid) : workspace
+    set!(workspace.ufield, surface_matrix_3d(u2))
+    set!(workspace.vfield, surface_matrix_3d(v2))
+    fill_halo_regions!(workspace.ufield)
+    fill_halo_regions!(workspace.vfield)
+    compute!(workspace.speed_field)
+    return Float32.(Array(interior(workspace.speed_field)[:, :, 1]))
 end
 
 function depth_slice_files(path::AbstractString)
@@ -195,6 +247,9 @@ function load_top_level_timeseries(files::Vector{String}, vars::Vector{String})
     @info "Loading top-level timeseries..." file_count = length(files) variables = vars
 
     for (file_index, file) in enumerate(files)
+        grid = load_grid_from_output_file(file)
+        speed_cache = "speed" in vars && !isnothing(grid) ? speed_workspace(grid) : nothing
+
         jldopen(file, "r") do f
             haskey(f, "time") || return
             tval = Float64(f["time"])
@@ -203,10 +258,7 @@ function load_top_level_timeseries(files::Vector{String}, vars::Vector{String})
             for var in vars
                 if var == "speed"
                     (haskey(f, "u") && haskey(f, "v")) || return
-                    u = extract_2d_f32(f["u"])
-                    v = extract_2d_f32(f["v"])
-                    (u === nothing || v === nothing) && return
-                    S = speed_matrix_or_nothing(u, v; context = "top-level file $(basename(file)) at time $(tval)")
+                    S = centered_speed_matrix_or_nothing(f["u"], f["v"], grid; context = "top-level file $(basename(file)) at time $(tval)", workspace = speed_cache)
                     S === nothing && return
                     timestep_fields[var] = S
                 else
@@ -262,15 +314,15 @@ function load_grid_from_output_file(filepath::AbstractString)
     return grid
 end
 
-function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterations::Vector{Int}; path::AbstractString = OUTPUT_PATH)
+function index_depth_variable_timeseries(var::String, depths::Vector{Int}, iterations::Vector{Int}; path::AbstractString = OUTPUT_PATH)
     all_depth_times = Vector{Vector{Float64}}()
-    all_depth_data = Vector{Vector{Matrix{Float32}}}()
+    all_depth_refs = Vector{Vector{NamedTuple{(:time, :run, :filepath, :key), Tuple{Float64, Int, String, Int}}}}()
     is_speed = var == "speed"
-    @info "Loading depth timeseries..." variable = var depth_count = length(depths) iteration_count = length(iterations)
+    @info "Indexing depth timeseries..." variable = var depth_count = length(depths) iteration_count = length(iterations)
     depth_progress_step = max(1, cld(length(depths), PROGRESS_UPDATES))
 
     for (depth_index, depth) in enumerate(depths)
-        records_by_time = Dict{Float64, NamedTuple{(:run, :data), Tuple{Int, Matrix{Float32}}}}()
+        records_by_time = Dict{Float64, NamedTuple{(:run, :filepath, :key), Tuple{Int, String, Int}}}()
         replaced_duplicates = 0
         iter_progress_step = max(1, cld(length(iterations), PROGRESS_UPDATES))
 
@@ -290,24 +342,10 @@ function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterat
                 ts_keys = sort(parse.(Int, collect(keys(f["timeseries/t"]))))
                 for key in ts_keys
                     tval = Float64(f["timeseries/t/$key"])
-
-                    A = if is_speed
-                        u2 = extract_2d_f32(f["timeseries/u/$key"])
-                        v2 = extract_2d_f32(f["timeseries/v/$key"])
-                        if u2 === nothing || v2 === nothing
-                            nothing
-                        else
-                            speed_matrix_or_nothing(u2, v2; context = "depth $(depth) run $(run) key $(key)")
-                        end
-                    else
-                        extract_2d_f32(f["timeseries/$var/$key"])
-                    end
-
-                    A === nothing && continue
                     existing = get(records_by_time, tval, nothing)
                     if isnothing(existing) || iteration >= existing.run
                         replaced_duplicates += !isnothing(existing) && iteration > existing.run ? 1 : 0
-                        records_by_time[tval] = (run = iteration, data = A)
+                        records_by_time[tval] = (run = iteration, filepath = filepath, key = key)
                     end
                 end
             end
@@ -318,17 +356,124 @@ function load_depth_variable_timeseries(var::String, depths::Vector{Int}, iterat
         end
 
         sorted_times = sort(collect(keys(records_by_time)))
-        sorted_data = [records_by_time[t].data for t in sorted_times]
         push!(all_depth_times, sorted_times)
-        push!(all_depth_data, sorted_data)
-        @info "Loaded depth level." variable = var depth depth_index frames = length(sorted_data) replaced_duplicates
+        push!(all_depth_refs, [(time = t, run = records_by_time[t].run, filepath = records_by_time[t].filepath, key = records_by_time[t].key) for t in sorted_times])
+        @info "Indexed depth level." variable = var depth depth_index frames = length(sorted_times) replaced_duplicates
         if depth_index == 1 || depth_index == length(depths) || depth_index % depth_progress_step == 0
             log_record_progress("depth_levels_$(var)", depth_index, length(depths))
         end
     end
 
-    @info "Completed depth timeseries load." variable = var total_depths = length(all_depth_data)
-    return all_depth_times, all_depth_data
+    @info "Completed depth timeseries indexing." variable = var total_depths = length(all_depth_refs)
+    return all_depth_times, all_depth_refs
+end
+
+function depth_frame_loader(var::String)
+    is_speed = var == "speed"
+    grid_cache = Dict{String, Any}()
+    speed_cache = Dict{String, Any}()
+
+    function load_frame(ref; context::AbstractString)
+        filepath = ref.filepath
+
+        grid = get!(grid_cache, filepath) do
+            load_grid_from_output_file(filepath)
+        end
+
+        workspace = if is_speed && !isnothing(grid)
+            get!(speed_cache, filepath) do
+                speed_workspace(grid)
+            end
+        else
+            nothing
+        end
+
+        return jldopen(filepath, "r") do f
+            if is_speed
+                (haskey(f, "timeseries/u") && haskey(f, "timeseries/v")) || return nothing
+                centered_speed_matrix_or_nothing(f["timeseries/u/$(ref.key)"], f["timeseries/v/$(ref.key)"], grid; context, workspace = workspace)
+            else
+                haskey(f, "timeseries/$var") || return nothing
+                extract_2d_f32(f["timeseries/$var/$(ref.key)"])
+            end
+        end
+    end
+
+    return load_frame
+end
+
+function depth_frame_reader(var::String)
+    is_speed = var == "speed"
+    current_file = Ref("")
+    handle = Ref{Any}(nothing)
+    grid_cache = Dict{String, Any}()
+    speed_cache = Dict{String, Any}()
+
+    function ensure_handle(filepath::String)
+        if filepath != current_file[]
+            handle[] !== nothing && close(handle[])
+            handle[] = jldopen(filepath, "r")
+            current_file[] = filepath
+        end
+        return handle[]
+    end
+
+    function load_frame!(dest::Matrix{Float32}, ref; context::AbstractString)
+        filepath = ref.filepath
+        file = ensure_handle(filepath)
+        grid = get!(grid_cache, filepath) do
+            load_grid_from_output_file(filepath)
+        end
+
+        if is_speed
+            (haskey(file, "timeseries/u") && haskey(file, "timeseries/v")) || return false
+            state = get!(speed_cache, filepath) do
+                raw_u = file["timeseries/u/$(ref.key)"]
+                raw_v = file["timeseries/v/$(ref.key)"]
+                src_u = extract_2d(raw_u)
+                src_v = extract_2d(raw_v)
+                (src_u === nothing || src_v === nothing) && return nothing
+                (; workspace = isnothing(grid) ? nothing : speed_workspace(grid),
+                   u_buffer = Matrix{Float32}(undef, size(src_u)...),
+                   v_buffer = Matrix{Float32}(undef, size(src_v)...))
+            end
+            isnothing(state) && return false
+            copy_2d_to!(state.u_buffer, file["timeseries/u/$(ref.key)"]) || return false
+            copy_2d_to!(state.v_buffer, file["timeseries/v/$(ref.key)"]) || return false
+
+            if isnothing(grid)
+                speed = speed_matrix_or_nothing(state.u_buffer, state.v_buffer; context)
+                speed === nothing && return false
+                size(dest) == size(speed) || return false
+                copyto!(dest, speed)
+                return true
+            end
+
+            set!(state.workspace.ufield, surface_matrix_3d(state.u_buffer))
+            set!(state.workspace.vfield, surface_matrix_3d(state.v_buffer))
+            fill_halo_regions!(state.workspace.ufield)
+            fill_halo_regions!(state.workspace.vfield)
+            compute!(state.workspace.speed_field)
+            src = interior(state.workspace.speed_field)[:, :, 1]
+            size(dest) == size(src) || return false
+            @inbounds for i in eachindex(dest, src)
+                dest[i] = Float32(src[i])
+            end
+            return true
+        else
+            haskey(file, "timeseries/$var") || return false
+            return copy_2d_to!(dest, file["timeseries/$var/$(ref.key)"])
+        end
+    end
+
+    function close_reader!()
+        handle[] !== nothing && close(handle[])
+        handle[] = nothing
+        current_file[] = ""
+        return nothing
+    end
+
+    return (; load_frame!, close_reader!)
 end
 function load_surface_timeseries(files::Vector{String}, vars::Vector{String})
     records_by_time = Dict{Float64, NamedTuple{(:run, :fields), Tuple{Int, Vector{Matrix{Float32}}}}}()
@@ -337,9 +482,19 @@ function load_surface_timeseries(files::Vector{String}, vars::Vector{String})
 
     for (file_index, file) in enumerate(files)
         run = run_id(file)
+        grid = "speed" in vars ? load_grid_from_output_file(file) : nothing
+        speed_cache = "speed" in vars && !isnothing(grid) ? speed_workspace(grid) : nothing
+
         jldopen(file, "r") do f
             has_t = haskey(f, "timeseries/t")
-            missing = [v for v in vars if !haskey(f, "timeseries/$v")]
+            missing = String[]
+            for v in vars
+                if v == "speed"
+                    (haskey(f, "timeseries/u") && haskey(f, "timeseries/v")) || append!(missing, ["u", "v"])
+                elseif !haskey(f, "timeseries/$v")
+                    push!(missing, v)
+                end
+            end
             if !has_t || !isempty(missing)
                 @warn "Skipping surface-timeseries file: required fields missing." file missing
                 return
@@ -352,7 +507,11 @@ function load_surface_timeseries(files::Vector{String}, vars::Vector{String})
                 valid = true
 
                 for var in vars
-                    A = extract_2d_f32(f["timeseries/$var/$key"])
+                    A = if var == "speed"
+                        centered_speed_matrix_or_nothing(f["timeseries/u/$key"], f["timeseries/v/$key"], grid; context = "surface file $(basename(file)) run $(run) key $(key)", workspace = speed_cache)
+                    else
+                        extract_2d_f32(f["timeseries/$var/$key"])
+                    end
                     if A === nothing
                         valid = false
                         break
@@ -457,6 +616,17 @@ function finite_maximum_from_values(values; default = 0f0, context::AbstractStri
     return maxval
 end
 
+function constant_model_dt_framerate(times::Vector{Float64};
+                                     fallback::Real = VIDEO_FRAMERATE,
+                                     sim_years_per_second::Real = VIDEO_SIM_YEARS_PER_SECOND)
+    length(times) > 1 || return Int(round(fallback))
+    Δts = [times[i + 1] - times[i] for i in 1:length(times)-1 if times[i + 1] > times[i]]
+    isempty(Δts) && return Int(round(fallback))
+
+    fps = sim_years_per_second * SECONDS_PER_YEAR / median(Δts)
+    return round(Int, clamp(fps, MIN_VIDEO_FRAMERATE, MAX_VIDEO_FRAMERATE))
+end
+
 function depth_color_settings(var::String, all_depth_data::Vector{Vector{Matrix{Float32}}})
     if var == "S"
         return :blues, (34.8f0, 37f0)
@@ -474,6 +644,337 @@ function depth_color_settings(var::String, all_depth_data::Vector{Vector{Matrix{
     end
 end
 
+function sampled_reference_indices(n::Int; max_samples::Int = 12)
+    n <= 0 && return Int[]
+    n <= max_samples && return collect(1:n)
+    return unique(round.(Int, range(1, n; length = max_samples)))
+end
+
+function depth_color_settings_streaming(var::String,
+                                        depth_refs::Vector{Vector{NamedTuple{(:time, :run, :filepath, :key), Tuple{Float64, Int, String, Int}}}},
+                                        load_frame!)
+    if var == "T"
+        return :thermal, (-2f0, 32f0)
+    elseif var == "S"
+        return :haline, (34.8f0, 37f0)
+    elseif var in ("u", "v")
+        return :balance, (-0.5f0, 0.5f0)
+    elseif var == "w"
+        return :balance, (-2e-5, 2e-5)
+    elseif var == "e"
+        return :viridis, (0f0, 0.0015f0)
+    elseif var == "speed"
+        return :speed, (0f0, 0.7f0)
+    end
+
+    @info "Sampling depth frames to determine colorrange." variable = var depths = length(depth_refs)
+
+    lo = Inf32
+    hi = -Inf32
+    found_finite = false
+    for (depth_index, refs) in enumerate(depth_refs)
+        sample_indices = sampled_reference_indices(length(refs))
+        for ref_index in sample_indices
+            ref = refs[ref_index]
+            frame = load_frame!(ref; context = "colorrange $(var) $(basename(ref.filepath)) key $(ref.key)")
+            isnothing(frame) && continue
+            for value in frame
+                if isfinite(value)
+                    value32 = Float32(value)
+                    lo = min(lo, value32)
+                    hi = max(hi, value32)
+                    found_finite = true
+                end
+            end
+        end
+        if depth_index == 1 || depth_index == length(depth_refs) || depth_index % max(1, cld(length(depth_refs), PROGRESS_UPDATES)) == 0
+            log_record_progress("colorrange_$(var)", depth_index, length(depth_refs))
+        end
+    end
+
+    if !found_finite
+        @warn "No finite sampled values found for colorrange; using default range." variable var default = DEFAULT_COLORRANGE
+        return :viridis, DEFAULT_COLORRANGE
+    elseif !(hi > lo)
+        pad = max(1f-6, 0.05f0 * max(abs(lo), 1f0))
+        return :viridis, (lo - pad, hi + pad)
+    end
+
+    return :viridis, (lo, hi)
+end
+
+function panel_layout(npanels::Int)
+    npanels > 0 || error("At least one panel is required.")
+    if npanels <= 3
+        return 1, npanels
+    elseif npanels == 4
+        return 2, 2
+    else
+        return cld(npanels, 3), 3
+    end
+end
+
+sanitize_var_token(var::String) = replace(var, r"[^A-Za-z0-9]+" => "-")
+vars_slug(vars::Vector{String}) = join(sanitize_var_token.(vars), "_")
+
+function resolve_ffmpeg_binary()
+    ffmpeg = Sys.which("ffmpeg")
+    !isnothing(ffmpeg) && return ffmpeg
+
+    fallback = "/apps/easybuild-2022/easybuild/software/Compiler/GCCcore/13.3.0/FFmpeg/7.0.2/bin/ffmpeg"
+    return isfile(fallback) ? fallback : nothing
+end
+
+function record_video_in_chunks(render_frame!,
+                                fig,
+                                outname::AbstractString,
+                                frames,
+                                framerate::Int;
+                                chunk_size::Int = VIDEO_CHUNK_SIZE,
+                                tag::AbstractString = "video",
+                                chunk_cleanup::Union{Nothing, Function} = nothing)
+    isempty(frames) && error("No frames were provided for chunked recording.")
+    mkpath(dirname(outname))
+
+    ffmpeg = resolve_ffmpeg_binary()
+    isnothing(ffmpeg) && error("Could not find ffmpeg for chunked video assembly.")
+
+    chunk_dir = mktempdir(dirname(outname); prefix = basename(outname) * "_chunks_")
+    chunk_paths = String[]
+
+    try
+        for (chunk_index, start_idx) in enumerate(1:chunk_size:length(frames))
+            stop_idx = min(length(frames), start_idx + chunk_size - 1)
+            chunk_frames = collect(frames[start_idx:stop_idx])
+            chunk_path = joinpath(chunk_dir, "chunk_" * lpad(string(chunk_index), 4, '0') * ".mp4")
+            push!(chunk_paths, chunk_path)
+            @info "Recording video chunk." tag chunk_index start_idx stop_idx chunk_path
+            record(fig, chunk_path, chunk_frames; framerate = framerate) do frame
+                render_frame!(frame)
+            end
+            # Cleanup between chunks
+            if !isnothing(chunk_cleanup)
+                chunk_cleanup()
+            end
+            # Aggressively clear memory between chunks
+            chunk_frames = nothing
+            GC.gc(false)
+            GC.gc()
+            GC.gc()
+        end
+
+        concat_file = joinpath(chunk_dir, "concat.txt")
+        open(concat_file, "w") do io
+            for chunk_path in chunk_paths
+                println(io, "file '" * replace(abspath(chunk_path), "'" => "'\''") * "'")
+            end
+        end
+
+        cmd = `$ffmpeg -y -f concat -safe 0 -i $concat_file -c copy $outname`
+        @info "Concatenating video chunks." tag outname chunk_count = length(chunk_paths) ffmpeg
+        run(cmd)
+    finally
+        rm(chunk_dir; recursive = true, force = true)
+    end
+
+    return outname
+end
+
+function validate_requested_variables(requested_vars::Vector{String}, available_vars::Vector{String})
+    isempty(requested_vars) && throw(ArgumentError("At least one variable must be requested."))
+    missing = [var for var in requested_vars if !(var in available_vars)]
+    isempty(missing) || error("Requested variables not available: $(missing). Available variables: $(available_vars)")
+    return requested_vars
+end
+
+function single_depth_level(k::Union{Nothing, Int}, available_depths::Vector{Int})
+    isempty(available_depths) && error("No depth levels are available.")
+    isnothing(k) && return first(available_depths)
+    k in available_depths || error("Requested depth level k=$(k) not available. Available levels: $(available_depths)")
+    return k
+end
+
+function variable_color_settings(var::String, fields::Vector{Matrix{Float32}})
+    if var == "T"
+        return :thermal, (-2f0, 32f0)
+    elseif var == "S"
+        return :haline, (34.8f0, 37f0)
+    elseif var in ("u", "v")
+        return :balance, (-0.5f0, 0.5f0)
+    elseif var == "w"
+        return :balance, (-2e-5, 2e-5)
+    elseif var == "e"
+        return :viridis, (0f0, 0.0015f0)
+    elseif var == "speed"
+        return :speed, (0f0, max(0.7f0, finite_maximum_from_values((x for A in fields for x in A); default = 0.7f0, context = "variable $(var)")))
+    else
+        return :viridis, finite_colorrange_from_values((x for A in fields for x in A); context = "variable $(var)")
+    end
+end
+
+function make_horizontal_slice_video(vars::Vector{String},
+                                     depth::Int,
+                                     depth_actual::Real,
+                                     iterations::Vector{Int};
+                                     output_path::AbstractString = OUTPUT_PATH,
+                                     bottom_height = nothing,
+                                     outname::Union{Nothing, String} = nothing,
+                                     framerate::Union{Nothing, Real} = nothing)
+    refs_by_var = Dict{String, Vector{NamedTuple{(:time, :run, :filepath, :key), Tuple{Float64, Int, String, Int}}}}()
+    times_by_var = Dict{String, Vector{Float64}}()
+    loaders = Dict{String, Function}()
+
+    for var in vars
+        depth_times, depth_refs = index_depth_variable_timeseries(var, [depth], iterations; path = output_path)
+        isempty(depth_times) && error("No timeseries index returned for variable=$(var) at depth level k=$(depth).")
+        isempty(depth_times[1]) && error("No depth-timeseries frames found for variable=$(var) at depth level k=$(depth).")
+        times_by_var[var] = depth_times[1]
+        refs_by_var[var] = depth_refs[1]
+        loaders[var] = depth_frame_loader(var)
+    end
+
+    reference_var = first(vars)
+    reference_times = times_by_var[reference_var]
+    nframes = length(reference_times)
+    alignments = Dict(var => nearest_time_indices(reference_times, times_by_var[var]) for var in vars)
+    depth_mask = depth_ocean_mask(depth_actual, bottom_height)
+
+    initial_fields = Dict{String, Matrix{Float32}}()
+    color_settings = Dict{String, Tuple}()
+    for var in vars
+        load_frame! = loaders[var]
+        initial_frame = load_frame!(refs_by_var[var][alignments[var][1]]; context = "initial $(var) depth $(depth)")
+        initial_frame === nothing && error("Could not load initial frame for variable=$(var) at depth level k=$(depth).")
+        initial_fields[var] = mask_field_with_plot_mask(initial_frame, depth_mask)
+        color_settings[var] = depth_color_settings_streaming(var, [refs_by_var[var]], load_frame!)
+    end
+    frame_buffers = Dict(var => similar(initial_fields[var]) for var in vars)
+    readers = Dict(var => depth_frame_reader(var) for var in vars)
+
+    nrows, ncols = panel_layout(length(vars))
+    fig = Figure(size = (480 * ncols, 360 * nrows + 80 * nrows))
+    title = Label(fig[0, :], "Loading...", tellwidth = false)
+    observables = Dict(var => Observable(initial_fields[var]) for var in vars)
+
+    for (panel_index, var) in enumerate(vars)
+        row = cld(panel_index, ncols)
+        col = mod1(panel_index, ncols)
+        layout_row = 2 * row - 1
+        cmap, clim = color_settings[var]
+        ax = Axis(fig[layout_row, col], title = pretty_var_name(var))
+        hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
+        Colorbar(fig[layout_row + 1, col], hm, vertical = false)
+    end
+    resize_to_layout!(fig)
+
+    outname = isnothing(outname) ? FIGDIR * "horizontal_k$(depth)_$(vars_slug(vars))_$(RESOLUTION).mp4" : outname
+    years = reference_times ./ SECONDS_PER_YEAR
+    framerate = isnothing(framerate) ? constant_model_dt_framerate(reference_times) : framerate
+    progress_step = max(1, cld(nframes, PROGRESS_UPDATES))
+
+    @info "Recording horizontal slice animation." outname depth depth_actual variables = vars nframes framerate
+
+    try
+        record_video_in_chunks(fig, outname, 1:nframes, framerate; 
+                              tag = "horizontal_k$(depth)",
+                              chunk_cleanup = () -> begin
+                                  # Close readers between chunks to release file handles
+                                  for reader in values(readers)
+                                      reader.close_reader!()
+                                  end
+                                  # Recreate readers for next chunk
+                                  readers = Dict(var => depth_frame_reader(var) for var in vars)
+                                  # Clear frame buffers
+                                  for var in vars
+                                      fill!(frame_buffers[var], NaN32)
+                                  end
+                              end) do frame
+            title.text = "Depth k=$(depth) ($(round(abs(Float64(depth_actual)), digits = 1)) m) | Year = $(round(years[frame], digits = 2))"
+            for var in vars
+                ref = refs_by_var[var][alignments[var][frame]]
+                ok = readers[var].load_frame!(frame_buffers[var], ref; context = "frame $(frame) $(var) depth $(depth)")
+                ok || error("Could not load frame $(frame) for variable=$(var) at depth level k=$(depth).")
+                mask_field_with_plot_mask!(observables[var][], frame_buffers[var], depth_mask)
+                notify(observables[var])
+            end
+            if frame % GC_INTERVAL == 0
+                GC.gc(false)
+            end
+            if frame % (5 * GC_INTERVAL) == 0
+                GC.gc()
+            end
+            if frame == 1 || frame == nframes || frame % progress_step == 0
+                log_record_progress("horizontal_k$(depth)", frame, nframes)
+            end
+        end
+    finally
+        for reader in values(readers)
+            reader.close_reader!()
+        end
+    end
+
+    @info "Saved horizontal slice animation." outname depth variables = vars nframes framerate
+    return outname
+end
+
+function make_top_surface_multivariable_video(vars::Vector{String},
+                                              files::Vector{String};
+                                              bottom_height = nothing,
+                                              outname::Union{Nothing, String} = nothing,
+                                              framerate::Union{Nothing, Real} = nothing)
+    times, all_data = load_general_surface_timeseries(files, vars)
+    nframes = length(times)
+    nframes > 0 || error("No top-surface frames found for variables=$(vars).")
+
+    surface_mask = surface_ocean_mask(bottom_height)
+    nrows, ncols = panel_layout(length(vars))
+    fig = Figure(size = (480 * ncols, 360 * nrows + 80 * nrows))
+    title = Label(fig[0, :], "Loading...", tellwidth = false)
+
+    observables = Dict{String, Observable}()
+    color_settings = Dict{String, Tuple}()
+    for var in vars
+        fields = all_data[var]
+        observables[var] = Observable(mask_field_with_plot_mask(fields[1], surface_mask))
+        color_settings[var] = variable_color_settings(var, fields)
+    end
+
+    for (panel_index, var) in enumerate(vars)
+        row = cld(panel_index, ncols)
+        col = mod1(panel_index, ncols)
+        layout_row = 2 * row - 1
+        cmap, clim = color_settings[var]
+        ax = Axis(fig[layout_row, col], title = pretty_var_name(var))
+        hm = heatmap!(ax, observables[var], colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
+        Colorbar(fig[layout_row + 1, col], hm, vertical = false)
+    end
+    resize_to_layout!(fig)
+
+    outname = isnothing(outname) ? FIGDIR * "horizontal_surface_$(vars_slug(vars))_$(RESOLUTION).mp4" : outname
+    years = times ./ SECONDS_PER_YEAR
+    framerate = isnothing(framerate) ? constant_model_dt_framerate(times) : framerate
+    progress_step = max(1, cld(nframes, PROGRESS_UPDATES))
+
+    @info "Recording top-surface animation." outname variables = vars nframes framerate
+
+    record(fig, outname, 1:nframes; framerate = framerate) do frame
+        title.text = "Top surface | Year = $(round(years[frame], digits = 2))"
+        for var in vars
+            mask_field_with_plot_mask!(observables[var][], all_data[var][frame], surface_mask)
+            notify(observables[var])
+        end
+        if frame % GC_INTERVAL == 0
+            GC.gc(false)
+        end
+        if frame == 1 || frame == nframes || frame % progress_step == 0
+            log_record_progress("surface_multi", frame, nframes)
+        end
+    end
+
+    @info "Saved top-surface animation." outname variables = vars nframes framerate
+    return outname
+end
+
 
 function make_depth_variable_video(var::String,
                                    depths::Vector{Int},
@@ -483,7 +984,7 @@ function make_depth_variable_video(var::String,
                                    bottom_height = nothing,
                                    outname::Union{Nothing, String} = nothing,
                                    framerate::Int = VIDEO_FRAMERATE)
-    all_depth_times, all_depth_data = load_depth_variable_timeseries(var, depths, iterations; path = output_path)
+    all_depth_times, all_depth_refs = index_depth_variable_timeseries(var, depths, iterations; path = output_path)
     any(!isempty, all_depth_times) || error("No depth-timeseries frames found for variable=$(var).")
 
     reference_index = findfirst(!isempty, all_depth_times)
@@ -491,13 +992,17 @@ function make_depth_variable_video(var::String,
     nframes = length(reference_times)
     alignment = [isempty(times) ? Int[] : nearest_time_indices(reference_times, times) for times in all_depth_times]
     depth_masks = [depth_ocean_mask(depth_value, bottom_height) for depth_value in depths_actual]
-    cmap, clim = depth_color_settings(var, all_depth_data)
+    load_frame! = depth_frame_loader(var)
+    color_settings = Vector{Tuple}(undef, length(depths))
 
     initial_fields = Matrix{Float32}[]
     for depth_index in eachindex(depths)
-        data = all_depth_data[depth_index]
-        isempty(data) && error("No frames found for variable=$(var) at depth index $(depths[depth_index]).")
-        push!(initial_fields, mask_field_with_plot_mask(data[alignment[depth_index][1]], depth_masks[depth_index]))
+        refs = all_depth_refs[depth_index]
+        isempty(refs) && error("No frames found for variable=$(var) at depth index $(depths[depth_index]).")
+        frame_data = load_frame!(refs[alignment[depth_index][1]]; context = "initial $(var) depth $(depths[depth_index])")
+        frame_data === nothing && error("Could not load initial frame for variable=$(var) at depth index $(depths[depth_index]).")
+        push!(initial_fields, mask_field_with_plot_mask(frame_data, depth_masks[depth_index]))
+        color_settings[depth_index] = depth_color_settings_streaming(var, [refs], load_frame!)
     end
 
     npanels = length(depths)
@@ -512,6 +1017,7 @@ function make_depth_variable_video(var::String,
         col = mod1(panel_index, ncols)
         depth_label = round(abs(Float64(depths_actual[depth_index])); digits = 1)
         ax = Axis(fig[row, col], title = "Depth $(depth_label) m")
+        cmap, clim = color_settings[depth_index]
         hm = heatmap!(ax, observables[depth_index], colormap = cmap, colorrange = clim, nan_color = NAN_PLOT_COLOR)
         Colorbar(fig[row + nrows, col], hm, vertical = false)
     end
@@ -524,8 +1030,10 @@ function make_depth_variable_video(var::String,
     record(fig, outname, 1:nframes; framerate = framerate) do frame
         title.text = "$(pretty_var_name(var)) | Year = $(round(years[frame], digits = 2))"
         for depth_index in eachindex(depths)
-            source_index = alignment[depth_index][frame]
-            observables[depth_index][] = mask_field_with_plot_mask(all_depth_data[depth_index][source_index], depth_masks[depth_index])
+            ref = all_depth_refs[depth_index][alignment[depth_index][frame]]
+            frame_data = load_frame!(ref; context = "frame $(frame) $(var) depth $(depths[depth_index])")
+            frame_data === nothing && error("Could not load frame $(frame) for variable=$(var) at depth index $(depths[depth_index]).")
+            observables[depth_index][] = mask_field_with_plot_mask(frame_data, depth_masks[depth_index])
         end
         if frame == 1 || frame == nframes || frame % progress_step == 0
             log_record_progress("depth_$(var)", frame, nframes)
@@ -614,12 +1122,30 @@ function mask_field_with_plot_mask(A::AbstractMatrix, plot_mask::Union{Nothing, 
     return masked
 end
 
+function mask_field_with_plot_mask!(dest::Matrix{Float32}, src::AbstractMatrix, plot_mask::Union{Nothing, AbstractMatrix{Bool}})
+    size(dest) == size(src) || error("Destination/src size mismatch: $(size(dest)) vs $(size(src)).")
+    if isnothing(plot_mask)
+        copyto!(dest, src)
+        return dest
+    end
+
+    size(dest) == size(plot_mask) || error("Plot mask shape mismatch: got $(size(plot_mask)) expected $(size(dest)).")
+    @inbounds for i in eachindex(dest, src, plot_mask)
+        dest[i] = plot_mask[i] ? Float32(src[i]) : NaN32
+    end
+    return dest
+end
+
 surface_ocean_mask(bottom_height::Union{Nothing, AbstractMatrix}) = isnothing(bottom_height) ? nothing : bottom_height .< 0f0
 
 depth_ocean_mask(depth::Real, bottom_height::Union{Nothing, AbstractMatrix}) =
     isnothing(bottom_height) ? nothing : bottom_height .< -Float32(depth)
 
 function run_all_animations(selected_run::Union{Nothing, Int} = parse_selected_run())
+    return run_all_animations(DEFAULT_ANIMATION_VARS; selected_run = selected_run)
+end
+
+function run_all_animations(vars::Vector{String}; k::Union{Nothing, Int} = nothing, selected_run = parse_selected_run())
     selected_run === :help && return print_usage()
     selected_run = validate_selected_run(selected_run)
 
@@ -646,34 +1172,27 @@ function run_all_animations(selected_run::Union{Nothing, Int} = parse_selected_r
     output_suffix = isnothing(selected_run) ? "all_runs" : run_suffix(selected_run)
 
     if !isempty(depth_files)
-        depths = selected_depth_levels(depth_files)
+        available_depths = unique_depth_levels(depth_files)
+        requested_depth = single_depth_level(k, available_depths)
         runs = isnothing(selected_run) ? unique_iterations(depth_files) : [selected_run]
-        depths_actual = abs.(grid.z.cᵃᵃᶠ[depths])
+        available_vars = filter(var -> var != "u" && var != "v" && (var == "speed" || !occursin("_dt", var)),
+                                discover_animation_variables(depth_files))
+        validate_requested_variables(vars, available_vars)
+        isnothing(grid) && error("A grid is required to map depth level k=$(requested_depth) to physical depth.")
+        depth_actual = abs(grid.z.cᵃᵃᶠ[requested_depth])
 
-        @info "Prepared depth animation inputs." depth_files = length(depth_files) runs = length(runs) depths selected_run
-
-        depth_vars = discover_animation_variables(depth_files)
-        @info "Discovered depth animation variables." variables = depth_vars
-        for var in depth_vars
-            (var == "speed" || !occursin("_dt", var)) || continue
-            var in ("u", "v") && continue
-            @info "Processing depth variable..." variable = var
-            make_depth_variable_video(var, depths, depths_actual, runs;
-                                      output_path = OUTPUT_PATH,
-                                      bottom_height = bottom_height,
-                                      outname = FIGDIR * "$(var)_$(RESOLUTION)_all_depths_$(output_suffix).mp4")
-        end
+        @info "Prepared depth animation inputs." depth_files = length(depth_files) runs = length(runs) requested_depth depth_actual selected_run variables = vars
+        make_horizontal_slice_video(vars, requested_depth, depth_actual, runs;
+                                    output_path = OUTPUT_PATH,
+                                    bottom_height = bottom_height,
+                                    outname = FIGDIR * "horizontal_k$(requested_depth)_$(vars_slug(vars))_$(RESOLUTION)_$(output_suffix).mp4")
     else
         @info "No depth-coded files found; falling back to top-surface plotting." top_surface_files = length(top_surface_only_files)
-        surface_vars = discover_animation_variables(top_surface_only_files)
-        @info "Discovered top-surface animation variables." variables = surface_vars
-        for var in surface_vars
-            var in ("u", "v") && continue
-            @info "Processing top-surface variable..." variable = var
-            make_top_surface_variable_video(var, top_surface_only_files;
-                                            bottom_height = bottom_height,
-                                            outname = FIGDIR * "$(var)_$(RESOLUTION)_top_surface_$(output_suffix).mp4")
-        end
+        available_vars = filter(var -> var != "u" && var != "v", discover_animation_variables(top_surface_only_files))
+        validate_requested_variables(vars, available_vars)
+        make_top_surface_multivariable_video(vars, top_surface_only_files;
+                                             bottom_height = bottom_height,
+                                             outname = FIGDIR * "horizontal_surface_$(vars_slug(vars))_$(RESOLUTION)_$(output_suffix).mp4")
     end
 
     @info "Completed all horizontal animations."

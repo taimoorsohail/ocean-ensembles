@@ -18,6 +18,7 @@ using Oceananigans.Operators: Ax, Ay, Az,
 using Oceananigans.Fields: ReducedField, interior, ConstantField, ZeroField, OneField
 using Oceananigans.ImmersedBoundaries: immersed_cell, peripheral_node
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.TimeSteppers: VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 
 using CFTime
 using Dates
@@ -43,7 +44,7 @@ output_depths = [0, -100, -500, -1000, -2000]
 
 checkpoint_interval = TimeInterval((365/24)days)
 output_interval = AveragedTimeInterval(1days)
-callback_iteration_interval = 100
+callback_iteration_interval = 1
 default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
 
 function gpu_memory_status(prefix="")
@@ -384,12 +385,10 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     outputs = merge(ocean.model.tracers, ocean.model.velocities)
     remove_existing_diagnostic_output_files!(run_id_leading)
     surface_height = (; surface_height=ocean.model.free_surface.displacement)
-    # Surface flux diagnostics are disabled for the ocean-only run because these
-    # helpers assume a sea-ice-ocean interface exists in this NumericalEarth version.
-    # Store surface flux diagnostics with the same sign convention as the
-    # integrated content tendencies: positive surface input increases content.
-    surface_forcing = (; heat_flux=Field(-net_ocean_heat_flux(simulation.model)),
-                       fw_flux=Field(-net_ocean_freshwater_flux(simulation.model)))
+    # Surface flux diagnostics are bundled with sea-ice state in restart-era runs.
+    # Preserve the legacy run0001 sign convention so mixed historical runs stay consistent.
+    surface_forcing = (; heat_flux=Field(net_ocean_heat_flux(simulation.model)),
+                       fw_flux=Field(net_ocean_freshwater_flux(simulation.model)))
 
     for spec in slice_output_specs(grid)
         slice_level = spec.slice_level
@@ -446,9 +445,9 @@ function build_simulation(arch, run_id;
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
     @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=70)
-    momentum_advection = WENOVectorInvariant()#time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
-    tracer_advection = WENO(order=7)#, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+    free_surface = SplitExplicitFreeSurface(grid; substeps=120)
+    momentum_advection = WENOVectorInvariant(time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+    tracer_advection = WENO(order=7, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
 
     @info "Defining ocean model"

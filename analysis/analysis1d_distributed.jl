@@ -80,12 +80,50 @@ function linear_interpolate_series(query_times, source_times, source_values)
     return out
 end
 
+function read_serialized_grid(file)
+    haskey(file, "serialized/grid") && return file["serialized/grid"]
+    haskey(file, "serialized") || return nothing
+
+    serialized_keys = sort!(String.(collect(keys(file["serialized"]))))
+    for key in serialized_keys
+        startswith(key, "grid") || continue
+        return file["serialized/$key"]
+    end
+
+    return nothing
+end
+
+function load_serialized_grid(files::Vector{String}; label::AbstractString)
+    for (index, file) in enumerate(files)
+        grid = jldopen(file, "r") do data
+            read_serialized_grid(data)
+        end
+
+        isnothing(grid) && continue
+
+        if index > 1
+            @info "Falling back to grid metadata from peer combined file." label source = basename(file)
+        end
+
+        return grid
+    end
+
+    return nothing
+end
+
+surface_flux_sign(run::Int) = run == 1 ? -1.0 : 1.0
+
 time_total = Float64[]
 T_total = Float64[]
 S_total = Float64[]
 V_total = Float64[]
 
 depth = Float64[]
+integral_grid = load_serialized_grid(files_integral; label = "integral diagnostics")
+integral_grid === nothing && error("No serialized grid found in combined integral files.")
+integral_depth_grid = hasproperty(integral_grid, :underlying_grid) ? integral_grid.underlying_grid : integral_grid
+append!(depth, integral_depth_grid.z.cᵃᵃᶜ)
+
 integral_by_time = Dict{Float64, NamedTuple{(:run, :T, :S, :V, :Tz, :Sz, :Vz), Tuple{Int, Float64, Float64, Float64, Vector{Float64}, Vector{Float64}, Vector{Float64}}}}()
 integral_replacements = Ref(0)
 
@@ -94,8 +132,6 @@ for file in files_integral
     run = run_number(file)
 
     jldopen(file, "r") do data
-        isempty(depth) && append!(depth, data["serialized/grid"].underlying_grid.z.cᵃᵃᶜ)
-
         timeiters = sort(parse.(Int, keys(data["timeseries/t/"])))
         for iter in timeiters
             t = Float64(data["timeseries/t/$(iter)"])
@@ -170,24 +206,31 @@ surface_flux_integrals = Dict("heat_flux" => Float64[], "fw_flux" => Float64[])
 surface_flux_times = Float64[]
 surface_flux_by_time = Dict{Float64, NamedTuple{(:run, :heat_flux, :fw_flux), Tuple{Int, Float64, Float64}}}()
 surface_flux_replacements = Ref(0)
+surface_grid = load_serialized_grid(files_surface; label = "surface-flux diagnostics")
+
+if surface_grid === nothing
+    @info "Using integral grid metadata for surface-flux diagnostics."
+    surface_grid = integral_grid
+end
 
 for file in files_surface
     @info "Streaming surface flux diagnostics from $(basename(file))"
     run = run_number(file)
 
     jldopen(file, "r") do data
-        haskey(data, "serialized/grid") || error("No serialized grid found in $(file).")
         haskey(data, "timeseries/t") || return
         haskey(data, "timeseries/heat_flux") || return
         haskey(data, "timeseries/fw_flux") || return
 
-        grid = data["serialized/grid"]
-        heat_snapshot = Field{Center, Center, Nothing}(grid)
-        fw_snapshot = Field{Center, Center, Nothing}(grid)
+        heat_snapshot = Field{Center, Center, Nothing}(surface_grid)
+        fw_snapshot = Field{Center, Center, Nothing}(surface_grid)
         heat_integral_field = Field(Integral(heat_snapshot, dims = (1, 2, 3)))
         fw_integral_field = Field(Integral(fw_snapshot, dims = (1, 2, 3)))
 
         timeiters = sort(parse.(Int, keys(data["timeseries/t/"])))
+        flux_sign = surface_flux_sign(run)
+        @info "Applying surface-flux sign convention" file = basename(file) run flux_sign
+
         for (t_idx, iter) in enumerate(timeiters)
             t = Float64(data["timeseries/t/$(iter)"])
             heat_raw = extract_surface_matrix(data["timeseries/heat_flux/$(iter)"])
@@ -199,10 +242,13 @@ for file in files_surface
             compute!(heat_integral_field)
             compute!(fw_integral_field)
 
+            raw_heat_integral = Float64(interior(heat_integral_field)[1, 1, 1])
+            raw_fw_integral = Float64(interior(fw_integral_field)[1, 1, 1])
+
             record = (
                 run = run,
-                heat_flux = -Float64(interior(heat_integral_field)[1, 1, 1]),
-                fw_flux = -Float64(interior(fw_integral_field)[1, 1, 1]))
+                heat_flux = flux_sign * raw_heat_integral,
+                fw_flux = flux_sign * raw_fw_integral)
 
             existing = get(surface_flux_by_time, t, nothing)
             if isnothing(existing) || run >= existing.run
