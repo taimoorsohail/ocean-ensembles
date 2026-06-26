@@ -24,6 +24,7 @@ const DEPTH_FILE_RUN_PREFIX = "_fields_$(RESOLUTION)_RYF_run"
 const DEFAULT_COLORRANGE = (0f0, 1f0)
 const NAN_PLOT_COLOR = :lightgray
 const DEFAULT_ANIMATION_VARS = ["T", "S", "e", "speed", "w"]
+const DEPTH_COLORRANGE_STD_MULTIPLIER = parse(Float32, get(ENV, "HORIZONTAL_DEPTH_COLORRANGE_STD_MULTIPLIER", "1.0"))
 
 const VAR_TITLES = Dict(
     "T" => "Temperature (degC)",
@@ -652,25 +653,13 @@ end
 
 function depth_color_settings_streaming(var::String,
                                         depth_refs::Vector{Vector{NamedTuple{(:time, :run, :filepath, :key), Tuple{Float64, Int, String, Int}}}},
-                                        load_frame!)
-    if var == "T"
-        return :thermal, (-2f0, 32f0)
-    elseif var == "S"
-        return :haline, (34.8f0, 37f0)
-    elseif var in ("u", "v")
-        return :balance, (-0.5f0, 0.5f0)
-    elseif var == "w"
-        return :balance, (-2e-5, 2e-5)
-    elseif var == "e"
-        return :viridis, (0f0, 0.0015f0)
-    elseif var == "speed"
-        return :speed, (0f0, 0.7f0)
-    end
+                                        load_frame!;
+                                        std_multiplier::Real = DEPTH_COLORRANGE_STD_MULTIPLIER)
+    @info "Sampling depth frames to determine colorrange." variable = var depths = length(depth_refs) std_multiplier
 
-    @info "Sampling depth frames to determine colorrange." variable = var depths = length(depth_refs)
-
-    lo = Inf32
-    hi = -Inf32
+    n = 0
+    mean_value = 0.0
+    m2 = 0.0
     found_finite = false
     for (depth_index, refs) in enumerate(depth_refs)
         sample_indices = sampled_reference_indices(length(refs))
@@ -680,9 +669,11 @@ function depth_color_settings_streaming(var::String,
             isnothing(frame) && continue
             for value in frame
                 if isfinite(value)
-                    value32 = Float32(value)
-                    lo = min(lo, value32)
-                    hi = max(hi, value32)
+                    value64 = Float64(value)
+                    n += 1
+                    δ = value64 - mean_value
+                    mean_value += δ / n
+                    m2 += δ * (value64 - mean_value)
                     found_finite = true
                 end
             end
@@ -692,15 +683,31 @@ function depth_color_settings_streaming(var::String,
         end
     end
 
+    cmap = var == "T" ? :thermal :
+           var == "S" ? :haline :
+           var == "speed" ? :speed :
+           var in ("u", "v", "w") ? :balance :
+           :viridis
+
     if !found_finite
-        @warn "No finite sampled values found for colorrange; using default range." variable var default = DEFAULT_COLORRANGE
-        return :viridis, DEFAULT_COLORRANGE
-    elseif !(hi > lo)
-        pad = max(1f-6, 0.05f0 * max(abs(lo), 1f0))
-        return :viridis, (lo - pad, hi + pad)
+        default = var == "speed" ? (0f0, 0.7f0) : DEFAULT_COLORRANGE
+        @warn "No finite sampled values found for colorrange; using default range." variable var default
+        return cmap, default
+    elseif n == 1
+        center = Float32(mean_value)
+        pad = 1f-6
+        return cmap, var == "speed" ? (max(0f0, center - pad), center + pad) : (center - pad, center + pad)
     end
 
-    return :viridis, (lo, hi)
+    std_value = sqrt(m2 / (n - 1))
+    halfwidth = max(Float32(std_multiplier * std_value), 1f-6)
+    center = Float32(mean_value)
+
+    if var == "speed"
+        return cmap, (max(0f0, center - halfwidth), max(center + halfwidth, 1f-6))
+    end
+
+    return cmap, (center - halfwidth, center + halfwidth)
 end
 
 function panel_layout(npanels::Int)

@@ -108,6 +108,15 @@ function list_timeseries_variables(file)
     return vars
 end
 
+function validate_timeseries_file(path::AbstractString)
+    jldopen(path, "r") do f
+        haskey(f, "timeseries") || return false, "missing timeseries group"
+        haskey(f, "timeseries/t") || return false, "missing timeseries/t"
+        return true, nothing
+    end
+end
+
+
 function recursive_copy_group!(dst, src_group, prefix::AbstractString)
     for key in keys(src_group)
         name = String(key)
@@ -190,15 +199,21 @@ function build_selected_records(files::Vector{String})
     replaced_duplicates = 0
     var_set = Set{String}()
     schema_sources = Dict{String, String}()
+    usable_files = String[]
+    skipped_files = Pair{String, String}[]
 
     for file in files
+        ok, reason = validate_timeseries_file(file)
+        if !ok
+            push!(skipped_files, file => something(reason, "unrecognized file layout"))
+            continue
+        end
+
+        push!(usable_files, file)
         run = run_id(file)
         isnothing(run) && error("Missing run id for $(file).")
         run = run::Int
         jldopen(file, "r") do f
-            haskey(f, "timeseries") || error("$(file) does not contain a timeseries group.")
-            haskey(f, "timeseries/t") || error("$(file) does not contain timeseries/t.")
-
             vars = list_timeseries_variables(f)
             for var in vars
                 push!(var_set, var)
@@ -217,10 +232,11 @@ function build_selected_records(files::Vector{String})
         end
     end
 
+    isempty(usable_files) && error("No readable timeseries files were found in this family.")
     isempty(var_set) && error("No readable timeseries variables were found.")
     vars = sort!(collect(var_set))
     sorted_times = sort!(collect(keys(selected)))
-    return sorted_times, selected, vars, replaced_duplicates, schema_sources
+    return sorted_times, selected, vars, replaced_duplicates, schema_sources, usable_files, skipped_files
 end
 
 function target_output_path(representative_file::AbstractString, target_run::Int)
@@ -290,15 +306,21 @@ function write_merged_file!(target_path::AbstractString,
 end
 
 function merge_family!(files::Vector{String}, target_run::Int; dry_run::Bool)
-    representative = first(files)
+    sorted_times, selected_records, vars, replaced_duplicates, schema_sources, usable_files, skipped_files = build_selected_records(files)
+    representative = first(usable_files)
     target_path = target_output_path(representative, target_run)
-    sorted_times, selected_records, vars, replaced_duplicates, schema_sources = build_selected_records(files)
 
     println("Family: $(replace(basename(representative), r"_run\d+\.jld2$" => ""))")
-    println("  Source runs: $(join(run_label.(something.(run_id.(files), 0)), ", "))")
+    println("  Source runs: $(join(run_label.(something.(run_id.(usable_files), 0)), ", "))")
     println("  Frames after merge: $(length(sorted_times))")
     println("  Variables in merged output: $(join(vars, ", "))")
     println("  Duplicate times replaced by later runs: $(replaced_duplicates)")
+    if !isempty(skipped_files)
+        println("  Skipped files: $(length(skipped_files))")
+        for (file, reason) in skipped_files
+            println("    - $(basename(file)): $(reason)")
+        end
+    end
     println("  Output: $(target_path)")
 
     if dry_run

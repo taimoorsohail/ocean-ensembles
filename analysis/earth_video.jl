@@ -7,7 +7,7 @@ using Oceananigans.Fields: location, interior
 using JLD2
 using OceanEnsembles
 
-output_path = expanduser("../../outputs/")
+output_path = expanduser("../../outputs/saved/")
 figdir = expanduser("../../figures/")
 frames_dir = joinpath(figdir, "animation_frames")
 
@@ -20,7 +20,7 @@ seconds_per_spin = 3 * 365 * 24 * 60 * 60
 video_framerate = 12
 video_outname = joinpath(figdir, "all_vars_earth_vid.mp4")
 
-grid = jldopen(output_path * "global_75_fields_$(resolution)_RYF_run0001.jld2")["serialized/grid"];
+grid = jldopen(glob("combined_global_75_fields_$(resolution)_RYF_run*.jld2", output_path)[1])["serialized/grid"];
 
 files_combined = filter(f -> !occursin("_rank", f),
                         glob("global_*$(resolution)_RYF_run*.jld2", output_path))

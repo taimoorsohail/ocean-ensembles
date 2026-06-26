@@ -1,18 +1,18 @@
 using CairoMakie
 using NumericalEarth
-using ConservativeRegridding
 using Dates
 using Glob
 using JLD2
 using Oceananigans
 using Statistics
 using WorldOceanAtlasTools
+using Oceananigans.Fields: interpolate!
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 with_trailing_slash(path::AbstractString) = endswith(path, Base.Filesystem.path_separator) ? path : path * Base.Filesystem.path_separator
 
-const OUTPUT_PATH = with_trailing_slash(expanduser(get(ENV, "OUTPUT_PATH", "/home/tsohail/uom/ocean-ensembles/outputs/")))
+const OUTPUT_PATH = with_trailing_slash(expanduser(get(ENV, "OUTPUT_PATH", "/home/tsohail/uom/ocean-ensembles/outputs/saved/")))
 const FIGDIR = with_trailing_slash(expanduser(get(ENV, "FIGDIR", "/home/tsohail/uom/ocean-ensembles/figures/")))
 const ANALYSIS_OUTPUT_PATH = with_trailing_slash(expanduser(get(ENV, "COMPARE_2D_OUTPUT_PATH", OUTPUT_PATH)))
 const RESOLUTION = get(ENV, "COMPARE_2D_RESOLUTION", "sxtdeg")
@@ -32,6 +32,8 @@ const GC_INTERVAL = 12
 const VIDEO_CHUNK_SIZE = 120
 const DEPTH_FILE_RUN_PREFIX = "_fields_$(RESOLUTION)_RYF_run"
 const DEFAULT_COMPARISON_VARS = ["T", "S"]
+const ERROR_COLORRANGE_STD_MULTIPLIER = parse(Float32, get(ENV, "COMPARE_2D_ERROR_COLORRANGE_STD_MULTIPLIER", "1.0"))
+const VALUE_COLORRANGE_STD_MULTIPLIER = parse(Float32, get(ENV, "COMPARE_2D_VALUE_COLORRANGE_STD_MULTIPLIER", "1.0"))
 
 run_number(path::AbstractString) = begin
     m = match(r"_run(\d+)\.jld2$", basename(path))
@@ -353,45 +355,8 @@ function vertically_remap_month_to_depth(T_field, S_field, coeff::Tuple{Vector{I
     return T_target, S_target
 end
 
-function centered_2d_field(grid)
-    return Field{Center, Center, Nothing}(grid)
-end
-
-function set_2d_field!(field, A::AbstractMatrix)
-    set!(field, reshape(Float64.(A), size(A, 1), size(A, 2), 1))
-    return field
-end
-
-function conservative_horizontal_regrid(A::AbstractMatrix,
-                                        wet::AbstractMatrix,
-                                        value_src,
-                                        wet_src,
-                                        value_dst,
-                                        wet_dst,
-                                        regridder)
-    fill_value = ifelse.(isfinite.(A), Float32.(A), 0f0)
-    fill_wet = Float32.(wet)
-
-    set_2d_field!(value_src, fill_value)
-    set_2d_field!(wet_src, fill_wet)
-    ConservativeRegridding.regrid!(value_dst, regridder, value_src)
-    ConservativeRegridding.regrid!(wet_dst, regridder, wet_src)
-
-    value_arr = Float32.(Array(interior(value_dst)))
-    wet_arr = Float32.(Array(interior(wet_dst)))
-    ndims(value_arr) == 3 && (value_arr = value_arr[:, :, 1])
-    ndims(wet_arr) == 3 && (wet_arr = wet_arr[:, :, 1])
-
-    out = Matrix{Float32}(undef, size(value_arr))
-    @inbounds for i in eachindex(out, value_arr, wet_arr)
-        if wet_arr[i] > 0
-            out[i] = value_arr[i] / wet_arr[i]
-        else
-            out[i] = NaN32
-        end
-    end
-
-    return out
+function extract_depth_slice(field, depth::Int)
+    return Float32.(Array(interior(field, :, :, depth)))
 end
 
 function bottom_height_matrix(grid)
@@ -483,7 +448,10 @@ function error_colorrange(var::String,
     return (-maxabs, maxabs)
 end
 
-function build_monthly_model_caches(depth_levels::Vector{Int}; path::AbstractString = OUTPUT_PATH, resolution::AbstractString = RESOLUTION)
+function build_monthly_model_caches(depth_levels::Vector{Int};
+                                    path::AbstractString = OUTPUT_PATH,
+                                    resolution::AbstractString = RESOLUTION,
+                                    cache_dir::AbstractString = mktempdir())
     cache_files = String[]
     bins = Int[]
     years = Int[]
@@ -505,7 +473,7 @@ function build_monthly_model_caches(depth_levels::Vector{Int}; path::AbstractStr
             model_grid = series.grid
         end
 
-        cache_file = joinpath(ANALYSIS_OUTPUT_PATH, "compare_2d_WOA_model_depth$(depth)_$(resolution).jld2")
+        cache_file = joinpath(cache_dir, "compare_2d_WOA_model_depth$(depth)_$(resolution).jld2")
         write_monthly_field_cache!(cache_file, monthly_T, monthly_S)
         push!(cache_files, cache_file)
 
@@ -517,40 +485,28 @@ function build_monthly_model_caches(depth_levels::Vector{Int}; path::AbstractStr
     return (; cache_files, bins, years, months, model_grid)
 end
 
-function build_woa_depth_cache(model_grid, depth_levels::Vector{Int}; resolution::AbstractString = RESOLUTION)
+function build_woa_depth_cache(model_grid, depth_levels::Vector{Int};
+                               resolution::AbstractString = RESOLUTION,
+                               cache_dir::AbstractString = mktempdir())
     T_fields, S_fields = load_woa_monthly_fields()
-    woa_grid = T_fields[1].grid
     model_underlying = hasproperty(model_grid, :underlying_grid) ? model_grid.underlying_grid : model_grid
 
-    source_z_faces = Float64.(collect(woa_grid.z.cᵃᵃᶠ))
-    model_z_faces = Float64.(collect(model_underlying.z.cᵃᵃᶠ))
-    model_z_centers = Float64.(collect(model_underlying.z.cᵃᵃᶜ))
+    model_z_faces = model_underlying.z.cᵃᵃᶠ
+    target_depth_values = [Float64(model_z_faces[depth]) for depth in depth_levels]
 
-    target_faces = [model_z_faces[depth:depth+1] for depth in depth_levels]
-    target_coeffs = [only(overlap_coefficients(source_z_faces, faces)) for faces in target_faces]
-
-    # ConservativeRegridding in this repo already supports native-grid regridding
-    # between LatitudeLongitudeGrid and TripolarGrid fields. Keep that path and let
-    # set_2d_field! promote the matrix data to Float64, rather than reconstructing
-    # synthetic lat-lon grids from center coordinates.
-    src_value = centered_2d_field(woa_grid)
-    src_wet = centered_2d_field(woa_grid)
-    dst_value = centered_2d_field(model_underlying)
-    dst_wet = centered_2d_field(model_underlying)
-
-    manifold = ConservativeRegridding.Spherical(6.371e6)
-    regridder = ConservativeRegridding.Regridder(manifold, dst_value, src_value)
+    T_target = Field{Center, Center, Center}(model_underlying)
+    S_target = Field{Center, Center, Center}(model_underlying)
 
     cache_files = String[]
 
-    for (depth_index, coeff) in enumerate(target_coeffs)
-        cache_file = joinpath(ANALYSIS_OUTPUT_PATH, "compare_2d_WOA_woa_depth$(depth_levels[depth_index])_$(resolution).jld2")
+    for (depth_index, depth) in enumerate(depth_levels)
+        cache_file = joinpath(cache_dir, "compare_2d_WOA_woa_depth$(depth)_$(resolution).jld2")
         jldopen(cache_file, "w") do f
             for month in 1:12
-                T_vertical, S_vertical = vertically_remap_month_to_depth(T_fields[month], S_fields[month], coeff)
-                wet = isfinite.(T_vertical) .& isfinite.(S_vertical)
-                f["T/$month"] = conservative_horizontal_regrid(T_vertical, wet, src_value, src_wet, dst_value, dst_wet, regridder)
-                f["S/$month"] = conservative_horizontal_regrid(S_vertical, wet, src_value, src_wet, dst_value, dst_wet, regridder)
+                interpolate!(T_target, T_fields[month])
+                interpolate!(S_target, S_fields[month])
+                f["T/$month"] = extract_depth_slice(T_target, depth)
+                f["S/$month"] = extract_depth_slice(S_target, depth)
             end
         end
         push!(cache_files, cache_file)
@@ -560,7 +516,7 @@ function build_woa_depth_cache(model_grid, depth_levels::Vector{Int}; resolution
         end
     end
 
-    return (; cache_files, model_z_centers, model_z_faces)
+    return (; cache_files, model_z_faces, target_depth_values)
 end
 
 function month_time_metadata(years::AbstractVector{<:Integer}, months::AbstractVector{<:Integer})
@@ -706,19 +662,89 @@ function build_error_frame!(dest::Matrix{Float32},
     return dest
 end
 
+function variable_display_name(var::String)
+    return var == "T" ? "Temperature (degC)" :
+           var == "S" ? "Salinity (g/kg)" :
+           var
+end
+
+function value_colormap(var::String)
+    return var == "T" ? :thermal :
+           var == "S" ? :haline :
+           :viridis
+end
+
+function default_value_colorrange(var::String)
+    return var == "T" ? (-2f0, 32f0) :
+           var == "S" ? (34.8f0, 37f0) :
+           (-1f0, 1f0)
+end
+
+function value_colorrange_for_depth(var::String,
+                                    frame_count::Int,
+                                    month_of_year::AbstractVector{<:Integer},
+                                    model_cache_file::AbstractString,
+                                    woa_cache_file::AbstractString,
+                                    depth_mask;
+                                    std_multiplier::Real = VALUE_COLORRANGE_STD_MULTIPLIER)
+    n = 0
+    mean_value = 0.0
+    m2 = 0.0
+    frames = 1:frame_count
+
+    @info "Computing shared model/WOA colorrange from monthly mean/std." variable = var frames = length(frames) std_multiplier
+
+    for (frame_index, frame) in enumerate(frames)
+        month = month_of_year[frame]
+        model_frame = load_cached_frame(model_cache_file, var, frame)
+        woa_frame = load_cached_frame(woa_cache_file, var, month)
+
+        for source_frame in (model_frame, woa_frame)
+            @inbounds for i in eachindex(source_frame)
+                if (isnothing(depth_mask) || depth_mask[i]) && isfinite(source_frame[i])
+                    n += 1
+                    δ = Float64(source_frame[i]) - mean_value
+                    mean_value += δ / n
+                    m2 += δ * (Float64(source_frame[i]) - mean_value)
+                end
+            end
+        end
+
+        if frame_index == 1 || frame_index == length(frames) || frame_index % max(1, cld(length(frames), PROGRESS_UPDATES)) == 0
+            log_progress("value_colorrange_$(var)", frame_index, length(frames))
+        end
+    end
+
+    if n == 0
+        return default_value_colorrange(var)
+    elseif n == 1
+        center = Float32(mean_value)
+        pad = 1f-6
+        return (center - pad, center + pad)
+    end
+
+    std_value = sqrt(m2 / (n - 1))
+    halfwidth = max(Float32(std_multiplier * std_value), 1f-6)
+    center = Float32(mean_value)
+    return (center - halfwidth, center + halfwidth)
+end
+
 function error_colorrange_for_depth(var::String,
                                     frame_count::Int,
                                     month_of_year::AbstractVector{<:Integer},
                                     model_cache_file::AbstractString,
                                     woa_cache_file::AbstractString,
-                                    depth_mask)
-    maxabs = 0f0
-    found = false
-    sampled_frames = sampled_reference_indices(frame_count)
+                                    depth_mask;
+                                    std_multiplier::Real = ERROR_COLORRANGE_STD_MULTIPLIER)
+    n = 0
+    mean_error = 0.0
+    m2 = 0.0
+    frames = 1:frame_count
 
-    @info "Sampling cached error frames to determine colorrange." variable = var sampled_frames = length(sampled_frames)
+    effective_std_multiplier = var == "T" ? 2f0 * Float32(std_multiplier) : Float32(std_multiplier)
+    @info "Computing cached error colorrange from monthly mean/std." variable = var frames = length(frames) std_multiplier effective_std_multiplier
 
-    for (sample_index, frame) in enumerate(sampled_frames)
+    for (frame_index, frame) in enumerate(frames)
         month = month_of_year[frame]
         model_frame = load_cached_frame(model_cache_file, var, frame)
         woa_frame = load_cached_frame(woa_cache_file, var, month)
@@ -726,63 +752,85 @@ function error_colorrange_for_depth(var::String,
 
         for value in error_frame
             if isfinite(value)
-                maxabs = max(maxabs, abs(Float32(value)))
-                found = true
+                n += 1
+                δ = Float64(value) - mean_error
+                mean_error += δ / n
+                m2 += δ * (Float64(value) - mean_error)
             end
         end
 
-        if sample_index == 1 || sample_index == length(sampled_frames) || sample_index % max(1, cld(length(sampled_frames), PROGRESS_UPDATES)) == 0
-            log_progress("colorrange_$(var)", sample_index, length(sampled_frames))
+        if frame_index == 1 || frame_index == length(frames) || frame_index % max(1, cld(length(frames), PROGRESS_UPDATES)) == 0
+            log_progress("colorrange_$(var)", frame_index, length(frames))
         end
     end
 
-    if !found
+    if n == 0
         return var == "T" ? (-2f0, 2f0) : (-1f0, 1f0)
-    elseif maxabs == 0
-        return (-1f-6, 1f-6)
+    elseif n == 1
+        halfwidth = 1f-6
+        return (-halfwidth, halfwidth)
     end
 
-    return (-maxabs, maxabs)
+    std_error = sqrt(m2 / (n - 1))
+    halfwidth = max(Float32(effective_std_multiplier * std_error), 1f-6)
+    return (-halfwidth, halfwidth)
 end
 
 function make_error_multivariable_video(vars::Vector{String},
                                         metadata,
                                         depth::Int,
+                                        depth_value::Real,
                                         depth_mask,
-                                        model_z_centers::AbstractVector{<:Real},
-                                        colorranges::Dict{String, Tuple{Float32, Float32}},
+                                        value_colorranges::Dict{String, Tuple{Float32, Float32}},
+                                        error_colorranges::Dict{String, Tuple{Float32, Float32}},
                                         model_cache_file::AbstractString,
                                         woa_cache_file::AbstractString;
                                         outname::AbstractString,
                                         framerate::Union{Nothing, Real} = nothing)
     nt = length(metadata.month_of_year)
-    nrows, ncols = panel_layout(length(vars))
-    depth_value = round(abs(Float64(model_z_centers[depth])); digits = 1)
+    ncols = length(vars)
+    depth_value = round(abs(Float64(depth_value)); digits = 1)
 
-    initial_fields = Dict{String, Matrix{Float32}}()
+    initial_model_fields = Dict{String, Matrix{Float32}}()
+    initial_woa_fields = Dict{String, Matrix{Float32}}()
+    initial_error_fields = Dict{String, Matrix{Float32}}()
     month1 = metadata.month_of_year[1]
     for var in vars
         model_frame = load_cached_frame(model_cache_file, var, 1)
         woa_frame = load_cached_frame(woa_cache_file, var, month1)
-        initial_fields[var] = build_error_frame(model_frame, woa_frame, depth_mask)
+        initial_model_fields[var] = apply_plot_mask(model_frame, depth_mask)
+        initial_woa_fields[var] = apply_plot_mask(woa_frame, depth_mask)
+        initial_error_fields[var] = build_error_frame(model_frame, woa_frame, depth_mask)
     end
-    model_buffers = Dict(var => similar(initial_fields[var]) for var in vars)
-    woa_buffers = Dict(var => similar(initial_fields[var]) for var in vars)
+
+    model_buffers = Dict(var => similar(initial_model_fields[var]) for var in vars)
+    woa_buffers = Dict(var => similar(initial_woa_fields[var]) for var in vars)
+    model_observables = Dict(var => Observable(initial_model_fields[var]) for var in vars)
+    woa_observables = Dict(var => Observable(initial_woa_fields[var]) for var in vars)
+    error_observables = Dict(var => Observable(initial_error_fields[var]) for var in vars)
     model_reader = cached_frame_reader(model_cache_file)
     woa_reader = cached_frame_reader(woa_cache_file)
 
-    fig = Figure(size = (520 * ncols, 400 * nrows))
+    fig = Figure(size = (520 * ncols, 1080))
     title = Label(fig[0, :], "", tellwidth = false)
-    observables = Dict(var => Observable(initial_fields[var]) for var in vars)
+
+    row_labels = ("Model monthly mean", "WOA monthly climatology", "Model - WOA")
 
     for (panel_index, var) in enumerate(vars)
-        row = cld(panel_index, ncols)
-        col = mod1(panel_index, ncols)
-        layout_row = 2 * row - 1
-        panel_title = var == "T" ? "Temperature error vs WOA (degC)" : "Salinity error vs WOA"
-        ax = Axis(fig[layout_row, col], title = panel_title)
-        hm = heatmap!(ax, observables[var], colormap = :balance, colorrange = colorranges[var], nan_color = NAN_PLOT_COLOR)
-        Colorbar(fig[layout_row + 1, col], hm, vertical = false)
+        col = panel_index
+        value_title = variable_display_name(var)
+
+        ax_model = Axis(fig[1, col], title = value_title, ylabel = row_labels[1])
+        hm_model = heatmap!(ax_model, model_observables[var], colormap = value_colormap(var), colorrange = value_colorranges[var], nan_color = NAN_PLOT_COLOR)
+
+        ax_woa = Axis(fig[2, col], ylabel = row_labels[2])
+        hm_woa = heatmap!(ax_woa, woa_observables[var], colormap = value_colormap(var), colorrange = value_colorranges[var], nan_color = NAN_PLOT_COLOR)
+
+        ax_error = Axis(fig[3, col], ylabel = row_labels[3])
+        hm_error = heatmap!(ax_error, error_observables[var], colormap = :balance, colorrange = error_colorranges[var], nan_color = NAN_PLOT_COLOR)
+
+        Colorbar(fig[4, col], hm_model, vertical = false, label = value_title)
+        Colorbar(fig[5, col], hm_error, vertical = false, label = "$(value_title) bias")
     end
 
     resize_to_layout!(fig)
@@ -791,16 +839,13 @@ function make_error_multivariable_video(vars::Vector{String},
     framerate = isnothing(framerate) ? constant_model_dt_framerate(times) : framerate
 
     try
-        record_video_in_chunks(fig, outname, 1:nt, framerate; 
+        record_video_in_chunks(fig, outname, 1:nt, framerate;
                               tag = "compare_2d_WOA_k$(depth)",
                               chunk_cleanup = () -> begin
-                                  # Close readers between chunks to release file handles
                                   model_reader.close_reader!()
                                   woa_reader.close_reader!()
-                                  # Recreate readers for next chunk
                                   model_reader = cached_frame_reader(model_cache_file)
                                   woa_reader = cached_frame_reader(woa_cache_file)
-                                  # Clear buffers
                                   for var in vars
                                       fill!(model_buffers[var], NaN32)
                                       fill!(woa_buffers[var], NaN32)
@@ -808,13 +853,17 @@ function make_error_multivariable_video(vars::Vector{String},
                               end) do frame
             year_index = metadata.year_index[frame]
             month = metadata.month_of_year[frame]
-            title.text = "WOA comparison error | Depth k=$(depth) ($(depth_value) m) | RYF year $(year_index + 1) | $(Dates.format(Date(2001, month, 1), "mmm"))"
+            title.text = "WOA comparison | Depth k=$(depth) ($(depth_value) m) | RYF year $(year_index + 1) | $(Dates.format(Date(2001, month, 1), "mmm"))"
 
             for var in vars
                 model_reader.load_frame!(model_buffers[var], var, frame) || error("Could not load model cache frame $(frame) for variable=$(var).")
                 woa_reader.load_frame!(woa_buffers[var], var, month) || error("Could not load WOA cache frame $(month) for variable=$(var).")
-                build_error_frame!(observables[var][], model_buffers[var], woa_buffers[var], depth_mask)
-                notify(observables[var])
+                apply_plot_mask!(model_observables[var][], model_buffers[var], depth_mask)
+                apply_plot_mask!(woa_observables[var][], woa_buffers[var], depth_mask)
+                build_error_frame!(error_observables[var][], model_buffers[var], woa_buffers[var], depth_mask)
+                notify(model_observables[var])
+                notify(woa_observables[var])
+                notify(error_observables[var])
             end
 
             if frame % GC_INTERVAL == 0
@@ -832,11 +881,12 @@ function make_error_multivariable_video(vars::Vector{String},
         woa_reader.close_reader!()
     end
 
-    @info "Saved WOA error animation." variables = vars outname frames = nt framerate
+    @info "Saved WOA comparison animation." variables = vars outname frames = nt framerate
     return outname
 end
 
 function main()
+
     return main(DEFAULT_COMPARISON_VARS)
 end
 
@@ -852,54 +902,47 @@ function main(vars::Vector{String}; k::Union{Nothing, Int} = nothing)
     validate_requested_variables(vars, DEFAULT_COMPARISON_VARS)
     requested_depth = single_depth_level(k, depth_levels)
 
-    @info "Building monthly model caches for depth slices." depth_count = length(depth_levels) output_path = OUTPUT_PATH
-    model_cache = build_monthly_model_caches(depth_levels; path = OUTPUT_PATH, resolution = RESOLUTION)
-    metadata = month_time_metadata(model_cache.years, model_cache.months)
-    model_grid = model_cache.model_grid
-    isnothing(model_grid) && error("No serialized grid found in the combined depth files.")
+    scratch_dir = mktempdir(ANALYSIS_OUTPUT_PATH; prefix = "compare_2d_WOA_scratch_")
+    @info "Using temporary scratch directory for WOA comparison caches." scratch_dir
 
-    @info "Building WOA depth caches on the model grid." depth_count = length(depth_levels)
-    woa_cache = build_woa_depth_cache(model_grid, depth_levels; resolution = RESOLUTION)
+    try
+        @info "Building monthly model caches for depth slices." depth_count = length(depth_levels) output_path = OUTPUT_PATH
+        model_cache = build_monthly_model_caches(depth_levels; path = OUTPUT_PATH, resolution = RESOLUTION, cache_dir = scratch_dir)
+        metadata = month_time_metadata(model_cache.years, model_cache.months)
+        model_grid = model_cache.model_grid
+        isnothing(model_grid) && error("No serialized grid found in the combined depth files.")
 
-    depth_index = findfirst(==(requested_depth), depth_levels)
-    isnothing(depth_index) && error("Requested depth k=$(requested_depth) was not found in depth_levels.")
+        @info "Building WOA depth caches on the model grid." depth_count = length(depth_levels)
+        woa_cache = build_woa_depth_cache(model_grid, depth_levels; resolution = RESOLUTION, cache_dir = scratch_dir)
 
-    bottom_height = bottom_height_matrix(model_grid)
-    depth_mask = depth_ocean_mask(woa_cache.model_z_centers[requested_depth], bottom_height)
+        depth_index = findfirst(==(requested_depth), depth_levels)
+        isnothing(depth_index) && error("Requested depth k=$(requested_depth) was not found in depth_levels.")
 
-    colorranges = Dict{String, Tuple{Float32, Float32}}()
-    for var in vars
-        colorranges[var] = error_colorrange_for_depth(var, length(model_cache.bins), metadata.month_of_year,
-                                                      model_cache.cache_files[depth_index], woa_cache.cache_files[depth_index], depth_mask)
+        bottom_height = bottom_height_matrix(model_grid)
+        depth_actual = woa_cache.target_depth_values[depth_index]
+        depth_mask = depth_ocean_mask(depth_actual, bottom_height)
+
+        value_colorranges = Dict{String, Tuple{Float32, Float32}}()
+        error_colorranges = Dict{String, Tuple{Float32, Float32}}()
+        for var in vars
+            value_colorranges[var] = value_colorrange_for_depth(var, length(model_cache.bins), metadata.month_of_year,
+                                                                model_cache.cache_files[depth_index], woa_cache.cache_files[depth_index], depth_mask)
+            error_colorranges[var] = error_colorrange_for_depth(var, length(model_cache.bins), metadata.month_of_year,
+                                                                model_cache.cache_files[depth_index], woa_cache.cache_files[depth_index], depth_mask)
+        end
+
+        video_file = joinpath(FIGDIR, "compare_2d_WOA_k$(requested_depth)_$(vars_slug(vars))_$(RESOLUTION).mp4")
+
+        make_error_multivariable_video(vars, metadata, requested_depth, depth_actual, depth_mask,
+                                       value_colorranges, error_colorranges,
+                                       model_cache.cache_files[depth_index], woa_cache.cache_files[depth_index];
+                                       outname = video_file)
+
+        @info "Finished building 2D WOA comparison animation." video_file nmonths = length(model_cache.bins) depth = requested_depth variables = vars
+        return nothing
+    finally
+        rm(scratch_dir; recursive = true, force = true)
     end
-
-    video_file = joinpath(FIGDIR, "compare_2d_WOA_k$(requested_depth)_$(vars_slug(vars))_$(RESOLUTION).mp4")
-    summary_file = joinpath(ANALYSIS_OUTPUT_PATH, "compare_2d_WOA_k$(requested_depth)_$(vars_slug(vars))_$(RESOLUTION).jld2")
-
-    make_error_multivariable_video(vars, metadata, requested_depth, depth_mask,
-                                   woa_cache.model_z_centers, colorranges,
-                                   model_cache.cache_files[depth_index], woa_cache.cache_files[depth_index];
-                                   outname = video_file)
-
-    @info "Saving 2D WOA comparison metadata." summary_file
-    jldsave(summary_file;
-            resolution = RESOLUTION,
-            depth_levels,
-            requested_depth,
-            variables = vars,
-            model_z_centers = woa_cache.model_z_centers,
-            model_z_faces = woa_cache.model_z_faces,
-            month_bin = model_cache.bins,
-            month_of_year = metadata.month_of_year,
-            year_index = metadata.year_index,
-            time_days = metadata.time_days,
-            colorranges,
-            video_file,
-            model_cache_file = model_cache.cache_files[depth_index],
-            woa_cache_file = woa_cache.cache_files[depth_index])
-
-    @info "Finished building 2D WOA comparison animation." video_file summary_file nmonths = length(model_cache.bins) depth = requested_depth variables = vars
-    return nothing
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
