@@ -18,6 +18,7 @@ using Oceananigans.Operators: Ax, Ay, Az,
 using Oceananigans.Fields: ReducedField, interior, ConstantField, ZeroField, OneField
 using Oceananigans.ImmersedBoundaries: immersed_cell, peripheral_node
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.TimeSteppers: VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 
 using CFTime
 using Dates
@@ -122,7 +123,7 @@ function build_grid(arch, bathymetry_metadata)
     @info "Defining bottom bathymetry"
     @time bottom_height = regrid_bathymetry(underlying_grid, bathymetry_metadata;
                                             minimum_depth=15,
-                                            interpolation_passes=25,
+                                            interpolation_passes=1,
                                             major_basins=2)
 
     @time grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
@@ -195,18 +196,6 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
     callback_interval = IterationInterval(1)
 
     ocean_model = simulation.model.ocean.model
-    ocean_properties = simulation.model.interfaces.ocean_properties
-    ρ₀ = ocean_properties.reference_density
-    cₚ = ocean_properties.heat_capacity
-    ohc_integral = Field(Integral(ocean_model.tracers.T, dims = (1, 2, 3)))
-    fw_content_integral = Field(Integral(ocean_model.tracers.S, dims = (1, 2, 3)))
-    surface_heat_flux_integral = Field(Integral(net_ocean_heat_flux(simulation.model), dims = (1, 2)))
-    surface_freshwater_flux_integral = Field(Integral(net_ocean_freshwater_flux(simulation.model), dims = (1, 2)))
-    previous_ohc = Ref(NaN)
-    previous_fw_content = Ref(NaN)
-    previous_heat_flux = Ref(NaN)
-    previous_freshwater_flux = Ref(NaN)
-    previous_model_time = Ref(NaN)
 
     function progress(sim)
         η = sim.model.ocean.model.free_surface.displacement
@@ -224,39 +213,7 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
                 maximum(abs, v),
                 maximum(abs, w))
 
-        compute!(ohc_integral)
-        compute!(fw_content_integral)
-        compute!(surface_heat_flux_integral)
-        compute!(surface_freshwater_flux_integral)
-
-        ohc_total = maybe_allow_scalar(() -> ρ₀ * cₚ * interior(ohc_integral)[1, 1, 1])
-        fw_content_total = maybe_allow_scalar(() -> -ρ₀ / 35 * interior(fw_content_integral)[1, 1, 1])
-        heat_flux_total = maybe_allow_scalar(() -> interior(surface_heat_flux_integral)[1, 1, 1])
-        freshwater_flux_total = maybe_allow_scalar(() -> interior(surface_freshwater_flux_integral)[1, 1, 1])
-
         model_time = Float64(sim.model.clock.time)
-
-        if isnan(previous_model_time[])
-            previous_model_time[] = model_time
-            previous_ohc[] = ohc_total
-            previous_fw_content[] = fw_content_total
-            previous_heat_flux[] = heat_flux_total
-            previous_freshwater_flux[] = freshwater_flux_total
-            wall_time[] = time_ns()
-            return nothing
-        end
-
-        Δt_model = model_time - previous_model_time[]
-        Δohc_step = ohc_total - previous_ohc[]
-        Δfw_content_step = fw_content_total - previous_fw_content[]
-        heat_flux_step = previous_heat_flux[] * Δt_model
-        freshwater_flux_step = previous_freshwater_flux[] * Δt_model
-
-        previous_model_time[] = model_time
-        previous_ohc[] = ohc_total
-        previous_fw_content[] = fw_content_total
-        previous_heat_flux[] = heat_flux_total
-        previous_freshwater_flux[] = freshwater_flux_total
 
         current_wall_time = time_ns()
         step_time = 1e-9 * (current_wall_time - wall_time[])
@@ -271,13 +228,7 @@ function add_progress_callback!(simulation; callback_iteration_interval = callba
         msg7 = @sprintf("elapsed wall time: %s\n", prettytime(wall_progress))
         msg8 = @sprintf("SYPD: %.2f\n", sim.Δt / step_time / 365)
         msg9 = @sprintf("advective_cfl: %.2f\n", advective_cfl)
-        msg10 = @sprintf("ΔOHC step: %.6e J\n", Δohc_step)
-        msg11 = @sprintf("HF(t=n-1) * Δt: %.6e J\n", heat_flux_step)
-        msg12 = @sprintf("ΔOHC - HF(t=n-1) * Δt: %.6e J\n", Δohc_step + heat_flux_step)
-        msg13 = @sprintf("ΔFW content step: %.6e kg\n", Δfw_content_step)
-        msg14 = @sprintf("FW flux(t=n-1) * Δt: %.6e kg\n", freshwater_flux_step)
-        msg15 = @sprintf("ΔFW content - FW flux(t=n-1) * Δt: %.6e kg\n", Δfw_content_step + freshwater_flux_step)
-        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9 * msg10 * msg11 * msg12 * msg13 * msg14 * msg15
+        @info msg1 * msg2 * msg3 * msg4 * msg5 * msg6 * msg7 * msg8 * msg9
         wall_time[] = current_wall_time
         return nothing
     end
@@ -363,8 +314,8 @@ function build_simulation(arch, run_id;
 
     @info "Defining free surface"
     free_surface = SplitExplicitFreeSurface(grid; substeps=70)
-    momentum_advection = WENOVectorInvariant()
-    tracer_advection = WENO(order=7)
+    momentum_advection = WENOVectorInvariant(time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+    tracer_advection = WENO(order=7, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
 
     @info "Defining ocean model"
