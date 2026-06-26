@@ -18,6 +18,7 @@ using Oceananigans.Operators: Ax, Ay, Az,
 using Oceananigans.Fields: ReducedField, interior, ConstantField, ZeroField, OneField
 using Oceananigans.ImmersedBoundaries: immersed_cell, peripheral_node
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.TimeSteppers: VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 
 using CFTime
 using Dates
@@ -41,10 +42,60 @@ const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
-checkpoint_interval = TimeInterval((365/24)days)
+checkpoint_interval = TimeInterval(5days)
 output_interval = AveragedTimeInterval(1days)
 callback_iteration_interval = 100
 default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
+
+checkpoint_superprefix(prefix) = prefix * "_iteration"
+
+function checkpoint_iteration(filepath, prefix)
+    filename = basename(filepath)
+    leading = length(checkpoint_superprefix(prefix))
+    trailing = length(".jld2")
+    return parse(Int, chop(filename; head=leading, tail=trailing))
+end
+
+function checkpoint_candidates(prefix; dir=output_path)
+    pattern = checkpoint_superprefix(prefix) * "*.jld2"
+    filepaths = glob(pattern, dir)
+
+    return sort(filepaths; by=filepath -> (stat(filepath).mtime, checkpoint_iteration(filepath, prefix)), rev=true)
+end
+
+function valid_checkpoint(filepath)
+    try
+        jldopen(filepath, "r") do file
+            return !isempty(keys(file))
+        end
+    catch err
+        @warn "Skipping invalid checkpoint file" filepath exception=(err, catch_backtrace())
+        return false
+    end
+end
+
+function latest_valid_checkpoint(prefix; dir=output_path)
+    for filepath in checkpoint_candidates(prefix; dir)
+        valid_checkpoint(filepath) && return filepath
+    end
+
+    return nothing
+end
+
+function resolve_pickup(pickup, prefix)
+    pickup !== true && return pickup
+
+    filepath = latest_valid_checkpoint(prefix)
+
+    if isnothing(filepath)
+        @info "No valid checkpoint found. Starting from scratch."
+        return false
+    end
+
+    iteration = checkpoint_iteration(filepath, prefix)
+    @info "Restarting from last valid checkpoint" filepath iteration
+    return filepath
+end
 
 function gpu_memory_status(prefix="")
     if !isdefined(Main, :CUDA)
@@ -384,12 +435,10 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     outputs = merge(ocean.model.tracers, ocean.model.velocities)
     remove_existing_diagnostic_output_files!(run_id_leading)
     surface_height = (; surface_height=ocean.model.free_surface.displacement)
-    # Surface flux diagnostics are disabled for the ocean-only run because these
-    # helpers assume a sea-ice-ocean interface exists in this NumericalEarth version.
-    # Store surface flux diagnostics with the same sign convention as the
-    # integrated content tendencies: positive surface input increases content.
-    surface_forcing = (; heat_flux=Field(-net_ocean_heat_flux(simulation.model)),
-                       fw_flux=Field(-net_ocean_freshwater_flux(simulation.model)))
+    # Surface flux diagnostics are bundled with sea-ice state in restart-era runs.
+    # Preserve the legacy run0001 sign convention so mixed historical runs stay consistent.
+    surface_forcing = (; heat_flux=Field(net_ocean_heat_flux(simulation.model)),
+                       fw_flux=Field(net_ocean_freshwater_flux(simulation.model)))
 
     for spec in slice_output_specs(grid)
         slice_level = spec.slice_level
@@ -447,8 +496,8 @@ function build_simulation(arch, run_id;
 
     @info "Defining free surface"
     free_surface = SplitExplicitFreeSurface(grid; substeps=70)
-    momentum_advection = WENOVectorInvariant()#time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
-    tracer_advection = WENO(order=7)#, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+    momentum_advection = WENOVectorInvariant(time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+    tracer_advection = WENO(order=7, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
 
     @info "Defining ocean model"
@@ -517,8 +566,10 @@ function run_segment!(state; pickup=false, Δt=nothing, stop_time=nothing, stop_
         error("Only one of stop_time or stop_iteration should be provided")
     end
 
-    @info "Running simulation" state.run_id pickup stop_time=prettytime(simulation.stop_time)
-    run!(simulation, pickup=pickup, checkpoint_at_end=true)
+    resolved_pickup = resolve_pickup(pickup, default_checkpoint_prefix)
+
+    @info "Running simulation" state.run_id pickup=resolved_pickup stop_time=prettytime(simulation.stop_time)
+    run!(simulation, pickup=resolved_pickup, checkpoint_at_end=true)
 
     return nothing
 end
