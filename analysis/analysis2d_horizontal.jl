@@ -1148,8 +1148,9 @@ surface_ocean_mask(bottom_height::Union{Nothing, AbstractMatrix}) = isnothing(bo
 depth_ocean_mask(depth::Real, bottom_height::Union{Nothing, AbstractMatrix}) =
     isnothing(bottom_height) ? nothing : bottom_height .< -Float32(depth)
 
-function run_all_animations(selected_run::Union{Nothing, Int} = parse_selected_run())
-    return run_all_animations(DEFAULT_ANIMATION_VARS; selected_run = selected_run)
+function run_all_animations(selected_run::Union{Nothing, Int} = parse_selected_run();
+                            k::Union{Nothing, Int} = nothing)
+    return run_all_animations(DEFAULT_ANIMATION_VARS; k = k, selected_run = selected_run)
 end
 
 function run_all_animations(vars::Vector{String}; k::Union{Nothing, Int} = nothing, selected_run = parse_selected_run())

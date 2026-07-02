@@ -507,7 +507,6 @@ function build_simulation(arch, run_id;
                                    timestepper=:SplitRungeKutta3,
                                    free_surface,
                                    forcing,
-                                   radiative_forcing=nothing,
                                    closure)
 
     @info "Initialising with ECCO4"
