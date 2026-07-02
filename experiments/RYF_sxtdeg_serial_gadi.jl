@@ -33,8 +33,8 @@ catch err
 end
 
 const data_path = expanduser("/home/tsohail/uom/ocean-ensembles/data/")
-const output_path = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
-const figdir = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
+const output_path = expanduser("/home/tsohail/uom/gadi-ensembles/outputs/")
+const figdir = expanduser("/home/tsohail/uom/gadi-ensembles/figures/")
 
 const Nx = Integer(360 * 6)
 const Ny = Integer(180 * 6)
@@ -495,7 +495,7 @@ function build_simulation(arch, run_id;
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
     @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=70)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=120)
     momentum_advection = WENOVectorInvariant(time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     tracer_advection = WENO(order=7, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
