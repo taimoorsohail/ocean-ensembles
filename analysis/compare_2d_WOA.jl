@@ -885,9 +885,12 @@ function make_error_multivariable_video(vars::Vector{String},
     return outname
 end
 
-function main()
+function main(; k::Union{Nothing, Int} = nothing)
+    return main(DEFAULT_COMPARISON_VARS; k)
+end
 
-    return main(DEFAULT_COMPARISON_VARS)
+function main(vars::Vector{String})
+    return main(vars; k = nothing)
 end
 
 function main(vars::Vector{String}; k::Union{Nothing, Int} = nothing)

@@ -4,7 +4,7 @@ using Glob
 using Oceananigans
 using NumericalEarth
 
-const OUTPUT_PATH = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
+const OUTPUT_PATH = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/saved/")
 const FIGDIR = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
 const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60

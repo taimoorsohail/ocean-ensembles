@@ -44,21 +44,22 @@ output_depths = [0, -100, -500, -1000, -2000]
 
 checkpoint_interval = TimeInterval(5days)
 output_interval = AveragedTimeInterval(1days)
-callback_iteration_interval = 100
+callback_iteration_interval = 1
 default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
 
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
 function checkpoint_iteration(filepath, prefix)
     filename = basename(filepath)
-    leading = length(checkpoint_superprefix(prefix))
-    trailing = length(".jld2")
-    return parse(Int, chop(filename; head=leading, tail=trailing))
+    pattern = Regex("^" * checkpoint_superprefix(prefix) * raw"(\d+)(?:_.*)?\.jld2")
+    match_data = match(pattern, filename)
+    isnothing(match_data) && return nothing
+    return parse(Int, match_data.captures[1])
 end
 
 function checkpoint_candidates(prefix; dir=output_path)
     pattern = checkpoint_superprefix(prefix) * "*.jld2"
-    filepaths = glob(pattern, dir)
+    filepaths = filter(filepath -> !isnothing(checkpoint_iteration(filepath, prefix)), glob(pattern, dir))
 
     return sort(filepaths; by=filepath -> (stat(filepath).mtime, checkpoint_iteration(filepath, prefix)), rev=true)
 end
@@ -159,7 +160,7 @@ function download_input_data!(dates, dataset)
     return (; temperature, salinity, ETOPOmetadata)
 end
 
-function build_grid(arch, bathymetry_metadata)
+function build_grid(arch, bathymetry_metadata; halo=(7,7,7))
     @info "Defining vertical z faces"
     z = ExponentialDiscretization(Nz, depth, 0, mutable=true)
 
@@ -170,7 +171,7 @@ function build_grid(arch, bathymetry_metadata)
     underlying_grid = TripolarGrid(arch;
                                    size=(Nx, Ny, Nz),
                                    z,
-                                   halo=(7, 7, 7),
+                                   halo,
                                    fold_topology=RightFaceFolded)
 
     @info "Defining bottom bathymetry"
@@ -242,6 +243,72 @@ function findmax_interior_field(field)
     return findmax(host_interior(field))
 end
 
+function align_checkpoint_fs(grid, arch, inputs, free_surface::SplitExplicitFreeSurface, checkpoint_prefix)
+    @info "Reading checkpoint for free surface alignment"
+    filepath = latest_valid_checkpoint(checkpoint_prefix)
+
+    jldopen(filepath, "r+") do data
+        keys_chkpt = "simulation/model/ocean/model/free_surface/displacement/data"
+        checkpoint_halo_size = (Integer((size(data[keys_chkpt])[1]-Nx)/2), Integer((size(data[keys_chkpt])[2]-Ny)/2), size(data[keys_chkpt])[3])
+        target_halo_size = (grid.Hx, length(free_surface.substepping.averaging_weights), 1)
+
+        if checkpoint_halo_size != target_halo_size
+            @info "Replacing checkpoint free surface with new grid halo size" checkpoint_halo_size target_halo_size
+            new_grid = build_grid(arch, inputs.ETOPOmetadata; halo=target_halo_size)
+            checkpoint_grid = build_grid(arch, inputs.ETOPOmetadata; halo=checkpoint_halo_size)
+            cpu_grid = build_grid(CPU(), inputs.ETOPOmetadata; halo=target_halo_size)
+
+            U_checkpoint = Field{Face, Center, Nothing}(checkpoint_grid)
+            V_checkpoint = Field{Center, Face, Nothing}(checkpoint_grid)
+            eta_checkpoint = Field{Center, Center, Nothing}(checkpoint_grid)
+
+            parent(U_checkpoint) .= on_architecture(arch, data["simulation/model/ocean/model/free_surface/barotropic_velocities/U/data"])
+            parent(V_checkpoint) .= on_architecture(arch, data["simulation/model/ocean/model/free_surface/barotropic_velocities/V/data"])
+            parent(eta_checkpoint) .= on_architecture(arch, data["simulation/model/ocean/model/free_surface/displacement/data"])
+
+            U_new = Field{Face, Center, Nothing}(new_grid)
+            V_new = Field{Center, Face, Nothing}(new_grid)
+            eta_new = Field{Center, Center, Nothing}(new_grid)
+
+            set!(U_new, U_checkpoint)
+            Oceananigans.BoundaryConditions.fill_halo_regions!(U_new)
+            set!(V_new, V_checkpoint)
+            Oceananigans.BoundaryConditions.fill_halo_regions!(V_new)
+            set!(eta_new, eta_checkpoint)
+            Oceananigans.BoundaryConditions.fill_halo_regions!(eta_new)
+
+            U_cpu = Field{Face, Center, Nothing}(cpu_grid)
+            V_cpu = Field{Center, Face, Nothing}(cpu_grid)
+            eta_cpu = Field{Center, Center, Nothing}(cpu_grid)
+
+            parent(U_cpu) .= on_architecture(CPU(), parent(U_new))
+            parent(V_cpu) .= on_architecture(CPU(), parent(V_new))
+            parent(eta_cpu) .= on_architecture(CPU(), parent(eta_new))
+            delete!(data, "simulation/model/ocean/model/free_surface/barotropic_velocities/U/data")
+            delete!(data, "simulation/model/ocean/model/free_surface/barotropic_velocities/V/data")
+            delete!(data, "simulation/model/ocean/model/free_surface/displacement/data")
+
+            data["simulation/model/ocean/model/free_surface/barotropic_velocities/U/data"] = parent(U_cpu)
+            data["simulation/model/ocean/model/free_surface/barotropic_velocities/V/data"] = parent(V_cpu)
+            data["simulation/model/ocean/model/free_surface/displacement/data"] = parent(eta_cpu)
+        end
+    end
+
+    return nothing
+end
+
+# function compute_mht(simulation)
+#     esm = simulation
+#     mht = compute_mht(esm)
+#     return mht
+# end
+
+function compute_TSdiagram(simulation; T_bins = 0:0.5:30, S_bins = 30:0.5:40)
+    ocean_model = simulation.model.ocean.model
+    T, S = ocean_model.tracers
+    h = Histogram((T=T, S=S), bins=(S=S_bins, T=T_bins), weights = :count, method = :integral, dims = (1, 2, 3)) |> Field
+    return h
+end
 
 function add_progress_callback!(simulation; callback_iteration_interval = callback_iteration_interval)
     start_wall_time = Ref(time_ns())
@@ -343,88 +410,6 @@ end
 
 const DiagnosticConstantField = Union{ConstantField, ZeroField, OneField}
 
-function filter_diagnostic_surface_outputs(outputs)
-    names = Symbol[]
-    fields = []
-
-    for name in keys(outputs)
-        output = outputs[name]
-
-        if output isa DiagnosticConstantField
-            @info "Skipping constant diagnostic surface output" name output
-        else
-            push!(names, name)
-            push!(fields, output)
-        end
-    end
-
-    return NamedTuple{Tuple(names)}(Tuple(fields))
-end
-
-function build_diagnostic_surface_outputs(simulation)
-    ocean_model = simulation.model.ocean.model
-    sea_ice_model = simulation.model.sea_ice.model
-
-    sea_ice_ocean_fluxes = simulation.model.interfaces.sea_ice_ocean_interface.fluxes
-    atmosphere_ocean_fluxes = simulation.model.interfaces.atmosphere_ocean_interface.fluxes
-    net_ocean_fluxes = simulation.model.interfaces.net_fluxes.ocean
-
-    base_outputs = (;
-        surface_height = ocean_model.free_surface.displacement,
-        net_ocean_flux_T = net_ocean_fluxes.T,
-        net_ocean_flux_S = net_ocean_fluxes.S,
-        net_ocean_flux_u = net_ocean_fluxes.u,
-        net_ocean_flux_v = net_ocean_fluxes.v,
-        atmosphere_ocean_sensible_heat = atmosphere_ocean_fluxes.sensible_heat,
-        atmosphere_ocean_latent_heat = atmosphere_ocean_fluxes.latent_heat,
-        atmosphere_ocean_water_vapor = atmosphere_ocean_fluxes.water_vapor,
-        atmosphere_ocean_x_momentum = atmosphere_ocean_fluxes.x_momentum,
-        atmosphere_ocean_y_momentum = atmosphere_ocean_fluxes.y_momentum,
-        sea_ice_ocean_interface_heat = sea_ice_ocean_fluxes.interface_heat,
-        sea_ice_ocean_frazil_heat = sea_ice_ocean_fluxes.frazil_heat,
-        sea_ice_ocean_salt = sea_ice_ocean_fluxes.salt,
-        sea_ice_ocean_x_momentum = sea_ice_ocean_fluxes.x_momentum,
-        sea_ice_ocean_y_momentum = sea_ice_ocean_fluxes.y_momentum,
-        sea_ice_thickness = sea_ice_model.ice_thickness,
-        sea_ice_consolidation_thickness = sea_ice_model.ice_consolidation_thickness,
-        sea_ice_concentration = sea_ice_model.ice_concentration,
-        sea_ice_salinity = sea_ice_model.tracers.S,
-        sea_ice_top_surface_temperature = sea_ice_model.ice_thermodynamics.top_surface_temperature,
-        sea_ice_u = sea_ice_model.velocities.u,
-        sea_ice_v = sea_ice_model.velocities.v)
-
-    radiation = simulation.model.radiation
-    radiation_interface_fluxes = isnothing(radiation) ? nothing : radiation.interface_fluxes
-    ocean_radiation_fluxes = if isnothing(radiation_interface_fluxes) || !haskey(radiation_interface_fluxes, :ocean)
-        nothing
-    else
-        radiation_interface_fluxes.ocean
-    end
-
-    radiation_outputs = isnothing(ocean_radiation_fluxes) ? NamedTuple() : (;
-        ocean_radiation_upwelling_longwave = ocean_radiation_fluxes.upwelling_longwave,
-        ocean_radiation_downwelling_longwave = ocean_radiation_fluxes.downwelling_longwave,
-        ocean_radiation_downwelling_shortwave = ocean_radiation_fluxes.downwelling_shortwave)
-
-    return filter_diagnostic_surface_outputs(merge(base_outputs, radiation_outputs))
-end
-
-function remove_existing_diagnostic_output_files!(run_id_leading)
-    diagnostic_filenames = (
-        "global_diagnostic_k$(Nz - 1)_fields_sxtdeg_RYF_run" * run_id_leading,
-        "global_diagnostic_surface_fields_sxtdeg_RYF_run" * run_id_leading)
-
-    for filename in diagnostic_filenames
-        filepath = joinpath(output_path, filename * ".jld2")
-        if isfile(filepath)
-            @info "Removing existing diagnostic output before pickup/restart" filepath
-            rm(filepath; force=true)
-        end
-    end
-
-    return nothing
-end
-
 function add_run_output_writers!(simulation, ocean, grid, run_id)
     run_id_leading = lpad(string(run_id), 4, '0')
     @info "Defining run-dependent output writers for run $run_id_leading"
@@ -432,8 +417,10 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
 
     sea_ice_outputs = (; ice_thickness=sea_ice_model.ice_thickness,
                        ice_concentration=sea_ice_model.ice_concentration)
+    # TS_MHT_outputs = (; mht=compute_mht(simulation),
+    #                   TSdiagram=compute_TSdiagram(simulation))
+
     outputs = merge(ocean.model.tracers, ocean.model.velocities)
-    remove_existing_diagnostic_output_files!(run_id_leading)
     surface_height = (; surface_height=ocean.model.free_surface.displacement)
     # Surface flux diagnostics are bundled with sea-ice state in restart-era runs.
     # Preserve the legacy run0001 sign convention so mixed historical runs stay consistent.
@@ -459,6 +446,15 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                                                   with_halos=false,
                                                                   overwrite_existing=true,
                                                                   array_type=Array{Float32})
+
+    # @time simulation.output_writers[:TS_MHT] = JLD2Writer(simulation.model, TS_MHT_outputs;
+    #                                                               dir=output_path,
+    #                                                               schedule=output_interval,
+    #                                                               filename="global_TS_MHT_sxtdeg_RYF_run" * run_id_leading,
+    #                                                               with_halos=false,
+    #                                                               overwrite_existing=true,
+    #                                                               array_type=Array{Float32})
+
                                                                   
     @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
                                                        dir=output_path,
@@ -479,7 +475,7 @@ function build_simulation(arch, run_id;
     inputs = download_input_data!(dates, dataset)
 
     @info "Defining grid"
-    grid = build_grid(arch, inputs.ETOPOmetadata)
+    grid = build_grid(arch, inputs.ETOPOmetadata; halo=(7,7,7))
     z_surf = CUDA.@allowscalar grid.underlying_grid.z.cᵃᵃᶠ[grid.Nz]
 
     @info "Defining restoring rate"
@@ -495,10 +491,12 @@ function build_simulation(arch, run_id;
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
     @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=70)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=120)
     momentum_advection = WENOVectorInvariant(time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     tracer_advection = WENO(order=7, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
+
+    align_checkpoint_fs(grid, arch, inputs, free_surface, checkpoint_prefix)
 
     @info "Defining ocean model"
     @time ocean = ocean_simulation(grid; Δt,

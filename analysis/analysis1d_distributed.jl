@@ -111,7 +111,38 @@ function load_serialized_grid(files::Vector{String}; label::AbstractString)
     return nothing
 end
 
-surface_flux_sign(run::Int) = run == 1 ? -1.0 : 1.0
+function infer_surface_flux_sign(run::Int, flux_times, heat_flux_raw, fw_flux_raw, integral_runs)
+    run_data = get(integral_runs, run, nothing)
+    isnothing(run_data) && return 1.0
+
+    overlap_start = max(first(run_data.times), first(flux_times))
+    overlap_end = min(last(run_data.times), last(flux_times))
+    overlap_end > overlap_start || return 1.0
+
+    overlap_idx = findall(t -> overlap_start <= t <= overlap_end, run_data.times)
+    length(overlap_idx) >= 2 || return 1.0
+
+    dt_in_seconds = vcat(0.0, diff(flux_times))
+    heat_flux_cumsum = cumsum(heat_flux_raw .* dt_in_seconds)
+    fw_flux_cumsum = cumsum(fw_flux_raw .* dt_in_seconds)
+
+    compare_times = run_data.times[overlap_idx]
+    heat_compare = linear_interpolate_series(compare_times, flux_times, heat_flux_cumsum)
+    fw_compare = linear_interpolate_series(compare_times, flux_times, fw_flux_cumsum)
+
+    heat_compare .-= heat_compare[1]
+    fw_compare .-= fw_compare[1]
+
+    ohc_anomaly = run_data.ohc[overlap_idx] .- run_data.ohc[overlap_idx[1]]
+    fw_anomaly = run_data.fw[overlap_idx] .- run_data.fw[overlap_idx[1]]
+
+    plus_score = sum(abs2, ohc_anomaly .- heat_compare) + sum(abs2, fw_anomaly .- fw_compare)
+    minus_score = sum(abs2, ohc_anomaly .+ heat_compare) + sum(abs2, fw_anomaly .+ fw_compare)
+
+    inferred_sign = plus_score <= minus_score ? 1.0 : -1.0
+    @info "Inferred surface-flux sign convention" run inferred_sign plus_score minus_score overlap_count = length(overlap_idx)
+    return inferred_sign
+end
 
 time_total = Float64[]
 T_total = Float64[]
@@ -125,6 +156,7 @@ integral_depth_grid = hasproperty(integral_grid, :underlying_grid) ? integral_gr
 append!(depth, integral_depth_grid.z.cᵃᵃᶜ)
 
 integral_by_time = Dict{Float64, NamedTuple{(:run, :T, :S, :V, :Tz, :Sz, :Vz), Tuple{Int, Float64, Float64, Float64, Vector{Float64}, Vector{Float64}, Vector{Float64}}}}()
+integral_run_by_time = Dict{Int, Dict{Float64, NamedTuple{(:T, :S, :V), Tuple{Float64, Float64, Float64}}}}()
 integral_replacements = Ref(0)
 
 for file in files_integral
@@ -149,6 +181,9 @@ for file in files_integral
                 integral_replacements[] += (!isnothing(existing) && run > existing.run) ? 1 : 0
                 integral_by_time[t] = record
             end
+
+            run_integrals = get!(integral_run_by_time, run, Dict{Float64, NamedTuple{(:T, :S, :V), Tuple{Float64, Float64, Float64}}}())
+            run_integrals[t] = (T = record.T, S = record.S, V = record.V)
         end
     end
 end
@@ -196,7 +231,22 @@ for (i, t) in enumerate(sorted_integral_times)
 end
 
 @info "Merged integral timeseries with run-priority deduplication" unique_steps = length(time_total) replaced_duplicates = integral_replacements[]
+
+integral_runs = Dict{Int, NamedTuple{(:times, :ohc, :fw), Tuple{Vector{Float64}, Vector{Float64}, Vector{Float64}}}}()
+for (run, run_integrals) in integral_run_by_time
+    run_times = sort(collect(keys(run_integrals)))
+    T_run = [run_integrals[t].T for t in run_times]
+    S_run = [run_integrals[t].S for t in run_times]
+    V_run = [run_integrals[t].V for t in run_times]
+    integral_runs[run] = (
+        times = run_times,
+        ohc = ρ₀ .* cₚ .* T_run,
+        fw = ρ₀ .* (V_run .- S_run ./ 35)
+    )
+end
+
 empty!(integral_by_time)
+empty!(integral_run_by_time)
 GC.gc()
 
 t_all = time_total
@@ -228,8 +278,9 @@ for file in files_surface
         fw_integral_field = Field(Integral(fw_snapshot, dims = (1, 2, 3)))
 
         timeiters = sort(parse.(Int, keys(data["timeseries/t/"])))
-        flux_sign = surface_flux_sign(run)
-        @info "Applying surface-flux sign convention" file = basename(file) run flux_sign
+        file_surface_times = Float64[]
+        raw_heat_integrals = Float64[]
+        raw_fw_integrals = Float64[]
 
         for (t_idx, iter) in enumerate(timeiters)
             t = Float64(data["timeseries/t/$(iter)"])
@@ -242,22 +293,31 @@ for file in files_surface
             compute!(heat_integral_field)
             compute!(fw_integral_field)
 
-            raw_heat_integral = Float64(interior(heat_integral_field)[1, 1, 1])
-            raw_fw_integral = Float64(interior(fw_integral_field)[1, 1, 1])
+            push!(file_surface_times, t)
+            push!(raw_heat_integrals, Float64(interior(heat_integral_field)[1, 1, 1]))
+            push!(raw_fw_integrals, Float64(interior(fw_integral_field)[1, 1, 1]))
 
+            if t_idx % SURFACE_FLUX_GC_INTERVAL == 0
+                GC.gc(false)
+            end
+        end
+
+        isempty(file_surface_times) && return
+
+        flux_sign = infer_surface_flux_sign(run, file_surface_times, raw_heat_integrals, raw_fw_integrals, integral_runs)
+        @info "Applying inferred surface-flux sign convention" file = basename(file) run flux_sign
+
+        for i in eachindex(file_surface_times)
+            t = file_surface_times[i]
             record = (
                 run = run,
-                heat_flux = flux_sign * raw_heat_integral,
-                fw_flux = flux_sign * raw_fw_integral)
+                heat_flux = flux_sign * raw_heat_integrals[i],
+                fw_flux = flux_sign * raw_fw_integrals[i])
 
             existing = get(surface_flux_by_time, t, nothing)
             if isnothing(existing) || run >= existing.run
                 surface_flux_replacements[] += (!isnothing(existing) && run > existing.run) ? 1 : 0
                 surface_flux_by_time[t] = record
-            end
-
-            if t_idx % SURFACE_FLUX_GC_INTERVAL == 0
-                GC.gc(false)
             end
         end
     end
