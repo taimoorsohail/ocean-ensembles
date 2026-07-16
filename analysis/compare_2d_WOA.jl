@@ -3,6 +3,7 @@ using NumericalEarth
 using Dates
 using Glob
 using JLD2
+using Logging
 using Oceananigans
 using Statistics
 using WorldOceanAtlasTools
@@ -74,6 +75,85 @@ function copy_2d_to!(dest::Matrix{Float32}, raw)
     return true
 end
 
+const OFFSET_ARRAYS = Base.loaded_modules[Base.PkgId(Base.UUID("6fe1bfb0-de20-5000-8ca7-80f57d26f881"), "OffsetArrays")]
+
+underlying_grid(grid) = hasproperty(grid, :underlying_grid) ? getproperty(grid, :underlying_grid) : grid
+
+function materialize_offset_array(source)
+    if hasproperty(source, :parent) && hasproperty(source, :offsets)
+        return OFFSET_ARRAYS.OffsetArray(getproperty(source, :parent), getproperty(source, :offsets)...)
+    end
+
+    return source
+end
+
+function parent_array(source)
+    return hasproperty(source, :parent) ? getproperty(source, :parent) : Array(source)
+end
+
+function interior_start(source, dim::Int, fallback_halo::Int, interior_size::Int, stored_size::Int)
+    if hasproperty(source, :offsets)
+        offsets = getproperty(source, :offsets)
+        if dim <= length(offsets)
+            start = 1 - offsets[dim]
+            1 <= start <= stored_size - interior_size + 1 && return start
+        end
+    end
+
+    stored_size == interior_size && return 1
+    start = fallback_halo + 1
+    1 <= start <= stored_size - interior_size + 1 && return start
+    error("Could not crop stored dimension " * string(stored_size) * " to interior size " * string(interior_size) * ".")
+end
+
+function physical_matrix(source, grid; T = Float64)
+    Nx, Ny = getproperty(grid, :Nx), getproperty(grid, :Ny)
+    Hx, Hy = getproperty(grid, :Hx), getproperty(grid, :Hy)
+    data = parent_array(source)
+    i0 = interior_start(source, 1, Hx, Nx, size(data, 1))
+    j0 = interior_start(source, 2, Hy, Ny, size(data, 2))
+
+    if ndims(data) == 2
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1))
+    elseif ndims(data) == 3
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1, 1))
+    end
+
+    error("Expected a 2D or 3D stored grid array, got " * string(ndims(data)) * " dimensions.")
+end
+
+function materialized_underlying_grid(grid)
+    g = underlying_grid(grid)
+
+    return OrthogonalSphericalShellGrid{Periodic, RightFaceFolded, Bounded}(CPU(),
+        getproperty(g, :Nx), getproperty(g, :Ny), getproperty(g, :Nz),
+        getproperty(g, :Hx), getproperty(g, :Hy), getproperty(g, :Hz),
+        getproperty(g, :Lz),
+        materialize_offset_array(getproperty(g, :λᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :λᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :λᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :λᶠᶠᵃ)),
+        materialize_offset_array(getproperty(g, :φᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :φᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :φᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :φᶠᶠᵃ)),
+        getproperty(g, :z),
+        materialize_offset_array(getproperty(g, :Δxᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Δxᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Δxᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Δxᶠᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Δyᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Δyᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Δyᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Δyᶠᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Azᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Azᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Azᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Azᶠᶠᵃ)),
+        getproperty(g, :radius),
+        getproperty(g, :conformal_mapping))
+end
+
 function month_of_year_and_start(t::Real)
     year_index = floor(Int, t / SECONDS_PER_YEAR)
     second_of_year = t - year_index * SECONDS_PER_YEAR
@@ -117,8 +197,10 @@ function read_serialized_grid(file)
 end
 
 function load_grid_from_output_file(filepath::AbstractString)
-    return jldopen(filepath, "r") do f
-        read_serialized_grid(f)
+    return with_logger(NullLogger()) do
+        jldopen(filepath, "r") do f
+            read_serialized_grid(f)
+        end
     end
 end
 
@@ -363,11 +445,13 @@ function bottom_height_matrix(grid)
     isnothing(grid) && return nothing
     hasproperty(grid, :immersed_boundary) || return nothing
 
+    source_grid = underlying_grid(grid)
     immersed_boundary = getproperty(grid, :immersed_boundary)
     hasproperty(immersed_boundary, :bottom_height) || return nothing
 
     bottom_height_field = getproperty(immersed_boundary, :bottom_height)
-    return Float32.(Array(interior(bottom_height_field, :, :, 1)))
+    hasproperty(bottom_height_field, :data) || return nothing
+    return physical_matrix(getproperty(bottom_height_field, :data), source_grid; T = Float32)
 end
 
 function depth_ocean_mask(z_center::Real, bottom_height::Union{Nothing, AbstractMatrix})
@@ -489,7 +573,7 @@ function build_woa_depth_cache(model_grid, depth_levels::Vector{Int};
                                resolution::AbstractString = RESOLUTION,
                                cache_dir::AbstractString = mktempdir())
     T_fields, S_fields = load_woa_monthly_fields()
-    model_underlying = hasproperty(model_grid, :underlying_grid) ? model_grid.underlying_grid : model_grid
+    model_underlying = materialized_underlying_grid(model_grid)
 
     model_z_faces = model_underlying.z.cᵃᵃᶠ
     target_depth_values = [Float64(model_z_faces[depth]) for depth in depth_levels]

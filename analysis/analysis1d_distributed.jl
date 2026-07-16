@@ -4,6 +4,7 @@ using NumericalEarth: EarthSystemModels, Oceans
 using Statistics
 using JLD2
 using Glob
+using Logging
 
 const ocean_eos = Oceans.TEOS10EquationOfState()
 const ρ₀ = isdefined(Oceananigans, :reference_density) ?
@@ -52,6 +53,76 @@ function extract_surface_matrix(raw)
     return nothing
 end
 
+function underlying_grid(grid)
+    return hasproperty(grid, :underlying_grid) ? getproperty(grid, :underlying_grid) : grid
+end
+
+function parent_array(source)
+    return hasproperty(source, :parent) ? getproperty(source, :parent) : Array(source)
+end
+
+function interior_start(source, dim::Int, fallback_halo::Int, interior_size::Int, stored_size::Int)
+    if hasproperty(source, :offsets)
+        offsets = getproperty(source, :offsets)
+        if dim <= length(offsets)
+            start = 1 - offsets[dim]
+            1 <= start <= stored_size - interior_size + 1 && return start
+        end
+    end
+
+    stored_size == interior_size && return 1
+    start = fallback_halo + 1
+    1 <= start <= stored_size - interior_size + 1 && return start
+    error("Could not crop stored dimension " * string(stored_size) * " to interior size " * string(interior_size) * ".")
+end
+
+function physical_matrix(source, grid; T = Float64)
+    Nx, Ny = getproperty(grid, :Nx), getproperty(grid, :Ny)
+    Hx, Hy = getproperty(grid, :Hx), getproperty(grid, :Hy)
+    data = parent_array(source)
+    i0 = interior_start(source, 1, Hx, Nx, size(data, 1))
+    j0 = interior_start(source, 2, Hy, Ny, size(data, 2))
+
+    if ndims(data) == 2
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1))
+    elseif ndims(data) == 3
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1, 1))
+    end
+
+    error("Expected a 2D or 3D stored grid array, got " * string(ndims(data)) * " dimensions.")
+end
+
+function cell_area_matrix(grid)
+    g = underlying_grid(grid)
+    hasproperty(g, :Azᶜᶜᵃ) || error("Serialized grid does not contain center cell areas.")
+    return physical_matrix(getproperty(g, :Azᶜᶜᵃ), g; T = Float64)
+end
+
+function bottom_height_matrix(grid)
+    hasproperty(grid, :immersed_boundary) || return nothing
+    source_grid = underlying_grid(grid)
+    immersed_boundary = getproperty(grid, :immersed_boundary)
+    hasproperty(immersed_boundary, :bottom_height) || return nothing
+    bottom_height_field = getproperty(immersed_boundary, :bottom_height)
+    hasproperty(bottom_height_field, :data) || return nothing
+    return physical_matrix(getproperty(bottom_height_field, :data), source_grid; T = Float32)
+end
+
+surface_ocean_mask(bottom_height::Union{Nothing, AbstractMatrix}) = isnothing(bottom_height) ? nothing : BitMatrix(bottom_height .< 0f0)
+
+function surface_flux_integral(flux::AbstractMatrix, areas::AbstractMatrix, wet_mask::Union{Nothing, BitMatrix})
+    size(flux) == size(areas) || error("Area shape mismatch: got " * string(size(areas)) * " expected " * string(size(flux)) * ".")
+    !isnothing(wet_mask) && size(wet_mask) != size(flux) && error("Mask shape mismatch: got " * string(size(wet_mask)) * " expected " * string(size(flux)) * ".")
+
+    total = 0.0
+    @inbounds for idx in eachindex(flux, areas)
+        !isnothing(wet_mask) && !wet_mask[idx] && continue
+        value = flux[idx]
+        isfinite(value) && (total += Float64(value) * areas[idx])
+    end
+    return total
+end
+
 function linear_interpolate_series(query_times, source_times, source_values)
     Nq = length(query_times)
     Ns = length(source_times)
@@ -95,8 +166,10 @@ end
 
 function load_serialized_grid(files::Vector{String}; label::AbstractString)
     for (index, file) in enumerate(files)
-        grid = jldopen(file, "r") do data
-            read_serialized_grid(data)
+        grid = with_logger(NullLogger()) do
+            jldopen(file, "r") do data
+                read_serialized_grid(data)
+            end
         end
 
         isnothing(grid) && continue
@@ -263,6 +336,9 @@ if surface_grid === nothing
     surface_grid = integral_grid
 end
 
+surface_areas = cell_area_matrix(surface_grid)
+surface_wet_mask = surface_ocean_mask(bottom_height_matrix(surface_grid))
+
 for file in files_surface
     @info "Streaming surface flux diagnostics from $(basename(file))"
     run = run_number(file)
@@ -272,10 +348,6 @@ for file in files_surface
         haskey(data, "timeseries/heat_flux") || return
         haskey(data, "timeseries/fw_flux") || return
 
-        heat_snapshot = Field{Center, Center, Nothing}(surface_grid)
-        fw_snapshot = Field{Center, Center, Nothing}(surface_grid)
-        heat_integral_field = Field(Integral(heat_snapshot, dims = (1, 2, 3)))
-        fw_integral_field = Field(Integral(fw_snapshot, dims = (1, 2, 3)))
 
         timeiters = sort(parse.(Int, keys(data["timeseries/t/"])))
         file_surface_times = Float64[]
@@ -288,14 +360,9 @@ for file in files_surface
             fw_raw = extract_surface_matrix(data["timeseries/fw_flux/$(iter)"])
             (heat_raw === nothing || fw_raw === nothing) && continue
 
-            set!(heat_snapshot, heat_raw)
-            set!(fw_snapshot, fw_raw)
-            compute!(heat_integral_field)
-            compute!(fw_integral_field)
-
             push!(file_surface_times, t)
-            push!(raw_heat_integrals, Float64(interior(heat_integral_field)[1, 1, 1]))
-            push!(raw_fw_integrals, Float64(interior(fw_integral_field)[1, 1, 1]))
+            push!(raw_heat_integrals, surface_flux_integral(heat_raw, surface_areas, surface_wet_mask))
+            push!(raw_fw_integrals, surface_flux_integral(fw_raw, surface_areas, surface_wet_mask))
 
             if t_idx % SURFACE_FLUX_GC_INTERVAL == 0
                 GC.gc(false)

@@ -44,7 +44,7 @@ output_depths = [0, -100, -500, -1000, -2000]
 
 checkpoint_interval = TimeInterval(5days)
 output_interval = AveragedTimeInterval(1days)
-callback_iteration_interval = 1
+callback_iteration_interval = 100
 default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
 
 checkpoint_superprefix(prefix) = prefix * "_iteration"
@@ -250,7 +250,7 @@ function align_checkpoint_fs(grid, arch, inputs, free_surface::SplitExplicitFree
     jldopen(filepath, "r+") do data
         keys_chkpt = "simulation/model/ocean/model/free_surface/displacement/data"
         checkpoint_halo_size = (Integer((size(data[keys_chkpt])[1]-Nx)/2), Integer((size(data[keys_chkpt])[2]-Ny)/2), size(data[keys_chkpt])[3])
-        target_halo_size = (grid.Hx, length(free_surface.substepping.averaging_weights), 1)
+        target_halo_size = (grid.Hx, length(free_surface.substepping.averaging_weights)+2, 1)
 
         if checkpoint_halo_size != target_halo_size
             @info "Replacing checkpoint free surface with new grid halo size" checkpoint_halo_size target_halo_size
@@ -271,9 +271,7 @@ function align_checkpoint_fs(grid, arch, inputs, free_surface::SplitExplicitFree
             eta_new = Field{Center, Center, Nothing}(new_grid)
 
             set!(U_new, U_checkpoint)
-            Oceananigans.BoundaryConditions.fill_halo_regions!(U_new)
             set!(V_new, V_checkpoint)
-            Oceananigans.BoundaryConditions.fill_halo_regions!(V_new)
             set!(eta_new, eta_checkpoint)
             Oceananigans.BoundaryConditions.fill_halo_regions!(eta_new)
 
@@ -297,18 +295,26 @@ function align_checkpoint_fs(grid, arch, inputs, free_surface::SplitExplicitFree
     return nothing
 end
 
-# function compute_mht(simulation)
-#     esm = simulation
-#     mht = compute_mht(esm)
-#     return mht
+function compute_mht(simulation)
+    esm = simulation.model
+    mht = meridional_heat_transport(esm) |> Field
+    return mht
+end
+
+# function compute_TSdiagram(simulation; T_bins = 0:0.5:30, S_bins = 30:0.5:40)
+#     ocean_model = simulation.model.ocean.model
+#     T, S = ocean_model.tracers
+#     h = Histogram((T=T, S=S), bins=(S=S_bins, T=T_bins), weights = :count, method = :integral, dims = (1, 2, 3)) |> Field
+#     return h
 # end
 
-function compute_TSdiagram(simulation; T_bins = 0:0.5:30, S_bins = 30:0.5:40)
-    ocean_model = simulation.model.ocean.model
-    T, S = ocean_model.tracers
-    h = Histogram((T=T, S=S), bins=(S=S_bins, T=T_bins), weights = :count, method = :integral, dims = (1, 2, 3)) |> Field
-    return h
-end
+# function compute_streamfunction(simulation; x_bins = 0:0.5:30, y_bins = 30:0.5:40)
+#     ocean_model = simulation.model.ocean.model
+#     T, S = ocean_model.tracers
+#     h = Histogram((T=T, S=S), bins=(S=S_bins, T=T_bins), weights = :count, method = :integral, dims = (1, 2, 3)) |> Field
+#     return h
+# end
+
 
 function add_progress_callback!(simulation; callback_iteration_interval = callback_iteration_interval)
     start_wall_time = Ref(time_ns())
@@ -417,8 +423,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
 
     sea_ice_outputs = (; ice_thickness=sea_ice_model.ice_thickness,
                        ice_concentration=sea_ice_model.ice_concentration)
-    # TS_MHT_outputs = (; mht=compute_mht(simulation),
-    #                   TSdiagram=compute_TSdiagram(simulation))
+    MHT_outputs = (; mht=compute_mht(simulation))
 
     outputs = merge(ocean.model.tracers, ocean.model.velocities)
     surface_height = (; surface_height=ocean.model.free_surface.displacement)
@@ -447,15 +452,14 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                                                   overwrite_existing=true,
                                                                   array_type=Array{Float32})
 
-    # @time simulation.output_writers[:TS_MHT] = JLD2Writer(simulation.model, TS_MHT_outputs;
-    #                                                               dir=output_path,
-    #                                                               schedule=output_interval,
-    #                                                               filename="global_TS_MHT_sxtdeg_RYF_run" * run_id_leading,
-    #                                                               with_halos=false,
-    #                                                               overwrite_existing=true,
-    #                                                               array_type=Array{Float32})
+    @time simulation.output_writers[:MHT] = JLD2Writer(simulation.model, MHT_outputs;
+                                                                  dir=output_path,
+                                                                  schedule=output_interval,
+                                                                  filename="global_MHT_sxtdeg_RYF_run" * run_id_leading,
+                                                                  with_halos=false,
+                                                                  overwrite_existing=true,
+                                                                  array_type=Array{Float32})
 
-                                                                  
     @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
                                                        dir=output_path,
                                                        schedule=output_interval,
@@ -491,7 +495,7 @@ function build_simulation(arch, run_id;
     closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
 
     @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=120)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=167)
     momentum_advection = WENOVectorInvariant(time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     tracer_advection = WENO(order=7, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
@@ -546,12 +550,27 @@ function build_simulation(arch, run_id;
     return (; simulation, ocean, run_id)
 end
 
-function run_segment!(state; pickup=false, Δt=nothing, stop_time=nothing, stop_iteration=nothing)
+function reconcile_pickup_free_surface!(simulation)
+    ocean_model = simulation.model.ocean.model
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.reconcile_free_surface!(ocean_model.free_surface, ocean_model.grid, ocean_model.velocities)
+    return nothing
+end
+
+function run_segment!(state;
+                      pickup=false,
+                      Δt=nothing,
+                      stop_time=nothing,
+                      stop_iteration=nothing,
+                      wall_time_limit=nothing)
     simulation = state.simulation
 
     if Δt !== nothing
-        @info "Updating simulation time step to Δt=$(prettytime(Δt))"
+        @info "Updating simulation time step" Δt=prettytime(Δt)
         simulation.Δt = Δt
+    end
+    if wall_time_limit !== nothing
+        @info "Updating simulation wall-time limit" wall_time_limit=prettytime(wall_time_limit)
+        simulation.wall_time_limit = wall_time_limit
     end
     if isnothing(stop_time) && isnothing(stop_iteration)
         simulation.stop_time = state.run_id * 12 * (365 / 12)days
@@ -565,6 +584,13 @@ function run_segment!(state; pickup=false, Δt=nothing, stop_time=nothing, stop_
 
     resolved_pickup = resolve_pickup(pickup, default_checkpoint_prefix)
 
+    if resolved_pickup isa String
+        @info "Restoring checkpoint before run" filepath=resolved_pickup
+        set!(simulation; checkpoint=resolved_pickup)
+        @info "Reconciling split-explicit free surface after pickup"
+        reconcile_pickup_free_surface!(simulation)
+        resolved_pickup = false
+    end
     @info "Running simulation" state.run_id pickup=resolved_pickup stop_time=prettytime(simulation.stop_time)
     run!(simulation, pickup=resolved_pickup, checkpoint_at_end=true)
 

@@ -1,5 +1,6 @@
 using CairoMakie
 using JLD2
+using Logging
 using Glob
 using Oceananigans
 using NumericalEarth
@@ -98,6 +99,43 @@ function copy_2d_to!(dest::Matrix{Float32}, raw)
         dest[i] = Float32(src[i])
     end
     return true
+end
+
+underlying_grid(grid) = hasproperty(grid, :underlying_grid) ? getproperty(grid, :underlying_grid) : grid
+
+function parent_array(source)
+    return hasproperty(source, :parent) ? getproperty(source, :parent) : Array(source)
+end
+
+function interior_start(source, dim::Int, fallback_halo::Int, interior_size::Int, stored_size::Int)
+    if hasproperty(source, :offsets)
+        offsets = getproperty(source, :offsets)
+        if dim <= length(offsets)
+            start = 1 - offsets[dim]
+            1 <= start <= stored_size - interior_size + 1 && return start
+        end
+    end
+
+    stored_size == interior_size && return 1
+    start = fallback_halo + 1
+    1 <= start <= stored_size - interior_size + 1 && return start
+    error("Could not crop stored dimension " * string(stored_size) * " to interior size " * string(interior_size) * ".")
+end
+
+function physical_matrix(source, grid; T = Float64)
+    Nx, Ny = getproperty(grid, :Nx), getproperty(grid, :Ny)
+    Hx, Hy = getproperty(grid, :Hx), getproperty(grid, :Hy)
+    data = parent_array(source)
+    i0 = interior_start(source, 1, Hx, Nx, size(data, 1))
+    j0 = interior_start(source, 2, Hy, Ny, size(data, 2))
+
+    if ndims(data) == 2
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1))
+    elseif ndims(data) == 3
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1, 1))
+    end
+
+    error("Expected a 2D or 3D stored grid array, got " * string(ndims(data)) * " dimensions.")
 end
 
 function collect_frame_refs(files::Vector{String}, vars::Vector{String})
@@ -239,15 +277,20 @@ function load_frame!(buffers::Dict{String, Matrix{Float32}}, file, vars::Vector{
 end
 
 function bottom_height_matrix(filepath::AbstractString)
-    return jldopen(filepath, "r") do f
-        haskey(f, "serialized/grid") || return nothing
-        grid = f["serialized/grid"]
-        hasproperty(grid, :immersed_boundary) || return nothing
-        immersed_boundary = getproperty(grid, :immersed_boundary)
-        hasproperty(immersed_boundary, :bottom_height) || return nothing
-        bottom_height_field = getproperty(immersed_boundary, :bottom_height)
-        bottom_height = Array(interior(bottom_height_field, :, :, 1))
-        Float32.(bottom_height)
+    return with_logger(NullLogger()) do
+        jldopen(filepath, "r") do f
+            haskey(f, "serialized/grid") || return nothing
+            grid = f["serialized/grid"]
+            hasproperty(grid, :immersed_boundary) || return nothing
+
+            source_grid = underlying_grid(grid)
+            immersed_boundary = getproperty(grid, :immersed_boundary)
+            hasproperty(immersed_boundary, :bottom_height) || return nothing
+
+            bottom_height_field = getproperty(immersed_boundary, :bottom_height)
+            hasproperty(bottom_height_field, :data) || return nothing
+            physical_matrix(getproperty(bottom_height_field, :data), source_grid; T = Float32)
+        end
     end
 end
 

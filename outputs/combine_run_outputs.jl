@@ -2,6 +2,7 @@
 
 using Glob
 using JLD2
+using Logging
 using Oceananigans
 using NumericalEarth
 using Printf
@@ -158,25 +159,19 @@ function copy_timeseries_schema!(dst, schema_sources::Dict{String, String}, vars
     return nothing
 end
 
-function ensure_serialized_grid_aliases!(dst, representative_file::AbstractString, vars::Vector{String})
-    needed_indices = Int[]
-
+function ensure_serialized_grids!(dst, schema_sources::Dict{String, String}, vars::Vector{String})
     for var in vars
         grid_index_path = "timeseries/$var/serialized/grid_index"
         haskey(dst, grid_index_path) || continue
         idx = Int(dst[grid_index_path])
-        idx in needed_indices || push!(needed_indices, idx)
-    end
+        grid_path = "serialized/grid_$(idx)"
+        haskey(dst, grid_path) && continue
 
-    isempty(needed_indices) && return nothing
-    haskey(dst, "serialized/grid") || return nothing
-
-    jldopen(representative_file, "r") do rep
-        source_grid = haskey(rep, "serialized/grid") ? rep["serialized/grid"] : dst["serialized/grid"]
-        for idx in needed_indices
-            alias_path = "serialized/grid_$(idx)"
-            haskey(dst, alias_path) && continue
-            dst[alias_path] = source_grid
+        source_path = get(schema_sources, var, nothing)
+        isnothing(source_path) && error("No schema source found for variable $var.")
+        jldopen(source_path, "r") do src
+            haskey(src, grid_path) || error("Schema for $var refers to missing $grid_path in $source_path.")
+            dst[grid_path] = src[grid_path]
         end
     end
 
@@ -217,7 +212,8 @@ function build_selected_records(files::Vector{String})
             vars = list_timeseries_variables(f)
             for var in vars
                 push!(var_set, var)
-                get!(schema_sources, var, file)
+                # Keep the schema from the latest run so metadata remains coherent when a grid halo changes.
+                schema_sources[var] = file
             end
 
             time_keys = sort(parse.(Int, string.(collect(keys(f["timeseries/t"])))) )
@@ -255,9 +251,14 @@ function write_merged_file!(target_path::AbstractString,
 
     jldopen(representative_file, "r") do rep
         jldopen(temp_path, "w") do out
-            copy_non_timeseries_metadata!(out, rep)
-            copy_timeseries_schema!(out, schema_sources, vars)
-            ensure_serialized_grid_aliases!(out, representative_file, vars)
+            # JLD2 may warn while reconstructing grid types saved by a different
+            # Oceananigans version. We only transfer this metadata so the interior
+            # FieldTimeSeries remains readable; the warnings are not actionable here.
+            with_logger(NullLogger()) do
+                copy_non_timeseries_metadata!(out, rep)
+                copy_timeseries_schema!(out, schema_sources, vars)
+                ensure_serialized_grids!(out, schema_sources, vars)
+            end
 
             nan_templates = Dict{String, Array{Float32}}()
             for var in vars
@@ -307,7 +308,8 @@ end
 
 function merge_family!(files::Vector{String}, target_run::Int; dry_run::Bool)
     sorted_times, selected_records, vars, replaced_duplicates, schema_sources, usable_files, skipped_files = build_selected_records(files)
-    representative = first(usable_files)
+    # Output arrays are halo-free, so use the newest grid metadata across restarts.
+    representative = last(usable_files)
     target_path = target_output_path(representative, target_run)
 
     println("Family: $(replace(basename(representative), r"_run\d+\.jld2$" => ""))")

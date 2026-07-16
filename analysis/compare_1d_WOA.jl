@@ -3,6 +3,7 @@ using NumericalEarth
 using ConservativeRegridding
 using Dates
 using JLD2
+using Logging
 using OceanEnsembles
 using Oceananigans
 using Printf
@@ -86,7 +87,9 @@ function load_model_integral_series(path::AbstractString, resolution::AbstractSt
     for file in files
         run = run_number(file)
         jldopen(file, "r") do data
-            grid = data["serialized/grid"]
+            grid = with_logger(NullLogger()) do
+                data["serialized/grid"]
+            end
             underlying = hasproperty(grid, :underlying_grid) ? grid.underlying_grid : grid
 
             if isempty(z_centers)

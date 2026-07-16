@@ -2,10 +2,9 @@ using CairoMakie
 using JLD2
 using Glob
 using Oceananigans
-using Oceananigans.Fields: compute!, location
-using Oceananigans.Operators: Az
 using Dates
 using Downloads
+using Logging
 using Statistics
 
 with_trailing_slash(path) = endswith(path, Base.Filesystem.path_separator) ? path : path * Base.Filesystem.path_separator
@@ -73,44 +72,78 @@ end
 end
 
 function load_grid_from_output_file(filepath::AbstractString)
-    grid = jldopen(filepath, "r") do file
-        haskey(file, "serialized/grid") ? file["serialized/grid"] : nothing
+    grid = with_logger(NullLogger()) do
+        jldopen(filepath, "r") do file
+            haskey(file, "serialized/grid") ? file["serialized/grid"] : nothing
+        end
     end
-    grid === nothing && error("No serialized grid found in $(filepath).")
+    grid === nothing && error("No serialized grid found in " * filepath * ".")
     return grid
 end
 
+underlying_grid(grid) = hasproperty(grid, :underlying_grid) ? getproperty(grid, :underlying_grid) : grid
+
+function interior_start(source, dim::Int, fallback_halo::Int, interior_size::Int, stored_size::Int)
+    if hasproperty(source, :offsets)
+        offsets = getproperty(source, :offsets)
+        if dim <= length(offsets)
+            start = 1 - offsets[dim]
+            1 <= start <= stored_size - interior_size + 1 && return start
+        end
+    end
+
+    stored_size == interior_size && return 1
+    start = fallback_halo + 1
+    1 <= start <= stored_size - interior_size + 1 && return start
+    error("Could not crop stored dimension " * string(stored_size) * " to interior size " * string(interior_size) * ".")
+end
+
+parent_array(source) = hasproperty(source, :parent) ? getproperty(source, :parent) : Array(source)
+
+function physical_matrix(source, grid; T = Float64)
+    Nx, Ny = getproperty(grid, :Nx), getproperty(grid, :Ny)
+    Hx, Hy = getproperty(grid, :Hx), getproperty(grid, :Hy)
+    data = parent_array(source)
+    i0 = interior_start(source, 1, Hx, Nx, size(data, 1))
+    j0 = interior_start(source, 2, Hy, Ny, size(data, 2))
+
+    if ndims(data) == 2
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1))
+    elseif ndims(data) == 3
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1, 1))
+    end
+
+    error("Expected a 2D or 3D stored grid array, got " * string(ndims(data)) * " dimensions.")
+end
+
 function bottom_height_matrix(filepath::AbstractString)
-    return jldopen(filepath, "r") do file
-        haskey(file, "serialized/grid") || return nothing
-        grid = file["serialized/grid"]
-        hasproperty(grid, :immersed_boundary) || return nothing
-        immersed_boundary = getproperty(grid, :immersed_boundary)
-        hasproperty(immersed_boundary, :bottom_height) || return nothing
-        bottom_height_field = getproperty(immersed_boundary, :bottom_height)
-        Float32.(Array(interior(bottom_height_field, :, :, 1)))
+    return with_logger(NullLogger()) do
+        jldopen(filepath, "r") do file
+            haskey(file, "serialized/grid") || return nothing
+            grid = file["serialized/grid"]
+            hasproperty(grid, :immersed_boundary) || return nothing
+            source_grid = underlying_grid(grid)
+            immersed_boundary = getproperty(grid, :immersed_boundary)
+            hasproperty(immersed_boundary, :bottom_height) || return nothing
+            bottom_height_field = getproperty(immersed_boundary, :bottom_height)
+            hasproperty(bottom_height_field, :data) || return nothing
+            physical_matrix(getproperty(bottom_height_field, :data), source_grid; T = Float32)
+        end
     end
 end
 
 surface_ocean_mask(bottom_height::Union{Nothing, AbstractMatrix}) = isnothing(bottom_height) ? nothing : BitMatrix(bottom_height .< 0f0)
 
 function center_latitude(grid)
-    cfield = CenterField(grid)
-    ℓx, ℓy, ℓz = location(cfield)
-    g = hasproperty(grid, :underlying_grid) ? grid.underlying_grid : grid
-
-    φ = φnodes(g, ℓx(), ℓy(), ℓz())
-    φA = Array(φ)
-    ndims(φA) == 3 && (φA = φA[:, :, 1])
-    return Float32.(φA)
+    g = underlying_grid(grid)
+    hasproperty(g, :φᶜᶜᵃ) || error("Serialized grid does not contain center latitude nodes.")
+    return physical_matrix(getproperty(g, :φᶜᶜᵃ), g; T = Float32)
 end
 
 function cell_area_matrix(grid)
-    one = CenterField(grid)
-    set!(one, 1)
-    area_field = Field(one * Az)
-    compute!(area_field)
-    return Float64.(Array(interior(area_field, :, :, 1)))
+    g = underlying_grid(grid)
+    hasproperty(g, :Azᶜᶜᵃ) || error("Serialized grid does not contain center cell areas.")
+    return physical_matrix(getproperty(g, :Azᶜᶜᵃ), g; T = Float64)
 end
 
 function hemisphere_masks(grid, wet_mask::Union{Nothing, BitMatrix})

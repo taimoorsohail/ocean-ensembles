@@ -1,5 +1,6 @@
 using CairoMakie
 using JLD2
+using Logging
 using Glob
 using Statistics: median
 using Oceananigans
@@ -99,6 +100,85 @@ function copy_2d_to!(dest::Matrix{Float32}, raw)
     return true
 end
 
+const OFFSET_ARRAYS = Base.loaded_modules[Base.PkgId(Base.UUID("6fe1bfb0-de20-5000-8ca7-80f57d26f881"), "OffsetArrays")]
+
+underlying_grid(grid) = hasproperty(grid, :underlying_grid) ? getproperty(grid, :underlying_grid) : grid
+
+function materialize_offset_array(source)
+    if hasproperty(source, :parent) && hasproperty(source, :offsets)
+        return OFFSET_ARRAYS.OffsetArray(getproperty(source, :parent), getproperty(source, :offsets)...)
+    end
+
+    return source
+end
+
+function parent_array(source)
+    return hasproperty(source, :parent) ? getproperty(source, :parent) : Array(source)
+end
+
+function interior_start(source, dim::Int, fallback_halo::Int, interior_size::Int, stored_size::Int)
+    if hasproperty(source, :offsets)
+        offsets = getproperty(source, :offsets)
+        if dim <= length(offsets)
+            start = 1 - offsets[dim]
+            1 <= start <= stored_size - interior_size + 1 && return start
+        end
+    end
+
+    stored_size == interior_size && return 1
+    start = fallback_halo + 1
+    1 <= start <= stored_size - interior_size + 1 && return start
+    error("Could not crop stored dimension " * string(stored_size) * " to interior size " * string(interior_size) * ".")
+end
+
+function physical_matrix(source, grid; T = Float64)
+    Nx, Ny = getproperty(grid, :Nx), getproperty(grid, :Ny)
+    Hx, Hy = getproperty(grid, :Hx), getproperty(grid, :Hy)
+    data = parent_array(source)
+    i0 = interior_start(source, 1, Hx, Nx, size(data, 1))
+    j0 = interior_start(source, 2, Hy, Ny, size(data, 2))
+
+    if ndims(data) == 2
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1))
+    elseif ndims(data) == 3
+        return T.(view(data, i0:i0+Nx-1, j0:j0+Ny-1, 1))
+    end
+
+    error("Expected a 2D or 3D stored grid array, got " * string(ndims(data)) * " dimensions.")
+end
+
+function materialized_underlying_grid(grid)
+    g = underlying_grid(grid)
+
+    return OrthogonalSphericalShellGrid{Periodic, RightFaceFolded, Bounded}(CPU(),
+        getproperty(g, :Nx), getproperty(g, :Ny), getproperty(g, :Nz),
+        getproperty(g, :Hx), getproperty(g, :Hy), getproperty(g, :Hz),
+        getproperty(g, :Lz),
+        materialize_offset_array(getproperty(g, :λᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :λᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :λᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :λᶠᶠᵃ)),
+        materialize_offset_array(getproperty(g, :φᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :φᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :φᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :φᶠᶠᵃ)),
+        getproperty(g, :z),
+        materialize_offset_array(getproperty(g, :Δxᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Δxᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Δxᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Δxᶠᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Δyᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Δyᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Δyᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Δyᶠᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Azᶜᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Azᶠᶜᵃ)),
+        materialize_offset_array(getproperty(g, :Azᶜᶠᵃ)),
+        materialize_offset_array(getproperty(g, :Azᶠᶠᵃ)),
+        getproperty(g, :radius),
+        getproperty(g, :conformal_mapping))
+end
+
 function speed_matrix_or_nothing(u::AbstractMatrix, v::AbstractMatrix; context::AbstractString)
     if size(u) != size(v)
         @warn "Skipping speed frame because u and v shapes differ and no grid metadata was available." context u_size = size(u) v_size = size(v)
@@ -115,8 +195,9 @@ end
 @inline surface_matrix_3d(A::AbstractMatrix) = reshape(A, size(A, 1), size(A, 2), 1)
 
 function speed_workspace(grid)
-    ufield = XFaceField(grid)
-    vfield = YFaceField(grid)
+    speed_grid = materialized_underlying_grid(grid)
+    ufield = XFaceField(speed_grid)
+    vfield = YFaceField(speed_grid)
     speed_field = @at (Center, Center, Nothing) sqrt(ufield^2 + vfield^2) |> Field
     return (; ufield, vfield, speed_field)
 end
@@ -297,8 +378,10 @@ function load_general_surface_timeseries(files::Vector{String}, vars::Vector{Str
 end
 
 function load_grid_from_output_file(filepath::AbstractString)
-    grid = jldopen(filepath, "r") do f
-        haskey(f, "serialized/grid") ? f["serialized/grid"] : nothing
+    grid = with_logger(NullLogger()) do
+        jldopen(filepath, "r") do f
+            haskey(f, "serialized/grid") ? f["serialized/grid"] : nothing
+        end
     end
 
     if grid === nothing
@@ -1091,32 +1174,23 @@ function make_top_surface_variable_video(var::String,
 end
 
 function center_lon_lat(grid)
-    cfield = CenterField(grid)
-    ℓx, ℓy, ℓz = location(cfield)
-    g = hasproperty(grid, :underlying_grid) ? grid.underlying_grid : grid
-
-    λ = λnodes(g, ℓx(), ℓy(), ℓz())
-    φ = φnodes(g, ℓx(), ℓy(), ℓz())
-
-    λA = Array(λ)
-    φA = Array(φ)
-
-    ndims(λA) == 3 && (λA = λA[:, :, 1])
-    ndims(φA) == 3 && (φA = φA[:, :, 1])
-
-    return Float32.(λA), Float32.(φA)
+    g = underlying_grid(grid)
+    λ = physical_matrix(getproperty(g, :λᶜᶜᵃ), g; T = Float32)
+    φ = physical_matrix(getproperty(g, :φᶜᶜᵃ), g; T = Float32)
+    return λ, φ
 end
 
 function bottom_height_matrix(grid)
     isnothing(grid) && return nothing
     hasproperty(grid, :immersed_boundary) || return nothing
 
+    source_grid = underlying_grid(grid)
     immersed_boundary = getproperty(grid, :immersed_boundary)
     hasproperty(immersed_boundary, :bottom_height) || return nothing
 
     bottom_height_field = getproperty(immersed_boundary, :bottom_height)
-    bottom_height = Array(interior(bottom_height_field, :, :, 1))
-    return Float32.(bottom_height)
+    hasproperty(bottom_height_field, :data) || return nothing
+    return physical_matrix(getproperty(bottom_height_field, :data), source_grid; T = Float32)
 end
 
 function mask_field_with_plot_mask(A::AbstractMatrix, plot_mask::Union{Nothing, AbstractMatrix{Bool}})
