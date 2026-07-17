@@ -316,6 +316,30 @@ function layer_thicknesses(z_faces::AbstractVector{<:Real})
     return diff(Float64.(z_faces))
 end
 
+function layer_overlaps(z_faces::AbstractVector{<:Real}, lower_bound::Real, upper_bound::Real)
+    faces = Float64.(z_faces)
+    lower = Float64(lower_bound)
+    upper = Float64(upper_bound)
+
+    lower < upper || error("The lower depth bound must be smaller than the upper depth bound.")
+    all(diff(faces) .> 0) || error("Vertical faces must be strictly increasing.")
+
+    return max.(0.0, min.(faces[2:end], upper) .- max.(faces[1:end-1], lower))
+end
+
+function integrate_horizontal_profiles(profiles::AbstractMatrix, z_faces, lower_bound, upper_bound)
+    overlaps = layer_overlaps(z_faces, lower_bound, upper_bound)
+    size(profiles, 2) == length(overlaps) || error("Profile columns must match the number of vertical layers.")
+    return Float64.(profiles) * overlaps
+end
+
+function integrate_layer_totals(profiles::AbstractMatrix, z_faces, lower_bound, upper_bound)
+    thicknesses = layer_thicknesses(z_faces)
+    overlaps = layer_overlaps(z_faces, lower_bound, upper_bound)
+    size(profiles, 2) == length(overlaps) || error("Profile columns must match the number of vertical layers.")
+    return Float64.(profiles) * (overlaps ./ thicknesses)
+end
+
 function overlap_conservative_regrid_density(source_density, source_faces, target_faces)
     source_density = Float64.(source_density)
     source_faces = Float64.(source_faces)
@@ -457,38 +481,28 @@ function padded_xlim(x::AbstractVector{<:Real})
     return (xmin - padding, xmax + padding)
 end
 
-function save_comparison_figure(path, time_days, model_global, woa_global, delta_global)
+function save_comparison_figure(path, time_years, model_global, woa_global, delta_global)
     fig = Figure(size=(1200, 900))
 
-    relative_days = time_days .- first(time_days)
-    time_year_fraction = relative_days ./ sum(NOLEAP_MONTH_DAYS)
+    ax1 = Axis(fig[1, 1], title="Monthly Mean OHC", xlabel="Year", ylabel="J")
+    ax2 = Axis(fig[1, 2], title="Monthly Mean OFWC", xlabel="Year", ylabel="kg")
+    ax3 = Axis(fig[2, 1], title="Model - WOA OHC", xlabel="Year", ylabel="J")
+    ax4 = Axis(fig[2, 2], title="Model - WOA OFWC", xlabel="Year", ylabel="kg")
 
-    ax1 = Axis(fig[1, 1], title="Monthly Mean OHC", xlabel="Month", ylabel="J")
-    ax2 = Axis(fig[1, 2], title="Monthly Mean OFWC", xlabel="Month", ylabel="kg")
-    ax3 = Axis(fig[2, 1], title="Model - WOA OHC", xlabel="Month", ylabel="J")
-    ax4 = Axis(fig[2, 2], title="Model - WOA OFWC", xlabel="Month", ylabel="kg")
-
-    plot_series_with_markers!(ax1, time_year_fraction, model_global.OHC; color=:dodgerblue4, label="Model")
-    plot_series_with_markers!(ax1, time_year_fraction, woa_global.OHC; color=:black, label="WOA")
+    plot_series_with_markers!(ax1, time_years, model_global.OHC; color=:dodgerblue4, label="Model")
+    plot_series_with_markers!(ax1, time_years, woa_global.OHC; color=:black, label="WOA")
     axislegend(ax1, position=:rb)
 
-    plot_series_with_markers!(ax2, time_year_fraction, model_global.OFWC; color=:dodgerblue4, label="Model")
-    plot_series_with_markers!(ax2, time_year_fraction, woa_global.OFWC; color=:black, label="WOA")
+    plot_series_with_markers!(ax2, time_years, model_global.OFWC; color=:dodgerblue4, label="Model")
+    plot_series_with_markers!(ax2, time_years, woa_global.OFWC; color=:black, label="WOA")
     axislegend(ax2, position=:rb)
 
-    plot_series_with_markers!(ax3, time_year_fraction, delta_global.OHC; color=:firebrick)
-    plot_series_with_markers!(ax4, time_year_fraction, delta_global.OFWC; color=:steelblue)
+    plot_series_with_markers!(ax3, time_years, delta_global.OHC; color=:firebrick)
+    plot_series_with_markers!(ax4, time_years, delta_global.OFWC; color=:steelblue)
 
-    xlimits_days = padded_xlim(time_days)
-    month_positions_days, month_labels = ryf_month_ticks_days(xlimits_days)
-    month_positions = (month_positions_days .- first(time_days)) ./ sum(NOLEAP_MONTH_DAYS)
-    xlimits = ((xlimits_days[1] - first(time_days)) / sum(NOLEAP_MONTH_DAYS),
-               (xlimits_days[2] - first(time_days)) / sum(NOLEAP_MONTH_DAYS))
+    xlimits = padded_xlim(time_years)
 
     for ax in (ax1, ax2, ax3, ax4)
-        ax.xticks = (month_positions, month_labels)
-        ax.xticklabelrotation = pi / 4
-        ax.xticklabelalign = (:right, :center)
         xlims!(ax, xlimits)
     end
 
@@ -502,38 +516,29 @@ function finite_maxabs(A)
     return maximum(abs, values)
 end
 
-function save_depth_comparison_figure(path, time_days, depth, model_vertical, woa_vertical, delta_vertical)
+function save_depth_comparison_figure(path, time_years, depth, model_vertical, woa_vertical, delta_vertical)
     fig = Figure(size=(1600, 1000))
 
-    relative_days = time_days .- first(time_days)
-    time_year_fraction = relative_days ./ sum(NOLEAP_MONTH_DAYS)
-    xlimits_days = padded_xlim(time_days)
-    month_positions_days, month_labels = ryf_month_ticks_days(xlimits_days)
-    month_positions = (month_positions_days .- first(time_days)) ./ sum(NOLEAP_MONTH_DAYS)
-    xlimits = ((xlimits_days[1] - first(time_days)) / sum(NOLEAP_MONTH_DAYS),
-               (xlimits_days[2] - first(time_days)) / sum(NOLEAP_MONTH_DAYS))
+    xlimits = padded_xlim(time_years)
 
     ohc_cr = finite_maxabs(vcat(model_vertical.OHC, woa_vertical.OHC, delta_vertical.OHC))
     ofwc_cr = finite_maxabs(vcat(model_vertical.OFWC, woa_vertical.OFWC, delta_vertical.OFWC))
 
-    ax11 = Axis(fig[1, 1], title="Model OHC", xlabel="Month", ylabel="Depth (m)")
-    ax12 = Axis(fig[1, 2], title="WOA OHC", xlabel="Month", ylabel="Depth (m)")
-    ax13 = Axis(fig[1, 3], title="Model - WOA OHC", xlabel="Month", ylabel="Depth (m)")
-    ax21 = Axis(fig[2, 1], title="Model OFWC", xlabel="Month", ylabel="Depth (m)")
-    ax22 = Axis(fig[2, 2], title="WOA OFWC", xlabel="Month", ylabel="Depth (m)")
-    ax23 = Axis(fig[2, 3], title="Model - WOA OFWC", xlabel="Month", ylabel="Depth (m)")
+    ax11 = Axis(fig[1, 1], title="Model OHC", xlabel="Year", ylabel="Depth (m)")
+    ax12 = Axis(fig[1, 2], title="WOA OHC", xlabel="Year", ylabel="Depth (m)")
+    ax13 = Axis(fig[1, 3], title="Model - WOA OHC", xlabel="Year", ylabel="Depth (m)")
+    ax21 = Axis(fig[2, 1], title="Model OFWC", xlabel="Year", ylabel="Depth (m)")
+    ax22 = Axis(fig[2, 2], title="WOA OFWC", xlabel="Year", ylabel="Depth (m)")
+    ax23 = Axis(fig[2, 3], title="Model - WOA OFWC", xlabel="Year", ylabel="Depth (m)")
 
-    hm11 = heatmap!(ax11, time_year_fraction, depth, model_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
-    hm12 = heatmap!(ax12, time_year_fraction, depth, woa_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
-    hm13 = heatmap!(ax13, time_year_fraction, depth, delta_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
-    hm21 = heatmap!(ax21, time_year_fraction, depth, model_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
-    hm22 = heatmap!(ax22, time_year_fraction, depth, woa_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
-    hm23 = heatmap!(ax23, time_year_fraction, depth, delta_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
+    hm11 = heatmap!(ax11, time_years, depth, model_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
+    hm12 = heatmap!(ax12, time_years, depth, woa_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
+    hm13 = heatmap!(ax13, time_years, depth, delta_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
+    hm21 = heatmap!(ax21, time_years, depth, model_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
+    hm22 = heatmap!(ax22, time_years, depth, woa_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
+    hm23 = heatmap!(ax23, time_years, depth, delta_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
 
     for ax in (ax11, ax12, ax13, ax21, ax22, ax23)
-        ax.xticks = (month_positions, month_labels)
-        ax.xticklabelrotation = pi / 4
-        ax.xticklabelalign = (:right, :center)
         xlims!(ax, xlimits)
         ylims!(ax, -1000, 0)
     end
@@ -572,14 +577,6 @@ function main()
     time_years = (Float64.(year_index) .+ (Float64.(month_of_year) .- 0.5) ./ 12)
     time_days = year_index .* RYF_YEAR_DAYS .+ ryf_month_starts_days()[month_of_year] .+ 0.5 .* NOLEAP_MONTH_DAYS[month_of_year]
 
-    model_global = (
-        T_integral = monthly_T_total.means,
-        S_integral = monthly_S_total.means,
-        volume = monthly_V_total.means,
-        OHC = global_ohc.(monthly_T_total.means),
-        OFWC = global_ofwc.(monthly_S_total.means, monthly_V_total.means)
-    )
-
     model_vertical = (
         T_integral = monthly_Tz.means,
         S_integral = monthly_Sz.means,
@@ -590,6 +587,21 @@ function main()
 
     @info "Loading WOA monthly climatology on the native WOA grid"
     woa_native = load_woa_monthly_reference()
+
+    woa_lower_bound, woa_upper_bound = extrema(woa_native[:z_faces])
+
+    @info "Matching model global integrals to the WOA depth range" woa_lower_bound woa_upper_bound
+    model_T_total = integrate_horizontal_profiles(monthly_Tz.means, model.z_faces, woa_lower_bound, woa_upper_bound)
+    model_S_total = integrate_horizontal_profiles(monthly_Sz.means, model.z_faces, woa_lower_bound, woa_upper_bound)
+    model_V_total = integrate_layer_totals(monthly_Vz.means, model.z_faces, woa_lower_bound, woa_upper_bound)
+
+    model_global = (
+        T_integral = model_T_total,
+        S_integral = model_S_total,
+        volume = model_V_total,
+        OHC = global_ohc.(model_T_total),
+        OFWC = global_ofwc.(model_S_total, model_V_total)
+    )
 
     @info "Conservatively remapping native-grid WOA vertical profiles to the model z-faces"
     woa_model_grid_vertical = remap_woa_profiles_to_model_grid(woa_native, model.z_faces)
@@ -657,6 +669,8 @@ function main()
             model_z_faces = model.z_faces,
             woa_native_z_centers = woa_native[:z_centers],
             woa_native_z_faces = woa_native[:z_faces],
+            woa_lower_bound,
+            woa_upper_bound,
             model_global,
             model_vertical,
             woa_global,
@@ -665,10 +679,10 @@ function main()
             delta_vertical)
 
     @info "Saving quick-look global comparison figure" fig_file
-    save_comparison_figure(fig_file, time_days, model_global, woa_global, delta_global)
+    save_comparison_figure(fig_file, time_years, model_global, woa_global, delta_global)
 
     @info "Saving depth-resolved WOA comparison figure" fig_z_file
-    save_depth_comparison_figure(fig_z_file, time_days, model.z_centers, model_vertical, woa_vertical, delta_vertical)
+    save_depth_comparison_figure(fig_z_file, time_years, model.z_centers, model_vertical, woa_vertical, delta_vertical)
 
     @info "Finished building 1D WOA comparison machinery" output_file fig_file fig_z_file nmonths = length(time_years)
 end

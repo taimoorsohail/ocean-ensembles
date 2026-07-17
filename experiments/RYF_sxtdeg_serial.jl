@@ -297,7 +297,10 @@ end
 
 function compute_mht(simulation)
     esm = simulation.model
-    mht = meridional_heat_transport(esm) |> Field
+    arch = esm.ocean.model.grid.architecture
+    z = ExponentialDiscretization(Nz, depth, 0, mutable=true)
+    destination_grid = LatitudeLongitudeGrid(arch; size = (360, 180, Nz), halo = (5, 5, 4), z, longitude = (0, 360), latitude = (-89, 89))
+    mht = meridional_heat_transport(esm, TendencyMethod(); destination_grid=destination_grid)
     return mht
 end
 
