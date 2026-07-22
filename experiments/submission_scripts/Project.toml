@@ -25,8 +25,5 @@ SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 WorldOceanAtlasTools = "04f20302-f1b9-11e8-29d9-7d841cb0a64a"
 
-[compat]
-NumericalEarth = "0.5"
-
 [extras]
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
