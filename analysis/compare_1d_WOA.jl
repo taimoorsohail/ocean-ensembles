@@ -2,14 +2,13 @@ using CairoMakie
 using NumericalEarth
 using ConservativeRegridding
 using Dates
+using Glob
 using JLD2
 using Logging
 using OceanEnsembles
 using Oceananigans
-using Printf
 using Statistics
 using WorldOceanAtlasTools
-using Glob
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
@@ -17,6 +16,7 @@ const OUTPUT_PATH = expanduser(get(ENV, "OUTPUT_PATH", "/home/tsohail/uom/ocean-
 const ANALYSIS_OUTPUT_PATH = expanduser(get(ENV, "COMPARE_1D_OUTPUT_PATH", OUTPUT_PATH))
 const FIGDIR = expanduser(get(ENV, "FIGDIR", "/home/tsohail/uom/ocean-ensembles/figures/"))
 const RESOLUTION = get(ENV, "COMPARE_1D_RESOLUTION", "sxtdeg")
+const INTEGRAL_PATTERN = "combined_global_tot_integrals_$(RESOLUTION)_RYF_run*.jld2"
 
 const S_REFERENCE = parse(Float64, get(ENV, "COMPARE_1D_S_REFERENCE", "35.0"))
 const ρ₀ = parse(Float64, get(ENV, "COMPARE_1D_REFERENCE_DENSITY", "1035.0"))
@@ -27,15 +27,6 @@ const SECONDS_PER_DAY = 86400.0
 const SECONDS_PER_YEAR = sum(NOLEAP_MONTH_DAYS) * SECONDS_PER_DAY
 const CUMULATIVE_MONTH_SECONDS = cumsum(vcat(0, NOLEAP_MONTH_DAYS)) .* SECONDS_PER_DAY
 const RYF_YEAR_DAYS = 365.0
-
-run_number(path::AbstractString) = begin
-    m = match(r"_run(\d+)\.jld2$", basename(path))
-    isnothing(m) ? -1 : parse(Int, m.captures[1])
-end
-
-function with_trailing_slash(path::AbstractString)
-    return endswith(path, Base.Filesystem.path_separator) ? path : path * Base.Filesystem.path_separator
-end
 
 function numeric_timeseries_keys(group)
     return sort(parse.(Int, filter(k -> tryparse(Int, k) !== nothing, collect(keys(group)))))
@@ -53,57 +44,52 @@ function trim_profile(raw, nz)
     return Float64.(values[halo+1:halo+nz])
 end
 
-function model_integral_files(path::AbstractString, resolution::AbstractString)
-    search_paths = String[]
-    push!(search_paths, path)
-
-    saved_path = joinpath(path, "saved")
-    isdir(saved_path) && pushfirst!(search_paths, saved_path)
-
-    for search_path in search_paths
-        combined = glob("combined_global_*tot*$(resolution)*_RYF_run*.jld2", search_path)
-        combined = filter(f -> !occursin("_rank", basename(f)), combined)
-
-        if !isempty(combined)
-            sort!(combined; by = run_number)
-            return combined
-        end
-    end
-
-    raw = glob("global_tot_integrals_$(resolution)_RYF_run*.jld2", path)
-    raw = filter(f -> !occursin("_rank", basename(f)), raw)
-    sort!(raw; by = run_number)
-    return raw
+run_number(file::AbstractString) = begin
+    match_result = match(r"_run(\d+)\.jld2$", basename(file))
+    isnothing(match_result) ? -1 : parse(Int, match_result.captures[1])
 end
 
-function load_model_integral_series(path::AbstractString, resolution::AbstractString)
-    files = model_integral_files(path, resolution)
-    isempty(files) && error("No global integral files found for resolution=$(resolution) in $(path).")
+function model_integral_files(path::AbstractString)
+    files = unique(vcat(glob(INTEGRAL_PATTERN, joinpath(path, "saved")),
+                        glob(INTEGRAL_PATTERN, path)))
+    filter!(file -> run_number(file) >= 0, files)
+    sort!(files; by = run_number)
+    if isempty(files)
+        error("No files matching $INTEGRAL_PATTERN were found in $(joinpath(path, "saved")) or $path.")
+    end
+    return files
+end
 
-    records_by_time = Dict{Float64, NamedTuple{(:run, :T, :S, :V, :Tz, :Sz, :Vz), Tuple{Int, Float64, Float64, Float64, Vector{Float64}, Vector{Float64}, Vector{Float64}}}}()
+function read_serialized_grid(data, variable::AbstractString)
+    haskey(data, "serialized/grid") && return data["serialized/grid"]
+    grid_index_path = "timeseries/$variable/serialized/grid_index"
+    haskey(data, grid_index_path) || error("No serialized grid found for $variable.")
+    grid_path = "serialized/grid_$(Int(data[grid_index_path]))"
+    haskey(data, grid_path) || error("Missing $grid_path referenced by $variable.")
+    return data[grid_path]
+end
+
+function load_model_integral_series(path::AbstractString)
+    files = model_integral_files(path)
+    records_by_time = Dict{Float64, NamedTuple{(:T, :S, :V, :Tz, :Sz, :Vz), Tuple{Float64, Float64, Float64, Vector{Float64}, Vector{Float64}, Vector{Float64}}}}()
     z_centers = Float64[]
     z_faces = Float64[]
 
+    jldopen(last(files), "r") do data
+        grid = with_logger(NullLogger()) do
+            read_serialized_grid(data, "T_vertintegral")
+        end
+        underlying = hasproperty(grid, :underlying_grid) ? grid.underlying_grid : grid
+        append!(z_centers, Float64.(collect(underlying.z.cᵃᵃᶜ)))
+        append!(z_faces, Float64.(collect(underlying.z.cᵃᵃᶠ)))
+    end
+
+    nz = length(z_centers)
     for file in files
-        run = run_number(file)
         jldopen(file, "r") do data
-            grid = with_logger(NullLogger()) do
-                data["serialized/grid"]
-            end
-            underlying = hasproperty(grid, :underlying_grid) ? grid.underlying_grid : grid
-
-            if isempty(z_centers)
-                append!(z_centers, Float64.(collect(underlying.z.cᵃᵃᶜ)))
-                append!(z_faces, Float64.(collect(underlying.z.cᵃᵃᶠ)))
-            end
-
-            iterations = numeric_timeseries_keys(data["timeseries/t"])
-            nz = length(z_centers)
-
-            for iter in iterations
+            for iter in numeric_timeseries_keys(data["timeseries/t"])
                 t = Float64(data["timeseries/t/$(iter)"])
-                record = (
-                    run = run,
+                records_by_time[t] = (
                     T = Float64(only(data["timeseries/T_totintegral/$(iter)"])),
                     S = Float64(only(data["timeseries/S_totintegral/$(iter)"])),
                     V = Float64(only(data["timeseries/total_volume_c/$(iter)"])),
@@ -111,11 +97,6 @@ function load_model_integral_series(path::AbstractString, resolution::AbstractSt
                     Sz = trim_profile(data["timeseries/S_vertintegral/$(iter)"][1, 1, :], nz),
                     Vz = trim_profile(data["timeseries/vert_volume_c/$(iter)"][1, 1, :], nz)
                 )
-
-                existing = get(records_by_time, t, nothing)
-                if isnothing(existing) || run >= existing.run
-                    records_by_time[t] = record
-                end
             end
         end
     end
@@ -482,27 +463,42 @@ function padded_xlim(x::AbstractVector{<:Real})
 end
 
 function save_comparison_figure(path, time_years, model_global, woa_global, delta_global)
-    fig = Figure(size=(1200, 900))
+    fig = Figure(size=(1200, 1500))
 
     ax1 = Axis(fig[1, 1], title="Monthly Mean OHC", xlabel="Year", ylabel="J")
     ax2 = Axis(fig[1, 2], title="Monthly Mean OFWC", xlabel="Year", ylabel="kg")
     ax3 = Axis(fig[2, 1], title="Model - WOA OHC", xlabel="Year", ylabel="J")
     ax4 = Axis(fig[2, 2], title="Model - WOA OFWC", xlabel="Year", ylabel="kg")
+    ax5 = Axis(fig[3, 1], title="Mean Temperature Anomaly", xlabel="Year", ylabel="°C")
+    ax6 = Axis(fig[3, 2], title="Mean Salinity Anomaly", xlabel="Year", ylabel="psu")
+    ax7 = Axis(fig[4, 1], title="Model - WOA Mean Temperature Anomaly", xlabel="Year", ylabel="°C")
+    ax8 = Axis(fig[4, 2], title="Model - WOA Mean Salinity Anomaly", xlabel="Year", ylabel="psu")
 
-    plot_series_with_markers!(ax1, time_years, model_global.OHC; color=:dodgerblue4, label="Model")
-    plot_series_with_markers!(ax1, time_years, woa_global.OHC; color=:black, label="WOA")
-    axislegend(ax1, position=:rb)
+    plot_series_with_markers!(ax1, time_years, model_global.OHC; color = :dodgerblue4, label = "Model")
+    plot_series_with_markers!(ax1, time_years, woa_global.OHC; color = :black, label = "WOA")
+    axislegend(ax1, position = :rb)
 
-    plot_series_with_markers!(ax2, time_years, model_global.OFWC; color=:dodgerblue4, label="Model")
-    plot_series_with_markers!(ax2, time_years, woa_global.OFWC; color=:black, label="WOA")
-    axislegend(ax2, position=:rb)
+    plot_series_with_markers!(ax2, time_years, model_global.OFWC; color = :dodgerblue4, label = "Model")
+    plot_series_with_markers!(ax2, time_years, woa_global.OFWC; color = :black, label = "WOA")
+    axislegend(ax2, position = :rb)
 
-    plot_series_with_markers!(ax3, time_years, delta_global.OHC; color=:firebrick)
-    plot_series_with_markers!(ax4, time_years, delta_global.OFWC; color=:steelblue)
+    plot_series_with_markers!(ax3, time_years, delta_global.OHC; color = :firebrick)
+    plot_series_with_markers!(ax4, time_years, delta_global.OFWC; color = :steelblue)
+
+    plot_series_with_markers!(ax5, time_years, model_global.mean_temperature; color = :dodgerblue4, label = "Model")
+    plot_series_with_markers!(ax5, time_years, woa_global.mean_temperature; color = :black, label = "WOA")
+    axislegend(ax5, position = :rb)
+
+    plot_series_with_markers!(ax6, time_years, model_global.mean_salinity; color = :dodgerblue4, label = "Model")
+    plot_series_with_markers!(ax6, time_years, woa_global.mean_salinity; color = :black, label = "WOA")
+    axislegend(ax6, position = :rb)
+
+    plot_series_with_markers!(ax7, time_years, delta_global.mean_temperature; color = :firebrick)
+    plot_series_with_markers!(ax8, time_years, delta_global.mean_salinity; color = :steelblue)
 
     xlimits = padded_xlim(time_years)
 
-    for ax in (ax1, ax2, ax3, ax4)
+    for ax in (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)
         xlims!(ax, xlimits)
     end
 
@@ -555,7 +551,7 @@ function main()
     mkpath(FIGDIR)
 
     @info "Loading model global and vertical integrals" output_path = OUTPUT_PATH resolution = RESOLUTION
-    model = load_model_integral_series(OUTPUT_PATH, RESOLUTION)
+    model = load_model_integral_series(OUTPUT_PATH)
 
     @info "Computing dt-weighted monthly model means"
     monthly_T_total = monthly_average_scalar(model.times, model.T_total)
@@ -600,7 +596,9 @@ function main()
         S_integral = model_S_total,
         volume = model_V_total,
         OHC = global_ohc.(model_T_total),
-        OFWC = global_ofwc.(model_S_total, model_V_total)
+        OFWC = global_ofwc.(model_S_total, model_V_total),
+        mean_temperature = model_T_total ./ model_V_total,
+        mean_salinity = model_S_total ./ model_V_total
     )
 
     @info "Conservatively remapping native-grid WOA vertical profiles to the model z-faces"
@@ -611,17 +609,23 @@ function main()
         S_integral = tiled_monthly_reference(woa_native[:S_total], month_of_year),
         volume = tiled_monthly_reference(woa_native[:V_total], month_of_year),
         OHC = tiled_monthly_reference(global_ohc.(woa_native[:T_total]), month_of_year),
-        OFWC = tiled_monthly_reference(global_ofwc.(woa_native[:S_total], woa_native[:V_total]), month_of_year)
+        OFWC = tiled_monthly_reference(global_ofwc.(woa_native[:S_total], woa_native[:V_total]), month_of_year),
+        mean_temperature = tiled_monthly_reference(woa_native[:T_total] ./ woa_native[:V_total], month_of_year),
+        mean_salinity = tiled_monthly_reference(woa_native[:S_total] ./ woa_native[:V_total], month_of_year)
     )
 
     model_global = merge(model_global, (
         OHC = model_global.OHC .- first(model_global.OHC),
-        OFWC = model_global.OFWC .- first(model_global.OFWC)
+        OFWC = model_global.OFWC .- first(model_global.OFWC),
+        mean_temperature = model_global.mean_temperature .- first(model_global.mean_temperature),
+        mean_salinity = model_global.mean_salinity .- first(model_global.mean_salinity)
     ))
 
     woa_global = merge(woa_global, (
         OHC = woa_global.OHC .- first(woa_global.OHC),
-        OFWC = woa_global.OFWC .- first(woa_global.OFWC)
+        OFWC = woa_global.OFWC .- first(woa_global.OFWC),
+        mean_temperature = woa_global.mean_temperature .- first(woa_global.mean_temperature),
+        mean_salinity = woa_global.mean_salinity .- first(woa_global.mean_salinity)
     ))
 
     woa_vertical = (
@@ -642,7 +646,9 @@ function main()
 
     delta_global = (
         OHC = model_global.OHC .- woa_global.OHC,
-        OFWC = model_global.OFWC .- woa_global.OFWC
+        OFWC = model_global.OFWC .- woa_global.OFWC,
+        mean_temperature = model_global.mean_temperature .- woa_global.mean_temperature,
+        mean_salinity = model_global.mean_salinity .- woa_global.mean_salinity
     )
 
     delta_vertical = (

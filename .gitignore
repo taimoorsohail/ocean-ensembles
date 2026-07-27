@@ -28,6 +28,9 @@ Manifest.toml
 *.nc
 *.zip
 *.nsys-rep
+outputs/*
+outputs/saved/*
+
 ## Text files
 *.tab
 *.history

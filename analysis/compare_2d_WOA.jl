@@ -32,6 +32,7 @@ const PROGRESS_UPDATES = 20
 const GC_INTERVAL = 12
 const VIDEO_CHUNK_SIZE = 120
 const DEPTH_FILE_RUN_PREFIX = "_fields_$(RESOLUTION)_RYF_run"
+const MAX_WOA_COMPARISON_DEPTH = 1500.0
 const DEFAULT_COMPARISON_VARS = ["T", "S"]
 const ERROR_COLORRANGE_STD_MULTIPLIER = parse(Float32, get(ENV, "COMPARE_2D_ERROR_COLORRANGE_STD_MULTIPLIER", "1.0"))
 const VALUE_COLORRANGE_STD_MULTIPLIER = parse(Float32, get(ENV, "COMPARE_2D_VALUE_COLORRANGE_STD_MULTIPLIER", "1.0"))
@@ -44,6 +45,26 @@ end
 depth_level(path::AbstractString) = begin
     m = match(r"global_(\d+)_fields_", basename(path))
     isnothing(m) ? -1 : parse(Int, m.captures[1])
+end
+
+function depth_at_level(grid, depth::Int)
+    z_centers = underlying_grid(grid).z.cᵃᵃᶜ
+    z = ndims(z_centers) == 1 ? z_centers[depth] : z_centers[1, 1, depth]
+    return Float64(z)
+end
+
+function woa_supported_depth_levels(files, depth_levels;
+                                    max_depth::Real = MAX_WOA_COMPARISON_DEPTH)
+    grid = load_grid_from_output_file(first(files))
+    isnothing(grid) && error("No serialized grid found in the combined depth files.")
+
+    depth_values = Dict(depth => depth_at_level(grid, depth) for depth in depth_levels)
+    supported = filter(depth -> abs(depth_values[depth]) <= max_depth, depth_levels)
+    ignored = setdiff(depth_levels, supported)
+    ignored_depths = [depth_values[depth] for depth in ignored]
+
+    isempty(ignored) || @info "Ignoring depth slices below the WOA comparison limit." max_depth ignored_depth_levels = ignored ignored_depths
+    return supported
 end
 
 numeric_timeseries_keys(group) = sort(parse.(Int, filter(k -> tryparse(Int, k) !== nothing, collect(keys(group)))))
@@ -575,8 +596,8 @@ function build_woa_depth_cache(model_grid, depth_levels::Vector{Int};
     T_fields, S_fields = load_woa_monthly_fields()
     model_underlying = materialized_underlying_grid(model_grid)
 
-    model_z_faces = model_underlying.z.cᵃᵃᶠ
-    target_depth_values = [Float64(model_z_faces[depth]) for depth in depth_levels]
+    model_z_centers = model_underlying.z.cᵃᵃᶜ
+    target_depth_values = [depth_at_level(model_underlying, depth) for depth in depth_levels]
 
     T_target = Field{Center, Center, Center}(model_underlying)
     S_target = Field{Center, Center, Center}(model_underlying)
@@ -600,7 +621,7 @@ function build_woa_depth_cache(model_grid, depth_levels::Vector{Int};
         end
     end
 
-    return (; cache_files, model_z_faces, target_depth_values)
+    return (; cache_files, model_z_centers, target_depth_values)
 end
 
 function month_time_metadata(years::AbstractVector{<:Integer}, months::AbstractVector{<:Integer})
@@ -705,7 +726,7 @@ end
 
 function single_depth_level(k::Union{Nothing, Int}, available_depths::Vector{Int})
     isempty(available_depths) && error("No depth levels are available.")
-    isnothing(k) && return first(available_depths)
+    isnothing(k) && return last(available_depths)
     k in available_depths || error("Requested depth level k=$(k) not available. Available levels: $(available_depths)")
     return k
 end
@@ -986,6 +1007,8 @@ function main(vars::Vector{String}; k::Union{Nothing, Int} = nothing)
 
     depth_levels = sort(unique(filter(>=(0), depth_level.(files))))
     isempty(depth_levels) && error("Could not infer any depth levels from combined depth files.")
+    depth_levels = woa_supported_depth_levels(files, depth_levels)
+    isempty(depth_levels) && error("No depth levels are within the $(MAX_WOA_COMPARISON_DEPTH) m WOA comparison limit.")
     validate_requested_variables(vars, DEFAULT_COMPARISON_VARS)
     requested_depth = single_depth_level(k, depth_levels)
 

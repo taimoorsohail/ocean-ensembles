@@ -359,14 +359,16 @@ function main(args::Vector{String})
     return nothing
 end
 
-try
-    main(ARGS)
-catch err
-    if err isa InterruptException
-        rethrow()
+if abspath(PROGRAM_FILE) == @__FILE__
+    try
+        main(ARGS)
+    catch err
+        if err isa InterruptException
+            rethrow()
+        end
+        showerror(stderr, err)
+        println(stderr)
+        print_usage()
+        exit(1)
     end
-    showerror(stderr, err)
-    println(stderr)
-    print_usage()
-    exit(1)
 end

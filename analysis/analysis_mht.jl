@@ -4,7 +4,7 @@ using JLD2
 using Oceananigans
 using Statistics
 
-const OUTPUT_PATH = normpath(joinpath(@__DIR__, "..", "outputs"))
+const OUTPUT_PATH = normpath(joinpath(@__DIR__, "..", "outputs", "saved"))
 const FIG_DIR = normpath(joinpath(@__DIR__, "..", "figures"))
 const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60

@@ -7,13 +7,13 @@ using Oceananigans.Fields: location
 
 with_trailing_slash(path) = endswith(path, Base.Filesystem.path_separator) ? path : path * Base.Filesystem.path_separator
 
-const OUTPUT_PATH = with_trailing_slash(expanduser(get(ENV, "OUTPUT_PATH", "/home/tsohail/uom/ocean-ensembles/outputs/")))
+const OUTPUT_PATH = with_trailing_slash(expanduser(get(ENV, "OUTPUT_PATH", "/home/tsohail/uom/ocean-ensembles/outputs/saved/")))
 const FIGDIR = with_trailing_slash(expanduser(get(ENV, "FIGDIR", "/home/tsohail/uom/ocean-ensembles/figures/")))
 const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60
 const VIDEO_FRAMERATE = 12
 const PROGRESS_UPDATES = 20
-const DEPTH_FILE_RUN_PREFIX = "*75_fields_$(RESOLUTION)_RYF_*0006*"
+const DEPTH_FILE_RUN_PREFIX = "75_fields_$(RESOLUTION)_RYF_run"
 
 @inline function run_id(path::AbstractString)
     m = match(r"run(\d+)", basename(path))
@@ -30,7 +30,7 @@ end
 end
 
 function top_surface_files(path::AbstractString)
-    files = glob("*75_fields_$(RESOLUTION)_RYF_*0006*.jld2", path)
+    files = glob("*75_fields_$(RESOLUTION)_RYF_run*.jld2", path)
     files = filter(files) do f
         !occursin("_rank", f) &&
         !occursin("sea_ice_surface", basename(f)) &&
@@ -38,13 +38,13 @@ function top_surface_files(path::AbstractString)
     end
 
     if isempty(files)
-        files = glob("*$(DEPTH_FILE_RUN_PREFIX)*0006*.jld2", path)
+        files = glob("*$(DEPTH_FILE_RUN_PREFIX)*.jld2", path)
         files = filter(files) do f
             !occursin("_rank", f)
         end
     end
 
-    sort!(files)
+    sort!(files; by = run_id)
     return files
 end
 

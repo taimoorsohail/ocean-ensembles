@@ -1,9 +1,9 @@
 using CairoMakie
 using JLD2
-using Glob
 using Oceananigans
 using Dates
 using Downloads
+using Glob
 using Logging
 using Statistics
 
@@ -23,43 +23,26 @@ const ICE_THRESHOLD = 0.15f0
 const SECONDS_PER_DAY = 24 * 60 * 60
 const RYF_YEAR_DAYS = 365.0
 const PROGRESS_UPDATES = 20
-
-@inline function run_id(path::AbstractString)
-    m = match(r"run(\d+)", basename(path))
-    return m === nothing ? -1 : parse(Int, m.captures[1])
-end
-
-function parse_selected_run()
-    isempty(ARGS) && return nothing
-    any(arg -> arg in ("-h", "--help"), ARGS) && return :help
-    length(ARGS) == 1 || throw(ArgumentError("Expected at most one positional argument: run number."))
-    selected_run = tryparse(Int, ARGS[1])
-    selected_run === nothing && throw(ArgumentError("Could not parse run number from \"$(ARGS[1])\"."))
-    selected_run < 0 && throw(ArgumentError("Run number must be non-negative, got $(selected_run)."))
-    return selected_run
-end
+const SURFACE_PATTERN = "combined_global_surface_fluxes_$(RESOLUTION)_RYF_run*.jld2"
 
 function print_usage()
-    println("Usage: julia --project=ocean-ensembles/experiments/submission_scripts ocean-ensembles/analysis/sea_ice_extent.jl [run_id]")
-    println("Builds Northern and Southern Hemisphere sea-ice extent timeseries from combined surface-flux files.")
+    println("Usage: julia --project=ocean-ensembles/experiments/submission_scripts ocean-ensembles/analysis/sea_ice_extent.jl")
+    println("Builds Northern and Southern Hemisphere sea-ice extent timeseries from the combined surface-flux run files.")
     println("Overlays the NSIDC Sea Ice Index 1981-2010 daily median extent climatology plus a 10th-90th percentile band.")
     return nothing
 end
 
-run_suffix(run::Int) = "run" * lpad(string(run), 4, '0')
-
-function sea_ice_surface_files(path::AbstractString)
-    files = glob("combined_global_surface_fluxes_$(RESOLUTION)_RYF_run*.jld2", path)
-    files = filter(files) do file
-        !occursin("_rank", file) && run_id(file) >= 0
-    end
-    sort!(files; by = run_id)
-    return files
+run_number(file::AbstractString) = begin
+    match_result = match(r"_run(\d+)\.jld2$", basename(file))
+    isnothing(match_result) ? -1 : parse(Int, match_result.captures[1])
 end
 
-function filter_files_by_run(files::Vector{String}, selected_run::Union{Nothing, Int})
-    isnothing(selected_run) && return files
-    return filter(file -> run_id(file) == selected_run, files)
+function surface_files()
+    files = glob(SURFACE_PATTERN, OUTPUT_PATH)
+    filter!(file -> run_number(file) >= 0, files)
+    sort!(files; by = run_number)
+    isempty(files) && error("No files matching $SURFACE_PATTERN were found in $OUTPUT_PATH.")
+    return files
 end
 
 @inline function extract_2d_f32(raw)
@@ -71,14 +54,18 @@ end
     return nothing
 end
 
-function load_grid_from_output_file(filepath::AbstractString)
-    grid = with_logger(NullLogger()) do
+function load_grid_from_output_file(filepath::AbstractString, variable::AbstractString)
+    return with_logger(NullLogger()) do
         jldopen(filepath, "r") do file
-            haskey(file, "serialized/grid") ? file["serialized/grid"] : nothing
+            haskey(file, "serialized/grid") && return file["serialized/grid"]
+
+            grid_index_path = "timeseries/$variable/serialized/grid_index"
+            haskey(file, grid_index_path) || error("No serialized grid found for $variable in $filepath.")
+            grid_path = "serialized/grid_$(Int(file[grid_index_path]))"
+            haskey(file, grid_path) || error("Missing $grid_path referenced by $variable in $filepath.")
+            return file[grid_path]
         end
     end
-    grid === nothing && error("No serialized grid found in " * filepath * ".")
-    return grid
 end
 
 underlying_grid(grid) = hasproperty(grid, :underlying_grid) ? getproperty(grid, :underlying_grid) : grid
@@ -116,20 +103,14 @@ function physical_matrix(source, grid; T = Float64)
     error("Expected a 2D or 3D stored grid array, got " * string(ndims(data)) * " dimensions.")
 end
 
-function bottom_height_matrix(filepath::AbstractString)
-    return with_logger(NullLogger()) do
-        jldopen(filepath, "r") do file
-            haskey(file, "serialized/grid") || return nothing
-            grid = file["serialized/grid"]
-            hasproperty(grid, :immersed_boundary) || return nothing
-            source_grid = underlying_grid(grid)
-            immersed_boundary = getproperty(grid, :immersed_boundary)
-            hasproperty(immersed_boundary, :bottom_height) || return nothing
-            bottom_height_field = getproperty(immersed_boundary, :bottom_height)
-            hasproperty(bottom_height_field, :data) || return nothing
-            physical_matrix(getproperty(bottom_height_field, :data), source_grid; T = Float32)
-        end
-    end
+function bottom_height_matrix(grid)
+    hasproperty(grid, :immersed_boundary) || return nothing
+    source_grid = underlying_grid(grid)
+    immersed_boundary = getproperty(grid, :immersed_boundary)
+    hasproperty(immersed_boundary, :bottom_height) || return nothing
+    bottom_height_field = getproperty(immersed_boundary, :bottom_height)
+    hasproperty(bottom_height_field, :data) || return nothing
+    return physical_matrix(getproperty(bottom_height_field, :data), source_grid; T = Float32)
 end
 
 surface_ocean_mask(bottom_height::Union{Nothing, AbstractMatrix}) = isnothing(bottom_height) ? nothing : BitMatrix(bottom_height .< 0f0)
@@ -177,55 +158,43 @@ function sea_ice_extent(ice::AbstractMatrix, areas::AbstractMatrix, mask::BitMat
 end
 
 function load_sea_ice_extent_timeseries(files::Vector{String}; threshold::Float32 = ICE_THRESHOLD)
-    isempty(files) && error("No combined sea-ice source files found in $(OUTPUT_PATH).")
-
-    grid = load_grid_from_output_file(first(files))
+    grid = load_grid_from_output_file(last(files), "ice_concentration")
     areas = cell_area_matrix(grid)
-    wet_mask = surface_ocean_mask(bottom_height_matrix(first(files)))
+    wet_mask = surface_ocean_mask(bottom_height_matrix(grid))
     masks = hemisphere_masks(grid, wet_mask)
 
-    records_by_time = Dict{Float64, NamedTuple{(:run, :north, :south), Tuple{Int, Float64, Float64}}}()
-    @info "Loading sea-ice extent timeseries..." file_count = length(files) threshold
+    records_by_time = Dict{Float64, Tuple{Float64, Float64}}()
 
-    for (file_index, file) in enumerate(files)
-        run = run_id(file)
+    for file in files
+        @info "Loading sea-ice extent timeseries" file = basename(file) threshold
         jldopen(file, "r") do data
-            haskey(data, "timeseries/t") || begin
-                @warn "Skipping sea-ice extent file: missing timeseries/t." file
-                return
-            end
-            haskey(data, "timeseries/ice_concentration") || begin
-                @warn "Skipping sea-ice extent file: missing timeseries/ice_concentration." file
-                return
-            end
+            haskey(data, "timeseries/t") || error("Missing timeseries/t in $file")
+            haskey(data, "timeseries/ice_concentration") || error("Missing timeseries/ice_concentration in $file")
 
             ts_keys = sort(parse.(Int, collect(keys(data["timeseries/t"]))))
-            for key in ts_keys
-                tval = Float64(data["timeseries/t/$key"])
+            stride = max(1, cld(length(ts_keys), PROGRESS_UPDATES))
+
+            for (index, key) in enumerate(ts_keys)
                 raw = data["timeseries/ice_concentration/$key"]
                 ice = extract_2d_f32(raw)
                 ice === nothing && continue
 
-                north_extent = sea_ice_extent(ice, areas, masks[:north]; threshold)
-                south_extent = sea_ice_extent(ice, areas, masks[:south]; threshold)
+                time = Float64(data["timeseries/t/$key"])
+                records_by_time[time] = (sea_ice_extent(ice, areas, masks[:north]; threshold),
+                                         sea_ice_extent(ice, areas, masks[:south]; threshold))
 
-                existing = get(records_by_time, tval, nothing)
-                if isnothing(existing) || run >= existing.run
-                    records_by_time[tval] = (run = run, north = north_extent, south = south_extent)
+                if index == 1 || index == length(ts_keys) || index % stride == 0
+                    pct = round(100 * index / length(ts_keys); digits = 1)
+                    @info "Sea-ice extent scan" progress = "$(index)/$(length(ts_keys))" percent = pct
                 end
             end
         end
-
-        stride = max(1, cld(length(files), PROGRESS_UPDATES))
-        if file_index == 1 || file_index == length(files) || file_index % stride == 0
-            pct = round(100 * file_index / length(files); digits = 1)
-            @info "Sea-ice extent scan" progress = "$(file_index)/$(length(files))" percent = pct
-        end
     end
 
-    times = sort(collect(keys(records_by_time)))
-    north_extents = [records_by_time[t].north for t in times]
-    south_extents = [records_by_time[t].south for t in times]
+    times = sort!(collect(keys(records_by_time)))
+    isempty(times) && error("No sea-ice extent frames found in $(join(basename.(files), ", ")).")
+    north_extents = [records_by_time[time][1] for time in times]
+    south_extents = [records_by_time[time][2] for time in times]
     @info "Completed sea-ice extent load." frames = length(times)
     return times, north_extents, south_extents
 end
@@ -389,17 +358,12 @@ function plot_sea_ice_extent(times::Vector{Float64}, north_extents::Vector{Float
     return outname
 end
 
-function make_sea_ice_extent(selected_run::Union{Nothing, Int} = parse_selected_run();
-                              threshold::Float32 = ICE_THRESHOLD,
+function make_sea_ice_extent(; threshold::Float32 = ICE_THRESHOLD,
                               outname::Union{Nothing, String} = nothing)
-    selected_run === :help && return print_usage()
-
-    files = filter_files_by_run(sea_ice_surface_files(OUTPUT_PATH), selected_run)
-    times, north_extents, south_extents = load_sea_ice_extent_timeseries(files; threshold)
+    times, north_extents, south_extents = load_sea_ice_extent_timeseries(surface_files(); threshold)
 
     if isnothing(outname)
-        suffix = isnothing(selected_run) ? "" : "_$(run_suffix(selected_run))"
-        outname = FIGDIR * "sea_ice_extent$(suffix).png"
+        outname = FIGDIR * "sea_ice_extent.png"
     end
 
     plot_sea_ice_extent(times, north_extents, south_extents; outname)
@@ -408,5 +372,10 @@ function make_sea_ice_extent(selected_run::Union{Nothing, Int} = parse_selected_
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    make_sea_ice_extent()
+    if any(arg -> arg in ("-h", "--help"), ARGS)
+        print_usage()
+    else
+        isempty(ARGS) || error("This script does not accept positional arguments.")
+        make_sea_ice_extent()
+    end
 end

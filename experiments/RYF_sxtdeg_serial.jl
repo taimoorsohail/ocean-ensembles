@@ -42,7 +42,7 @@ const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
 
-checkpoint_interval = TimeInterval(5days)
+checkpoint_interval = TimeInterval((365/12)days)
 output_interval = AveragedTimeInterval(1days)
 callback_iteration_interval = 100
 default_checkpoint_prefix = "RYF_sxtdeg_checkpoint"
@@ -247,6 +247,11 @@ function align_checkpoint_fs(grid, arch, inputs, free_surface::SplitExplicitFree
     @info "Reading checkpoint for free surface alignment"
     filepath = latest_valid_checkpoint(checkpoint_prefix)
 
+    if isnothing(filepath)
+        @info "No valid checkpoint found; skipping free-surface alignment."
+        return nothing
+    end
+
     jldopen(filepath, "r+") do data
         keys_chkpt = "simulation/model/ocean/model/free_surface/displacement/data"
         checkpoint_halo_size = (Integer((size(data[keys_chkpt])[1]-Nx)/2), Integer((size(data[keys_chkpt])[2]-Ny)/2), size(data[keys_chkpt])[3])
@@ -295,14 +300,14 @@ function align_checkpoint_fs(grid, arch, inputs, free_surface::SplitExplicitFree
     return nothing
 end
 
-function compute_mht(simulation)
-    esm = simulation.model
-    arch = esm.ocean.model.grid.architecture
-    z = ExponentialDiscretization(Nz, depth, 0, mutable=true)
-    destination_grid = LatitudeLongitudeGrid(arch; size = (360, 180, Nz), halo = (5, 5, 4), z, longitude = (0, 360), latitude = (-89, 89))
-    mht = meridional_heat_transport(esm, TendencyMethod(); destination_grid=destination_grid)
-    return mht
-end
+# function compute_mht(simulation)
+#     esm = simulation.model
+#     arch = esm.ocean.model.grid.architecture
+#     z = ExponentialDiscretization(Nz, depth, 0, mutable=true)
+#     destination_grid = LatitudeLongitudeGrid(arch; size = (360, 180, Nz), halo = (5, 5, 4), z, longitude = (0, 360), latitude = (-89, 89))
+#     mht = meridional_heat_transport(esm, TendencyMethod(); destination_grid=destination_grid)
+#     return mht
+# end
 
 # function compute_TSdiagram(simulation; T_bins = 0:0.5:30, S_bins = 30:0.5:40)
 #     ocean_model = simulation.model.ocean.model
@@ -426,12 +431,13 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
 
     sea_ice_outputs = (; ice_thickness=sea_ice_model.ice_thickness,
                        ice_concentration=sea_ice_model.ice_concentration)
-    MHT_outputs = (; mht=compute_mht(simulation))
+    # MHT_outputs = (; mht=compute_mht(simulation))
 
     outputs = merge(ocean.model.tracers, ocean.model.velocities)
     surface_height = (; surface_height=ocean.model.free_surface.displacement)
     # Surface flux diagnostics are bundled with sea-ice state in restart-era runs.
-    # Preserve the legacy run0001 sign convention so mixed historical runs stay consistent.
+    # `fw_flux` is the outward-positive freshwater-content flux, including
+    # explicit surface volume changes and salt-content exchange.
     surface_forcing = (; heat_flux=Field(net_ocean_heat_flux(simulation.model)),
                        fw_flux=Field(net_ocean_freshwater_flux(simulation.model)))
 
@@ -455,13 +461,13 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                                                   overwrite_existing=true,
                                                                   array_type=Array{Float32})
 
-    @time simulation.output_writers[:MHT] = JLD2Writer(simulation.model, MHT_outputs;
-                                                                  dir=output_path,
-                                                                  schedule=output_interval,
-                                                                  filename="global_MHT_sxtdeg_RYF_run" * run_id_leading,
-                                                                  with_halos=false,
-                                                                  overwrite_existing=true,
-                                                                  array_type=Array{Float32})
+    # @time simulation.output_writers[:MHT] = JLD2Writer(simulation.model, MHT_outputs;
+    #                                                               dir=output_path,
+    #                                                               schedule=output_interval,
+    #                                                               filename="global_MHT_sxtdeg_RYF_run" * run_id_leading,
+    #                                                               with_halos=false,
+    #                                                               overwrite_existing=true,
+    #                                                               array_type=Array{Float32})
 
     @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, build_global_outputs(ocean, grid);
                                                        dir=output_path,
