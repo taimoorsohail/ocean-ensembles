@@ -172,7 +172,7 @@ ax6 = Axis(fig[3, 2], title = "Surface Height (Σ(ηA/ΣA))", xlabel = "Time (ye
 
 lines!(ax1, time_in_years, 1035*1000*totint[vars[1]], label = "OHC")
 lines!(ax2, time_in_years, totint[vars[1]]./totint[vars[7]], label = "Mean Temperature")
-lines!(ax3, time_in_years, (1.3358605008598876e18.-totint[vars[2]])./(35), label = "OSC")
+lines!(ax3, time_in_years, 1035 .* (totint[vars[7]] .- totint[vars[2]] ./ 35), label = "OSC")
 lines!(ax4, time_in_years, totint[vars[2]]./totint[vars[7]], label = "Mean Salinity")
 lines!(ax5, time_in_years, 0.5*(totint[vars[4]].^2+totint[vars[5]].^2+totint[vars[6]].^2), label = "Total KE analog")
 lines!(ax6, surface_time_in_years[2:end], surface_height_mean[2:end], label = "GMSL (m)")
