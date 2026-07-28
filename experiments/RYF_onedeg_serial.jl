@@ -508,7 +508,7 @@ function build_simulation(arch, run_id;
     closure = (catke_closure, eddy_closure)
 
     @info "Defining free surface"
-    free_surface = SplitExplicitFreeSurface(grid; substeps=167)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=200)
     momentum_advection = WENOVectorInvariant(time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     tracer_advection = WENO(order=5, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     sea_ice_advection = WENO(order=5, minimum_buffer_upwind_order=1)
