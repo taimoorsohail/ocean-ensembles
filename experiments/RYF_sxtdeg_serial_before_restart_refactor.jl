@@ -1,9 +1,3 @@
-using MPI
-using CUDA
-using CUDA: @allowscalar
-MPI.Init()
-atexit(MPI.Finalize)  
-
 using NumericalEarth
 
 using NumericalEarth.EN4
@@ -29,32 +23,42 @@ using Printf
 using Glob 
 using JLD2
 
-data_path = expanduser("/g/data/v46/txs156/ocean-ensembles/data/")
-output_path = expanduser("/g/data/v46/txs156/ocean-ensembles/outputs/")
-figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
+data_path = expanduser("/home/tsohail/uom/ocean-ensembles/data/")
+output_path = expanduser("/home/tsohail/uom/ocean-ensembles/outputs/")
+figdir = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
 
-# Argument is provided by the submission script!
-
-if isempty(ARGS)
-    println("No arguments provided. Please enter architecture (CPU/GPU):")
-    arch_input = readline()
-    if arch_input == "GPU"
-        arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-    elseif arch_input == "CPU"
-        arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
+function get_arg(flag::String, default::Union{Nothing,String}=nothing)
+    i = findfirst(==(flag), ARGS)
+    if i === nothing
+        return default
+    elseif i == length(ARGS)
+        error("Missing value for $flag")
     else
-        throw(ArgumentError("Invalid architecture. Must be 'CPU' or 'GPU'."))
+        return ARGS[i + 1]
     end
-elseif ARGS[2] == "GPU" 
-    arch = Distributed(GPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-elseif ARGS[2] == "CPU"
-    arch = Distributed(CPU(); partition = Partition(y = DistributedComputations.Equal()), synchronized_communication=true)
-else
-    throw(ArgumentError("Architecture must be provided in the format julia --project example_script.jl --arch GPU"))
-end    
+end
 
-total_ranks = MPI.Comm_size(MPI.COMM_WORLD)
-localrank = Integer(arch.local_rank)
+arch_str = get_arg("--arch")
+if arch_str === nothing
+    println("No architecture provided. Please enter architecture (CPU/GPU):")
+    arch_str = readline()
+end
+
+run_str = get_arg("--run")
+if run_str === nothing
+    println("No run number provided. Please enter run number:")
+    run_str = readline()
+end
+
+if arch_str == "GPU"
+    arch = GPU()
+elseif arch_str == "CPU"
+    arch = CPU()
+else
+    error("Invalid architecture. Must be 'CPU' or 'GPU'.")
+end
+
+run_id = parse(Int, run_str)
 
 # ### Download necessary files to run the code
 
@@ -78,7 +82,6 @@ download_dataset(salinity)
 
 Nx = Integer(360*6)
 Ny = Integer(180*6)
-ny = div(Ny, total_ranks)
 Nz = Integer(75)
 
 @info "Defining vertical z faces"
@@ -211,6 +214,9 @@ function progress(sim)
     η = sim.model.ocean.model.free_surface.displacement
     u, v, w = sim.model.ocean.model.velocities
     T, S = sim.model.ocean.model.tracers
+    advective_cfl = AdvectiveCFL(sim.Δt)(sim.model.ocean.model)
+    grid = sim.model.ocean.model.grid.underlying_grid
+    # diffusive_cfl = sim.model.ocean.model.closure[2].ν * sim.Δt / minimum_zspacing(grid)^2
 
     Trange = (maximum((T)), minimum((T)))
     Srange = (maximum((S)), minimum((S)))
@@ -231,8 +237,9 @@ function progress(sim)
     msg7 = @sprintf("wall time: %s \n", prettytime(step_time))
     msg5 = @sprintf("Wall clock time: %s \n", prettytime(wall_progress))
     msg8 = @sprintf("SYPD: %.2f \n", (10*sim.Δt)/step_time/365)
+    msg9 = @sprintf("advective_cfl: %.2f \n", advective_cfl)
 
-    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7 * msg5 * msg8
+    @info msg1 * msg2 * msg3 * msg4 * msg6 * msg7 * msg5 * msg8 * msg9 * msg10
 
     wall_time[] = time_ns()
 
@@ -251,8 +258,8 @@ velocities = ocean.model.velocities
 outputs = merge(tracers, velocities)
 
 surface_height = (; surface_height = ocean.model.free_surface.displacement)
-surface_forcing = (; heat_flux = net_ocean_heat_flux(simulation.model), 
-                    fw_flux = net_ocean_freshwater_flux(simulation.model))
+surface_forcing = (; heat_flux = Field(net_ocean_heat_flux(simulation.model)), 
+                    fw_flux = Field(net_ocean_freshwater_flux(simulation.model)))
 
 @info "Defining total integral outputs"
 
@@ -315,60 +322,85 @@ global_outputs = merge(cumulative_tuple, cumulative_vert_tuple,
 
 depths = [0,-100, -500, -1000, -2000]
 
-symbols_slice = Symbol[]  # empty vector to store symbols
-
-@show run_id = lpad(ARGS[4], 4, '0')
+slice_output_specs = []
+run_output_writer_keys = Symbol[]
 
 for (ind, depth) in enumerate(depths)
     pln, ind_pln =  findmin(abs.(grid.z.cᵃᵃᶜ[1:Nz] .- depths[ind]))
     slice_level = ind_pln
-    push!(symbols_slice, Symbol("plane$(abs(round(slice_level, digits=1)))"))
+    key = Symbol("plane$(abs(round(slice_level, digits=1)))")
+    push!(slice_output_specs, (; key, slice_level, ind_pln))
+    push!(run_output_writer_keys, key)
     @show slice_level
-    @time ocean.output_writers[symbols_slice[ind]] = JLD2Writer(ocean.model, outputs;
-                                                                dir = output_path,
-                                                                schedule = IterationInterval(1),#AveragedTimeInterval((365/12)days),
-                                                                filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id,
-                                                                indices = (:, :, ind_pln),
-                                                                with_halos = false,
-                                                                including = [:buoyancy, :closure],
-                                                                overwrite_existing = true,
-                                                                array_type = Array{Float32})
-
 end
 
 @info "Defining surface fields"
 
-@time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
-                                              dir = output_path,
-                                              schedule = IterationInterval(36),#AveragedTimeInterval((365/12)days),
-                                              filename = "global_ssh_fields_sxtdeg_RYF_run" * run_id,
-                                              including = [:buoyancy, :closure],
-                                              with_halos = false,
-                                              overwrite_existing = true,
-                                              array_type = Array{Float32})
+append!(run_output_writer_keys, [:SSH, :surface_fluxes, :integral])
 
-@time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
-                                                              dir = output_path,
-                                                              schedule = IterationInterval(36),#AveragedTimeInterval((365/48)days),
-                                                              filename = "global_surface_fluxes_sxtdeg_RYF_run" * run_id,
-                                                              with_halos = false,
-                                                              overwrite_existing = true,
-                                                              array_type = Array{Float32})
+function add_run_output_writers!(simulation, ocean, run_id)
+    run_id_leading = lpad(string(run_id), 4, '0')
+    @info "Defining run-dependent output writers for run $run_id_leading"
 
-@time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
-                                                   dir = output_path,
-                                                   schedule = AveragedTimeInterval(1days),
-                                                   filename = "global_tot_integrals_sxtdeg_RYF_run" * run_id,
-                                                   overwrite_existing = true)
+    for spec in slice_output_specs
+        slice_level = spec.slice_level
+        @time ocean.output_writers[spec.key] = JLD2Writer(ocean.model, outputs;
+                                                          dir = output_path,
+                                                          schedule = AveragedTimeInterval((365/48)days),
+                                                          filename = "global_" * string(Integer(round(slice_level))) * "_fields_sxtdeg_RYF_run" * run_id_leading,
+                                                          indices = (:, :, spec.ind_pln),
+                                                          with_halos = false,
+                                                          overwrite_existing = true,
+                                                          array_type = Array{Float32})
+    end
+
+    @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
+                                                  dir = output_path,
+                                                  schedule = AveragedTimeInterval((365/48)days),
+                                                  filename = "global_ssh_fields_sxtdeg_RYF_run" * run_id_leading,
+                                                  with_halos = false,
+                                                  overwrite_existing = true,
+                                                  array_type = Array{Float32})
+
+    @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
+                                                                  dir = output_path,
+                                                                  schedule = AveragedTimeInterval((365/48)days),
+                                                                  filename = "global_surface_fluxes_sxtdeg_RYF_run" * run_id_leading,
+                                                                  with_halos = false,
+                                                                  overwrite_existing = true,
+                                                                  array_type = Array{Float32})
+
+    @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
+                                                       dir = output_path,
+                                                       schedule = AveragedTimeInterval((365/48)days),
+                                                       filename = "global_tot_integrals_sxtdeg_RYF_run" * run_id_leading,
+                                                       overwrite_existing = true)
+
+    return nothing
+end
+
+function refresh_run_output_writers!(simulation, ocean, run_id)
+    for key in run_output_writer_keys
+        if key === :surface_fluxes
+            pop!(simulation.output_writers, key, nothing)
+        else
+            pop!(ocean.output_writers, key, nothing)
+        end
+    end
+
+    return add_run_output_writers!(simulation, ocean, run_id)
+end
+
+add_run_output_writers!(simulation, ocean, run_id)
 
 ################################### END OUTPUTTING ######################################
 
 ################################### START CHECKPOINTING ######################################
 
 @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
-                                                              schedule = TimeInterval(1days),  
+                                                              schedule = TimeInterval((365/48)days),  
                                                               dir = output_path, 
-                                                              prefix="RYF_sxtdeg_checkpoint_rank$localrank",
+                                                              prefix="RYF_sxtdeg_checkpoint",
                                                               overwrite_existing = true,
                                                               cleanup = false)
 
@@ -377,10 +409,13 @@ end
 @info "Running Simulation"
 
 simulation.Δt = 10minutes
-simulation.stop_time = 3days#parse(Int,ARGS[4]) * 11 * (365/12)days
+simulation.stop_time = run_id * 11 * (365/12)days
 
-if parse(Int,ARGS[4]) > 1
-    run!(simulation, pickup=true, checkpoint_at_end=true)
-else
-    run!(simulation, pickup=false, checkpoint_at_end=true)
-end
+pickup = run_id > 1
+run!(simulation, pickup=pickup, checkpoint_at_end=true)
+
+run_id += 1
+refresh_run_output_writers!(simulation, ocean, run_id)
+simulation.stop_time = run_id * 11 * (365/12)days
+
+run!(simulation, pickup=false, checkpoint_at_end=true)

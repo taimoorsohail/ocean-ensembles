@@ -9,6 +9,33 @@ figdir = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 
 resolution = "sxtdeg"
 
+function copy_files_to_tempdir(files::Vector{String}; prefix::String)
+    copy_dir = mktempdir(; prefix)
+    copied = String[]
+
+    try
+        for file in files
+            dest = joinpath(copy_dir, basename(file))
+            cp(file, dest; force = true)
+            push!(copied, dest)
+        end
+    catch
+        rm(copy_dir; recursive = true, force = true)
+        rethrow()
+    end
+
+    @info "Copied analysis inputs." source_files = length(files) copy_dir
+    return copied, copy_dir
+end
+
+function cleanup_copied_outputs!(copy_dir::Union{Nothing, String})
+    if copy_dir !== nothing && isdir(copy_dir)
+        rm(copy_dir; recursive = true, force = true)
+        @info "Deleted copied analysis inputs." copy_dir
+    end
+    return nothing
+end
+
 run_number(path::AbstractString) = begin
     m = match(r"run(\d+)", basename(path))
     m === nothing ? -1 : parse(Int, m.captures[1])
@@ -36,6 +63,10 @@ end
 
 sort!(tot_files; by = run_number)
 
+copied_tot_dir = nothing
+tot_files, copied_tot_dir = copy_files_to_tempdir(tot_files; prefix = "analysis2d_vertical_")
+atexit(() -> cleanup_copied_outputs!(copied_tot_dir))
+
  vars_vertint = ["T_vertintegral",
  "S_vertintegral",
  "e_vertintegral",
@@ -48,8 +79,9 @@ sort!(tot_files; by = run_number)
  time = ["t"]
 
 vars = vcat(vars_vertint, vols_vertint)
-data0 = jldopen(tot_files[1])
-Lz = data0["grid/underlying_grid/z/cᵃᵃᶜ"][7:end-7]
+Lz = jldopen(tot_files[1], "r") do data0
+    data0["grid/underlying_grid/z/cᵃᵃᶜ"][7:end-7]
+end
 
 using JLD2
 
@@ -244,3 +276,5 @@ ylims!(ax4, -1000, 0)
 ylims!(ax5, -1000, 0)
 
 save(figdir * "integrated_props_z_$(resolution).png", fig, px_per_unit=3)
+cleanup_copied_outputs!(copied_tot_dir)
+copied_tot_dir = nothing

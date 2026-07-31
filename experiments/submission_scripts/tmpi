@@ -1,1 +1,330 @@
-/g/data/e14/txs156/tmpi
+#!/bin/bash
+
+# Copyright 2013 Benedikt Morbach <moben@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+# runs multiple MPI processes as a grid in a new tmux window and multiplexes keyboard input to all of them
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+mpirun_cmd=${MPIRUN:-${script_dir}/mpirun}
+reptyr_cmd=${REPTYR:-reptyr}
+additional_vars=(PATH LD_LIBRARY_PATH LD_PRELOAD OPENSSL_ARTIFACT JULIA_DEPOT_PATH JULIA_LOAD_PATH JULIA_CUDA_MEMORY_POOL JULIA_NUM_THREADS JULIA_PKG_PRECOMPILE_AUTO CUDA_VISIBLE_DEVICES)
+unset_vars=(OMPI_MCA_pml OMPI_MCA_btl OMPI_MCA_plm_slurm_args OMPI_MCA_btl_tcp_if_include OMPI_MCA_btl_openib_if_include OMPI_MCA_oob_tcp_if_include OPAL_PREFIX PMIX_MCA_gds)
+
+check_mpirun() {
+    mpich=$(${mpirun_cmd} --version |grep -i -e HYDRA -e Intel)
+    openmpi=$(${mpirun_cmd} --version |grep -i "Open MPI")
+
+    if [ -z "${mpich}" ] && [ -z "${openmpi}" ]; then
+        echo "Unknown MPI implementation. Only MPICH (and its derivatives) and OpenMPI are supported!"
+        exit 1
+    fi
+}
+
+usage() {
+    echo 'tmpi: Run multiple MPI processes as a grid in a new tmux window and multiplex keyboard input to all of them.'
+    echo ''
+    echo 'Usage:'
+    echo '   tmpi [number] [command]'
+    echo ''
+    echo 'You need to pass at least two arguments.'
+    echo 'The first argument is the number of processes to use, every argument after that is the commandline to run.'
+    echo 'If you call this script from outside tmux and your command contains important whitespace then you need to appy two levels of quoting to preserve it.'
+    echo ''
+    echo 'The new window is set to remain on exit and has to be closed manually. ("C-b + &" by default)'
+    echo 'You can use the environment variable TMPI_TMUX_OPTIONS to pass options to the `tmux` invocation, '
+    echo '  such as '-f ~/.tmux.conf.tmpi' to use a special tmux configuration for tmpi.'
+    echo 'Little usage hint: By default the panes in the window are synchronized. If you wish to work only with one thread maximize this pane ("C-b + z" by default) and work away on one thread. Return to all thread using the same shortcut.'
+}
+
+check_tools() {
+    # reptyr must be last in the following list
+    tools=( tmux ${mpirun_cmd} ${reptyr_cmd} )
+
+    for tool in "${tools[@]}"; do
+        if !(type ${tool} > /dev/null 2>&1); then
+            if [ "${tool}" = "${reptyr_cmd}" ]; then
+                echo "reptyr not found, using tmpi legacy mode"
+                return 1
+            else
+                echo "You need to install ${tool} to run this script."
+                exit 1
+            fi
+        fi
+    done
+    check_mpirun
+    return 0
+}
+
+if [[ ${#} -lt 2 ]]; then
+    usage
+
+    exit 1
+fi
+
+if [[ -z ${TMUX+x} ]]; then
+    # it seems we aren't in a tmux session.
+    # start a new one so that our window doesn't end up in some other session and we have to search it.
+    # actually start a new server with '-L' to ensure that our environment carries over.
+    socket=${TMPI_TMUX_SOCKET:-tmpi-${USER}-${SLURM_JOB_ID:-$(hostname -s)}}
+    session_name=${TMPI_TMUX_SESSION:-tmpi-${USER}-${SLURM_JOB_ID:-$(date +%s)}}
+
+    echo "Starting tmpi tmux server:"
+    echo "  socket:  ${socket}"
+    echo "  session: ${session_name}"
+    echo ""
+    echo "Reattach with:"
+    echo "  tmux -L ${socket} attach -t ${session_name}"
+    echo ""
+
+    tmux ${TMPI_TMUX_OPTIONS} -L "${socket}" new-session -d -s "${session_name}" "${0} ${*}"
+    exec tmux ${TMPI_TMUX_OPTIONS} -L "${socket}" attach -t "${session_name}"
+fi
+
+if [[ ${1} == runmpi ]] ; then
+    # we are being started as one of many processes by mpirun.
+    has_reptyr=${2}
+    # the next two will contain "1" in case has_reptyr is false (i.e. 1)
+    processes=${3}
+    setpty_cmd=${4}
+    shift
+    shift
+    shift
+    shift
+
+    mpi_rank=${OMPI_COMM_WORLD_RANK:-${PMI_RANK:--1}}
+    if [[ ${mpi_rank} == -1 ]]; then
+        echo "Neither OMPI_COMM_WORLD_RANK nor PMI_RANK environment variables is not set by '${mpirun_cmd}'."
+        exit 1
+    fi
+
+    # start the processes in the order of their rank.
+    # this avoids races, as we have to push the variables in tmux' environment.
+    # it has the nice side-effect that the panes are also ordered by rank.
+    sleep 0.02
+    while [[ $(cat /tmp/tmpi_${USER}.lock) -ne ${mpi_rank} ]] ; do
+        if [[ $(cat /tmp/tmpi_${USER}.lock) -eq -1 ]]; then
+            echo "Error during mpi startup"
+            exit -1
+        fi
+        sleep 0.02
+    done
+
+    if [ ${has_reptyr} = 0 ]; then
+        # temp file for forwarding /dev/pts/xxx of 'reptyr' to host
+        ptsfile=$(mktemp)
+        touch ${ptsfile}
+        trap "rm -f ${ptsfile}" EXIT
+
+        # split the tmux pane and run 'reptyr -l' on it
+        pane=$(tmux split-window -P -F '#{pane_id}' -t ${window} bash -c "trap \"rm -f ${ptsfile}\" EXIT; ${reptyr_cmd} -l | tee ${ptsfile}")
+    else
+        if [ -n "${mpich}" ]; then
+            mpi_env="-e MPI -e HYD -e PMI"
+        else
+            mpi_env="-e MPI -e OPAL -e PMIX"
+        fi
+        # get all the variables that mpirun starts us with so that we can pass them through.
+        mpi_vars=( $( env | grep ${mpi_env} | cut -d '=' -f1 ) )
+        mpi_vars+=( "${additional_vars[@]}" )
+
+        # Keep MPI rank/session variables, but do not forward launcher/library
+        # overrides that jll_runtime_env.sh deliberately clears for Julia.
+        filtered_mpi_vars=()
+        for var in "${mpi_vars[@]}"; do
+            skip_var=0
+            for unset_var in "${unset_vars[@]}"; do
+                if [ "${var}" = "${unset_var}" ]; then
+                    skip_var=1
+                    break
+                fi
+            done
+            if [ "${skip_var}" = 0 ]; then
+                filtered_mpi_vars+=( "${var}" )
+            fi
+        done
+        mpi_vars=( "${filtered_mpi_vars[@]}" )
+
+        # add the variables to tmux' session environment.
+        # we can't just export them because the process will be started as a child of tmux, not us.
+        # Also clear transport settings that jll_runtime_env.sh intentionally
+        # unsets. tmux can otherwise keep stale values from an older pane.
+        for var in "${unset_vars[@]}"; do
+            tmux set-environment -t ${session} -u "${var}" 2>/dev/null || true
+        done
+
+        for var in "${mpi_vars[@]}"; do
+            if [ -n "${!var+x}" ]; then
+                tmux set-environment -t ${session} "${var}" "${!var}"
+            fi
+        done
+
+        x=( $(tmux split-window -P -F '#{pane_pid} #{pane_id}' -t ${window} "${*}") )
+        pid=${x[0]}
+        pane=${x[1]}
+
+        for var in "${mpi_vars[@]}"; do
+            tmux set-environment -t ${session} -u "${var}"
+        done
+        for var in "${unset_vars[@]}"; do
+            tmux set-environment -t ${session} -u "${var}" 2>/dev/null || true
+        done
+    fi
+
+    if [[ ${mpi_rank} -eq 0 ]]; then
+        log_dir="${script_dir}/logs"
+        timestamp=$(date '+%Y%m%d_%H%M%S')
+        host=$(hostname -s 2>/dev/null || hostname)
+        gpu_index="${CUDA_VISIBLE_DEVICES%%,*}"
+        gpu_index="${gpu_index:-0}"
+        gpu_name=""
+        if command -v nvidia-smi >/dev/null 2>&1; then
+            gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader -i "${gpu_index}" 2>/dev/null | head -n 1)
+        fi
+        gpu_name="${gpu_name:-gpu${gpu_index}}"
+        log_tag=$(printf '%s_%s_%s_%s_%s' "${timestamp}" "${host}" "${gpu_name}" "${session}" "${window}" | tr -cs '[:alnum:]_.-' '_')
+        log_file="${log_dir}/tmpi_rank0_${log_tag}.log"
+        mkdir -p "${log_dir}"
+        {
+            printf '\n===== tmpi rank 0 log started %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S %z')"
+            printf 'host: %s\n' "${host}"
+            printf 'gpu: %s\n' "${gpu_name}"
+            printf 'tmux_session: %s\n' "${session}"
+            printf 'tmux_window: %s\n' "${window}"
+            printf 'CUDA_VISIBLE_DEVICES=%s\n' "${CUDA_VISIBLE_DEVICES:-}"
+            printf 'OMPI_MCA_btl=%s\n' "${OMPI_MCA_btl-<unset>}"
+            printf 'OMPI_MCA_pml=%s\n' "${OMPI_MCA_pml-<unset>}"
+            printf 'OPAL_PREFIX=%s\n' "${OPAL_PREFIX-<unset>}"
+            printf 'PMIX_MCA_gds=%s\n' "${PMIX_MCA_gds-<unset>}"
+            printf 'LD_LIBRARY_PATH=%s\n' "${LD_LIBRARY_PATH:-}"
+            printf 'LD_PRELOAD=%s\n' "${LD_PRELOAD:-}"
+            printf 'command:'
+            printf ' %q' "$@"
+            printf '\n\n'
+        } >> "${log_file}"
+        tmux pipe-pane -o -t "${pane}" "cat >> ${log_file}"
+        tmux display-message -t "${pane}" "Logging rank 0 pane to ${log_file}"
+    fi
+
+    # kill the dummy pane that opened the new window
+    [[ ${mpi_rank} -eq 0 ]] && tmux kill-pane -t ${dummy} &> /dev/null
+
+    # set the window to tiled mode.
+    # have to do this after every new pane is spawned because otherwise the splits get
+    # smaller and smaller until tmux refuses to open new panes, despite plenty of space being left.
+    tmux select-layout -t ${pane} tiled &> /dev/null
+
+    # let the next process start
+    echo $((mpi_rank+1)) > /tmp/tmpi_${USER}.lock
+
+    if [ ${has_reptyr} = 0 ]; then
+        # Put quotes correctly in the command
+        cmds=()
+        for i in "$@"; do
+            if [[ $i =~ [[:space:]] ]]; then
+                i=\"$i\"
+            fi
+            cmds+=("$i")
+        done
+        commands="(echo; "${cmds[@]}")"
+
+        # Barrier
+        while [[ $(cat /tmp/tmpi_${USER}.lock) -ne $((processes+mpi_rank)) ]] ; do
+            sleep 0.02
+        done
+        echo $((processes+mpi_rank+1)) > /tmp/tmpi_${USER}.lock
+
+        # '--follow=name' rather than '-f' to exit when the file is deleted
+        tail --follow=name ${ptsfile} |
+            head -1 |
+            stdbuf -oL grep 'Opened a new pty:' |
+            stdbuf -oL cut -d ' ' -f 5 |
+            xargs -I DEVPTS setsid ${setpty_cmd} DEVPTS bash -c "${commands}"
+    else
+        # don't exit here as mpirun needs to be kept alive and it would also exit.
+        while [[ -d /proc/${pid} ]]; do
+            sleep 0.02
+        done
+    fi
+else
+    # check if we have the required tools necessary
+    check_tools
+    has_reptyr=$?
+
+    # we are the parent and set everything up before we start ourselves a bunch of times via mpirun.
+    processes=${1}
+    self=${0}
+    shift
+
+    if [ "${has_reptyr}" = 0 ]; then
+        # Compile a program to call 'ioctl' syscall
+        setpty_cmd=$(mktemp)
+        gcc -o ${setpty_cmd} -x c - <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
+int main(int argc, char **argv) {
+  if (argc < 3) {
+    fprintf(stderr, "Usage: %s /dev/pts/XX COMMANDS\n", argv[0]);
+    exit(1);
+}
+
+  int fd = open(argv[1], O_RDWR);
+  if (fd == -1) {
+    perror("open");
+    exit(1);
+}
+
+  if (ioctl(fd, TIOCSCTTY, 0) != 0) {
+    perror("ioctl");
+    exit(1);
+}
+
+  dup2(fd, STDIN_FILENO);
+  dup2(fd, STDOUT_FILENO);
+  dup2(fd, STDERR_FILENO);
+
+  argv += 2;
+  execvp(argv[0], argv);
+  return 0;
+}
+EOF
+        trap "rm -f ${setpty_cmd}" EXIT
+    fi
+
+    # create an empty new dummy window which we sill later split up for the mpi processes.
+    x=( $(tmux new-window -P -F '#{pane_id} #{window_id} #{session_id}') )
+    export dummy=${x[0]}
+    export window=${x[1]}
+    export session=${x[2]}
+
+    # Enable mouse support for pane selection and scroll/copy mode in tmpi sessions.
+    tmux set-option -g -t ${session} mouse on &> /dev/null
+
+    # syncronize input to all panes.
+    tmux set-window-option -t ${window} synchronize-panes on &> /dev/null
+    tmux set-window-option -t ${window} remain-on-exit off &> /dev/null
+
+    # always start with rank 0.
+    echo 0 > /tmp/tmpi_${USER}.lock
+    trap "rm -f /tmp/tmpi_${USER}.lock" EXIT
+
+    mpi_arg=""
+    if [ -n "${mpich}" ]; then
+        mpi_arg="" # used to be -pmi-port
+    else
+        mpi_arg="${TMPI_MPI_ARG:---oversubscribe}" # OpenMPI under Slurm often exposes one slot for interactive shells
+    fi
+
+    # re-execute ourself to spawn of the processes.
+    echo ${mpirun_cmd} -n ${processes} ${mpi_arg} ${self} runmpi ${has_reptyr} ${has_reptyr/0/${processes}} ${has_reptyr/0/${setpty_cmd}} "${@}"
+    ${mpirun_cmd} -n ${processes} ${mpi_arg} ${self} runmpi ${has_reptyr} ${has_reptyr/0/${processes}} ${has_reptyr/0/${setpty_cmd}} "${@}"
+    if [[ $? -ne 0 ]]; then
+        echo -1 > /tmp/tmpi_${USER}.lock
+        tmux kill-pane -t ${dummy} &> /dev/null
+    fi
+fi

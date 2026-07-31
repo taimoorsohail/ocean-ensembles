@@ -157,7 +157,10 @@ isempty(files_surface) && error("No forcing surface files found in $outputpath."
 grid_run = lpad(run_id(files_surface[1]), 4, '0')
 grid_prefix = outputpath * "global_75_fields_$(resolution)_RYF_run$(grid_run)"
 if !isfile(grid_prefix * ".jld2")
-    grid_prefix = outputpath * "global_75_fields_$(resolution)_RYF_run0001"
+    grid_files = glob("global_75_fields_$(resolution)_RYF_run*.jld2", outputpath)
+    sort!(grid_files; by = run_id)
+    isempty(grid_files) && error("No 75-level run files found in $outputpath.")
+    grid_prefix = splitext(last(grid_files))[1]
 end
 surface_grid = create_grid(grid_prefix; gridtype = "TripolarGrid")
 surface_time_in_years, surface_height_mean = surface_height_timeseries(files_surface, surface_grid)
@@ -172,7 +175,7 @@ ax6 = Axis(fig[3, 2], title = "Surface Height (Σ(ηA/ΣA))", xlabel = "Time (ye
 
 lines!(ax1, time_in_years, 1035*1000*totint[vars[1]], label = "OHC")
 lines!(ax2, time_in_years, totint[vars[1]]./totint[vars[7]], label = "Mean Temperature")
-lines!(ax3, time_in_years, (1.3358605008598876e18.-totint[vars[2]])./(35), label = "OSC")
+lines!(ax3, time_in_years, 1035 .* (totint[vars[7]] .- totint[vars[2]] ./ 35), label = "OSC")
 lines!(ax4, time_in_years, totint[vars[2]]./totint[vars[7]], label = "Mean Salinity")
 lines!(ax5, time_in_years, 0.5*(totint[vars[4]].^2+totint[vars[5]].^2+totint[vars[6]].^2), label = "Total KE analog")
 lines!(ax6, surface_time_in_years[2:end], surface_height_mean[2:end], label = "GMSL (m)")
@@ -180,5 +183,4 @@ lines!(ax6, surface_time_in_years[2:end], surface_height_mean[2:end], label = "G
 save(fig_dir * "integrated_props_$(resolution).png", fig, px_per_unit=3)
 
 ### Now we work on the heat budget!
-
 

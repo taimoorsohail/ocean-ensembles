@@ -1,9 +1,7 @@
-name = "OceanEnsembles-analysis"
-
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ClimaOcean = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
-Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
+ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 OceanEnsembles = "e9aca8d1-80c0-42f9-8837-1cb698c59cf0"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
