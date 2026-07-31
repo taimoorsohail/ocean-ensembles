@@ -148,6 +148,7 @@ end
 @inline function update_stats!(stats::RunningStats, A::Matrix{Float32}, stride::Int)
     @inbounds for i in 1:stride:length(A)
         x = Float64(A[i])
+        isfinite(x) || continue
         stats.n += 1
         δ = x - stats.mean
         stats.mean += δ / stats.n
@@ -196,9 +197,15 @@ function sampled_colormap_limits(frames::Vector{FrameRef}, vars::Vector{String},
     limits = Dict{String, Tuple{Symbol, Tuple{Float32, Float32}}}()
     for var in vars
         s = stats[var]
+        if s.n == 0
+            @warn "All sampled values were non-finite for variable; using fallback colorrange." variable = var
+            limits[var] = (:balance, (-1f0, 1f0))
+            continue
+        end
+
         σ = s.n > 1 ? sqrt(s.m2 / (s.n - 1)) : 0.0
         σ = max(σ, eps(Float64))
-        kσ = Float32(COLOR_SIGMA_MULTIPLE * σ)
+        kσ = max(Float32(COLOR_SIGMA_MULTIPLE * σ), 1f-6)
         limits[var] = (:balance, (-kσ, kσ))
     end
 

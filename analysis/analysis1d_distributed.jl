@@ -80,6 +80,14 @@ function linear_interpolate_series(query_times, source_times, source_values)
     return out
 end
 
+function strict_sum_nan(A; dims)
+    S = sum(A; dims = dims)
+    nan_mask = any(isnan, A; dims = dims)
+    return ifelse.(nan_mask, NaN, S)
+end
+
+strict_div_nan(num, den) = ifelse.(isnan.(num) .| isnan.(den), NaN, num ./ den)
+
 time_total = Float64[]
 T_total = Float64[]
 S_total = Float64[]
@@ -245,10 +253,14 @@ ax6 = Axis(fig[2, 2], title = "OSC Comparison Difference", xlabel = "Time (years
 ax2 = Axis(fig[3, 1], title = "Mean Temperature", xlabel = "Time (years)", ylabel = "Temperature (°C)")
 ax4 = Axis(fig[3, 2], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Salinity (psu)")
 
-ohc = ρ₀ * cₚ * sum(T_all, dims=2)[:, 1]
-mean_temperature = sum(T_all, dims=2)[:, 1] ./ sum(V_all, dims=2)[:, 1]
-osc = sum(S_all, dims=2)[:, 1] ./ (35 * ρ₀)
-mean_salinity = sum(S_all, dims=2)[:, 1] ./ sum(V_all, dims=2)[:, 1]
+T_sum = strict_sum_nan(T_all; dims = 2)[:, 1]
+S_sum = strict_sum_nan(S_all; dims = 2)[:, 1]
+V_sum = strict_sum_nan(V_all; dims = 2)[:, 1]
+
+ohc = ρ₀ * cₚ * T_sum
+mean_temperature = strict_div_nan(T_sum, V_sum)
+osc = strict_div_nan(S_sum, fill(35 * ρ₀, length(S_sum)))
+mean_salinity = strict_div_nan(S_sum, V_sum)
 
 ohc_anomaly = ohc .- ohc[1]
 osc_anomaly = osc .- osc[1]
@@ -283,11 +295,11 @@ ax2 = Axis(fig[2, 1], title = "Mean Temperature", xlabel = "Time (years)", ylabe
 ax3 = Axis(fig[1, 2], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
 ax4 = Axis(fig[2, 2], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Salinity (psu)")
 
-allranks_T_z_int = sum(T_z_all, dims=2)[:,1,:]
+allranks_T_z_int = strict_sum_nan(T_z_all; dims = 2)[:,1,:]
 allranks_T_z_int_anomaly = allranks_T_z_int .- allranks_T_z_int[1,:]'
-allranks_S_z_int = sum(S_z_all, dims=2)[:,1,:]
+allranks_S_z_int = strict_sum_nan(S_z_all; dims = 2)[:,1,:]
 allranks_S_z_int_anomaly = allranks_S_z_int .- allranks_S_z_int[1,:]'
-allranks_V_z_int = sum(V_z_all, dims=2)[:,1,:]
+allranks_V_z_int = strict_sum_nan(V_z_all; dims = 2)[:,1,:]
 allranks_V_z_int_anomaly = allranks_V_z_int .- allranks_V_z_int[1,:]'
 
 heatmap!(ax1, time_in_years, depth, ρ₀ * cₚ * allranks_T_z_int_anomaly, label = "OHC", colorrange = (-1e21, 1e21), colormap = :bwr)

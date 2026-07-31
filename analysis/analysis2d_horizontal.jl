@@ -11,7 +11,7 @@ const FIGDIR = expanduser("/g/data/v46/txs156/ocean-ensembles/figures/")
 const RESOLUTION = "sxtdeg"
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60
 const VIDEO_FRAMERATE = 12 # 12 frames per second for all videos
-const TARGET_DEPTH_LEVELS = [75, 57, 37, 27, 17] # surface -> deeper
+const TARGET_DEPTH_LEVELS = [75] # surface -> deeper
 const PROGRESS_UPDATES = 20
 
 const VAR_TITLES = Dict(
@@ -38,6 +38,30 @@ end
         return Float32.(raw[:, :, 1])
     end
     return nothing
+end
+
+@inline function finite_colorrange(A::AbstractArray{<:Real}; fallback::Tuple{Float32, Float32} = (0f0, 1f0))
+    amin = Inf32
+    amax = -Inf32
+    found = false
+
+    @inbounds for x in A
+        xf = Float32(x)
+        if isfinite(xf)
+            amin = min(amin, xf)
+            amax = max(amax, xf)
+            found = true
+        end
+    end
+
+    if !found
+        return fallback
+    elseif amin == amax
+        δ = max(abs(amin) * 0.01f0, 1f-6)
+        return (amin - δ, amax + δ)
+    else
+        return (amin, amax)
+    end
 end
 
 function depth_slice_files(path::AbstractString)
@@ -265,7 +289,7 @@ function depth_color_settings(var::String, all_depth_data::Vector{Vector{Matrix{
         return :speed, (0f0, 0.7f0)
     else
         A0 = all_depth_data[1][end]
-        return :viridis, (minimum(A0), maximum(A0))
+        return :viridis, finite_colorrange(A0)
     end
 end
 
@@ -273,12 +297,13 @@ function sea_ice_color_settings(var::String, A::Matrix{Float32})
     if var == "u_ice" || var == "v_ice"
         return :balance, (-0.5f0, 0.5f0)
     elseif var == "ice_concentration"
-        vmax = maximum(A)
+        _, vmax = finite_colorrange(A; fallback = (0f0, 1f0))
         return :ice, vmax <= 1.2f0 ? (0f0, 1f0) : (0f0, 100f0)
     elseif var == "ice_thickness"
-        return :ice, (0f0, max(1f0, maximum(A)))
+        _, vmax = finite_colorrange(A; fallback = (0f0, 1f0))
+        return :ice, (0f0, max(1f0, vmax))
     else
-        return :viridis, (minimum(A), maximum(A))
+        return :viridis, finite_colorrange(A)
     end
 end
 
@@ -399,7 +424,12 @@ function make_depth_variable_video(var::String,
             available_ice = filter(!isnothing, overlay_ice)
             initial_ice = isnothing(overlay_ice[1]) ? empty_ice_overlay : overlay_ice[1]
             Zice = Observable(initial_ice)
-            clim_ice = (0f0, max(1f0, Float32(maximum(maximum, available_ice))))
+            ice_max = 1f0
+            for A in available_ice
+                _, vmax = finite_colorrange(A; fallback = (0f0, 1f0))
+                ice_max = max(ice_max, vmax)
+            end
+            clim_ice = (0f0, ice_max)
             hm_ice = heatmap!(ax, Zice, colormap = :ice, colorrange = clim_ice, alpha = 0.45)
         end
         push!(hms, hm)

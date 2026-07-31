@@ -340,7 +340,7 @@ end
 
 @time ocean.output_writers[:SSH] = JLD2Writer(ocean.model, surface_height;
                                               dir = output_path,
-                                              schedule = IterationInterval(1),#AveragedTimeInterval((365/12)days),
+                                              schedule = IterationInterval(36),#AveragedTimeInterval((365/12)days),
                                               filename = "global_ssh_fields_sxtdeg_RYF_run" * run_id,
                                               including = [:buoyancy, :closure],
                                               with_halos = false,
@@ -349,7 +349,7 @@ end
 
 @time simulation.output_writers[:surface_fluxes] = JLD2Writer(simulation.model, surface_forcing;
                                                               dir = output_path,
-                                                              schedule = IterationInterval(1),#AveragedTimeInterval((365/48)days),
+                                                              schedule = IterationInterval(36),#AveragedTimeInterval((365/48)days),
                                                               filename = "global_surface_fluxes_sxtdeg_RYF_run" * run_id,
                                                               with_halos = false,
                                                               overwrite_existing = true,
@@ -357,7 +357,7 @@ end
 
 @time ocean.output_writers[:integral] = JLD2Writer(ocean.model, global_outputs;
                                                    dir = output_path,
-                                                   schedule = AveragedTimeInterval((365/48)days),
+                                                   schedule = AveragedTimeInterval(1days),
                                                    filename = "global_tot_integrals_sxtdeg_RYF_run" * run_id,
                                                    overwrite_existing = true)
 
@@ -366,7 +366,7 @@ end
 ################################### START CHECKPOINTING ######################################
 
 @time simulation.output_writers[:checkpointer] = Checkpointer(coupled_model, 
-                                                              schedule = TimeInterval((365/12)days),  
+                                                              schedule = TimeInterval(1days),  
                                                               dir = output_path, 
                                                               prefix="RYF_sxtdeg_checkpoint_rank$localrank",
                                                               overwrite_existing = true,
@@ -377,7 +377,7 @@ end
 @info "Running Simulation"
 
 simulation.Δt = 10minutes
-simulation.stop_time = parse(Int,ARGS[4]) * 11 * (365/12)days
+simulation.stop_time = 3days#parse(Int,ARGS[4]) * 11 * (365/12)days
 
 if parse(Int,ARGS[4]) > 1
     run!(simulation, pickup=true, checkpoint_at_end=true)
