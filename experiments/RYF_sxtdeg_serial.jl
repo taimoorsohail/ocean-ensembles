@@ -1,5 +1,7 @@
 using NumericalEarth
 
+using NumericalEarth.Lands: river_mouth_vertical_diffusivity
+using NumericalEarth.DataWrangling.SeaWiFS: SeaWiFSMonthly
 using NumericalEarth.EN4
 using NumericalEarth.ECCO
 using NumericalEarth.DataWrangling.ETOPO
@@ -499,20 +501,44 @@ function build_simulation(arch, run_id;
     FS = DatasetRestoring(inputs.salinity, grid; mask, rate=restoring_rate, time_indices_in_memory)
     forcing = (; S = FS)
 
+    # Simone's OMIP 1/12-degree runoff settings, with the search reach scaled to our grid.
+    maximum_search_radius = max(5, ceil(Int, 3 / ((360 / Nx + 180 / Ny) / 2)))
+    @info "Routing RYF river and iceberg discharge"
+    land = JRA55PrescribedLand(grid;
+                              dataset=RepeatYearJRA55(),
+                              time_indices_in_memory,
+                              maximum_search_radius,
+                              spread_radius=1.2,
+                              n_spread_cells=nothing,
+                              n_outlet_snapshots=365)
+    river_closure = river_mouth_vertical_diffusivity(grid, land.river_routing;
+                                                    κ=0.1, mixing_depth=10)
+
     @info "Defining closures"
     catke_closure = NumericalEarth.Oceans.default_ocean_closure()
-    closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4))
+    closure = (catke_closure, VerticalScalarDiffusivity(κ=1e-5, ν=1e-4), river_closure)
 
     @info "Defining free surface"
     free_surface = SplitExplicitFreeSurface(grid; substeps=167)
     momentum_advection = WENOVectorInvariant(time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
     tracer_advection = WENO(order=7, time_discretization = AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
-    sea_ice_advection = WENO(order=7, minimum_buffer_upwind_order=1)
+    sea_ice_advection = ClimaSeaIce.IncrementalRemapping()
 
     align_checkpoint_fs(grid, arch, inputs, free_surface, checkpoint_prefix)
 
+    @info "Loading monthly SeaWiFS chlorophyll for shortwave absorption"
+    chlorophyll_dates = (DateTime(2000, 1, 1), DateTime(2000, 12, 1))
+    chlorophyll_metadata = Metadata(:chlorophyll;
+                                    dataset=SeaWiFSMonthly(),
+                                    dates=chlorophyll_dates,
+                                    dir=data_path)
+    # Repeat the same twelve monthly fields, as in Simone's OMIP setup.
+    chlorophyll = FieldTimeSeries(chlorophyll_metadata, grid)
+    radiative_forcing = TwoColorRadiation(grid; chlorophyll)
+
     @info "Defining ocean model"
     @time ocean = ocean_simulation(grid; Δt,
+                                   radiative_forcing,
                                    momentum_advection,
                                    tracer_advection,
                                    timestepper=:SplitRungeKutta3,
@@ -527,7 +553,8 @@ function build_simulation(arch, run_id;
 
     @info "Creating sea ice model"
     sea_ice = sea_ice_simulation(grid, ocean;
-                                 advection = sea_ice_advection)
+                                 advection = sea_ice_advection,
+                                 timestepper = :ForwardEuler)
 
     dataset_sea_ice = ECCO4Monthly()
     set!(sea_ice.model,
@@ -537,10 +564,9 @@ function build_simulation(arch, run_id;
     @info "Defining Atmospheric state"
     radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory)
     atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory)
-    land = JRA55PrescribedLand(arch; time_indices_in_memory)
 
     @info "Defining coupled model"
-    @time coupled_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
+    @time coupled_model = OceanSeaIceModel(ocean, sea_ice; land, atmosphere, radiation)
 
     simulation = Simulation(coupled_model; Δt)
     add_progress_callback!(simulation)
