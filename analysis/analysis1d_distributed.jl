@@ -151,20 +151,39 @@ lines!(ax4, time_in_years, mean_salinity_anomaly)
 figpath_integrated = joinpath(figdir, "integrated_props_$(resolution).png")
 save(figpath_integrated, fig, px_per_unit=3)
 
-fig = Figure(size = (800, 500))
+fig = Figure(size = (1100, 600))
 ax1 = Axis(fig[1, 1], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
-ax2 = Axis(fig[2, 1], title = "Mean Temperature", xlabel = "Time (years)", ylabel = "Temperature (°C)")
-ax3 = Axis(fig[1, 2], title = "OHC", xlabel = "Time (years)", ylabel = "OHC (J)")
-ax4 = Axis(fig[2, 2], title = "Mean Salinity", xlabel = "Time (years)", ylabel = "Salinity (psu)")
+ax2 = Axis(fig[2, 1], title = "Mean Temperature Anomaly", xlabel = "Time (years)", ylabel = "Temperature anomaly (°C)")
+ax3 = Axis(fig[1, 3], title = "OSC", xlabel = "Time (years)", ylabel = "OSC")
+ax4 = Axis(fig[2, 3], title = "Mean Salinity Anomaly", xlabel = "Time (years)", ylabel = "Salinity anomaly (psu)")
 
-allranks_T_z_int_anomaly = T_z_matrix .- T_z_matrix[1, :]'
-allranks_S_z_int_anomaly = S_z_matrix .- S_z_matrix[1, :]'
+allranks_T_z_int_anomaly = T_z_matrix .- reshape(T_z_matrix[1, :], 1, :)
+allranks_S_z_int_anomaly = S_z_matrix .- reshape(S_z_matrix[1, :], 1, :)
 allranks_V_z_int = V_z_matrix
 
-heatmap!(ax1, time_in_years, depth, ρ₀ * cₚ * allranks_T_z_int_anomaly, label = "OHC", colorrange = (-1e21, 1e21), colormap = :bwr)
-heatmap!(ax2, time_in_years, depth, ρ₀ * cₚ * allranks_T_z_int_anomaly ./ allranks_V_z_int, label = "Mean Temperature")
-heatmap!(ax3, time_in_years, depth, allranks_S_z_int_anomaly ./ (35 * ρ₀), label = "OSC", colorrange = (-1e10, 1e10), colormap = :bwr)
-heatmap!(ax4, time_in_years, depth, allranks_S_z_int_anomaly./allranks_V_z_int, label = "Mean Salinity")
+mean_temperature_z = T_z_matrix ./ allranks_V_z_int
+mean_salinity_z = S_z_matrix ./ allranks_V_z_int
+mean_temperature_z_anomaly = mean_temperature_z .- reshape(mean_temperature_z[1, :], 1, :)
+mean_salinity_z_anomaly = mean_salinity_z .- reshape(mean_salinity_z[1, :], 1, :)
+
+function finite_maxabs(A)
+    values = filter(isfinite, vec(A))
+    isempty(values) && return 1.0
+    return maximum(abs, values)
+end
+
+temperature_cr = finite_maxabs(mean_temperature_z_anomaly)
+salinity_cr = finite_maxabs(mean_salinity_z_anomaly)
+
+hm1 = heatmap!(ax1, time_in_years, depth, ρ₀ * cₚ * allranks_T_z_int_anomaly, label = "OHC", colorrange = (-1e21, 1e21), colormap = :bwr)
+hm2 = heatmap!(ax2, time_in_years, depth, mean_temperature_z_anomaly, label = "Mean Temperature Anomaly", colorrange = (-temperature_cr, temperature_cr), colormap = :bwr)
+hm3 = heatmap!(ax3, time_in_years, depth, allranks_S_z_int_anomaly ./ (35 * ρ₀), label = "OSC", colorrange = (-1e9, 1e9), colormap = :bwr)
+hm4 = heatmap!(ax4, time_in_years, depth, mean_salinity_z_anomaly, label = "Mean Salinity Anomaly", colorrange = (-salinity_cr, salinity_cr), colormap = :bwr)
+
+Colorbar(fig[1, 2], hm1, label = "OHC anomaly (J)")
+Colorbar(fig[2, 2], hm2, label = "Mean temperature anomaly (°C)")
+Colorbar(fig[1, 4], hm3, label = "OSC anomaly")
+Colorbar(fig[2, 4], hm4, label = "Mean salinity anomaly (psu)")
 
 ylims!(ax1, -1000, 0)
 ylims!(ax2, -1000, 0)

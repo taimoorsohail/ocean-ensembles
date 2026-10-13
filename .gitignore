@@ -44,6 +44,9 @@ experiments/submission_scripts/*.so
 experiments/submission_scripts/run_sxtdeg.log
 experiments/submission_scripts/tmpi_*.log
 experiments/submission_scripts/logs/
+experiments/submission_scripts/LocalPreferences.toml
+experiments/submission_scripts/ENV\[TERM\]
+experiments/debug_logs/
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
