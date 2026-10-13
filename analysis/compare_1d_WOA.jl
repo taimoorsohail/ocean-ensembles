@@ -423,13 +423,15 @@ function remap_woa_profiles_to_model_grid(woa, model_z_faces)
     source_faces = woa[:z_faces]
     target_faces = Float64.(model_z_faces)
 
+    Tz_target = remap_vertical_integral_profiles_to_model_grid(woa[:Tz], source_faces, target_faces)
+    Sz_target = remap_vertical_integral_profiles_to_model_grid(woa[:Sz], source_faces, target_faces)
     OHCz_native = global_ohc.(woa[:Tz])
     OFWCz_native = global_ofwc.(woa[:Sz], woa[:Vz])
     Vz_target = remap_vertical_integral_profiles_to_model_grid(woa[:Vz], source_faces, target_faces)
     OHCz_target = remap_vertical_integral_profiles_to_model_grid(OHCz_native, source_faces, target_faces)
     OFWCz_target = remap_vertical_integral_profiles_to_model_grid(OFWCz_native, source_faces, target_faces)
 
-    return (; OHC = OHCz_target, OFWC = OFWCz_target, Vz = Vz_target)
+    return (; Tz = Tz_target, Sz = Sz_target, OHC = OHCz_target, OFWC = OFWCz_target, Vz = Vz_target)
 end
 
 global_ohc(T_integral) = ρ₀ * cₚ * T_integral
@@ -517,30 +519,30 @@ function save_depth_comparison_figure(path, time_years, depth, model_vertical, w
 
     xlimits = padded_xlim(time_years)
 
-    ohc_cr = finite_maxabs(vcat(model_vertical.OHC, woa_vertical.OHC, delta_vertical.OHC))
-    ofwc_cr = finite_maxabs(vcat(model_vertical.OFWC, woa_vertical.OFWC, delta_vertical.OFWC))
+    temperature_cr = finite_maxabs(vcat(model_vertical.mean_temperature, woa_vertical.mean_temperature, delta_vertical.mean_temperature))
+    salinity_cr = finite_maxabs(vcat(model_vertical.mean_salinity, woa_vertical.mean_salinity, delta_vertical.mean_salinity))
 
-    ax11 = Axis(fig[1, 1], title="Model OHC", xlabel="Year", ylabel="Depth (m)")
-    ax12 = Axis(fig[1, 2], title="WOA OHC", xlabel="Year", ylabel="Depth (m)")
-    ax13 = Axis(fig[1, 3], title="Model - WOA OHC", xlabel="Year", ylabel="Depth (m)")
-    ax21 = Axis(fig[2, 1], title="Model OFWC", xlabel="Year", ylabel="Depth (m)")
-    ax22 = Axis(fig[2, 2], title="WOA OFWC", xlabel="Year", ylabel="Depth (m)")
-    ax23 = Axis(fig[2, 3], title="Model - WOA OFWC", xlabel="Year", ylabel="Depth (m)")
+    ax11 = Axis(fig[1, 1], title="Model Mean Temperature Anomaly", xlabel="Year", ylabel="Depth (m)")
+    ax12 = Axis(fig[1, 2], title="WOA Mean Temperature Anomaly", xlabel="Year", ylabel="Depth (m)")
+    ax13 = Axis(fig[1, 3], title="Model - WOA Mean Temperature Anomaly", xlabel="Year", ylabel="Depth (m)")
+    ax21 = Axis(fig[2, 1], title="Model Mean Salinity Anomaly", xlabel="Year", ylabel="Depth (m)")
+    ax22 = Axis(fig[2, 2], title="WOA Mean Salinity Anomaly", xlabel="Year", ylabel="Depth (m)")
+    ax23 = Axis(fig[2, 3], title="Model - WOA Mean Salinity Anomaly", xlabel="Year", ylabel="Depth (m)")
 
-    hm11 = heatmap!(ax11, time_years, depth, model_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
-    hm12 = heatmap!(ax12, time_years, depth, woa_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
-    hm13 = heatmap!(ax13, time_years, depth, delta_vertical.OHC, colorrange=(-ohc_cr, ohc_cr), colormap=:balance)
-    hm21 = heatmap!(ax21, time_years, depth, model_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
-    hm22 = heatmap!(ax22, time_years, depth, woa_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
-    hm23 = heatmap!(ax23, time_years, depth, delta_vertical.OFWC, colorrange=(-ofwc_cr, ofwc_cr), colormap=:balance)
+    hm11 = heatmap!(ax11, time_years, depth, model_vertical.mean_temperature, colorrange=(-temperature_cr, temperature_cr), colormap=:balance)
+    hm12 = heatmap!(ax12, time_years, depth, woa_vertical.mean_temperature, colorrange=(-temperature_cr, temperature_cr), colormap=:balance)
+    hm13 = heatmap!(ax13, time_years, depth, delta_vertical.mean_temperature, colorrange=(-temperature_cr, temperature_cr), colormap=:balance)
+    hm21 = heatmap!(ax21, time_years, depth, model_vertical.mean_salinity, colorrange=(-salinity_cr, salinity_cr), colormap=:balance)
+    hm22 = heatmap!(ax22, time_years, depth, woa_vertical.mean_salinity, colorrange=(-salinity_cr, salinity_cr), colormap=:balance)
+    hm23 = heatmap!(ax23, time_years, depth, delta_vertical.mean_salinity, colorrange=(-salinity_cr, salinity_cr), colormap=:balance)
 
     for ax in (ax11, ax12, ax13, ax21, ax22, ax23)
         xlims!(ax, xlimits)
         ylims!(ax, -1000, 0)
     end
 
-    Colorbar(fig[1, 4], hm13, label="OHC anomaly (J)")
-    Colorbar(fig[2, 4], hm23, label="OFWC anomaly (kg)")
+    Colorbar(fig[1, 4], hm13, label="Mean temperature anomaly (°C)")
+    Colorbar(fig[2, 4], hm23, label="Mean salinity anomaly (psu)")
 
     save(path, fig, px_per_unit=2)
     return nothing
@@ -578,7 +580,9 @@ function main()
         S_integral = monthly_Sz.means,
         volume = monthly_Vz.means,
         OHC = global_ohc.(monthly_Tz.means),
-        OFWC = global_ofwc.(monthly_Sz.means, monthly_Vz.means)
+        OFWC = global_ofwc.(monthly_Sz.means, monthly_Vz.means),
+        mean_temperature = monthly_Tz.means ./ monthly_Vz.means,
+        mean_salinity = monthly_Sz.means ./ monthly_Vz.means
     )
 
     @info "Loading WOA monthly climatology on the native WOA grid"
@@ -629,19 +633,27 @@ function main()
     ))
 
     woa_vertical = (
+        T_integral = tiled_monthly_reference(woa_model_grid_vertical.Tz, month_of_year),
+        S_integral = tiled_monthly_reference(woa_model_grid_vertical.Sz, month_of_year),
         volume = tiled_monthly_reference(woa_model_grid_vertical.Vz, month_of_year),
         OHC = tiled_monthly_reference(woa_model_grid_vertical.OHC, month_of_year),
-        OFWC = tiled_monthly_reference(woa_model_grid_vertical.OFWC, month_of_year)
+        OFWC = tiled_monthly_reference(woa_model_grid_vertical.OFWC, month_of_year),
+        mean_temperature = tiled_monthly_reference(woa_model_grid_vertical.Tz ./ woa_model_grid_vertical.Vz, month_of_year),
+        mean_salinity = tiled_monthly_reference(woa_model_grid_vertical.Sz ./ woa_model_grid_vertical.Vz, month_of_year)
     )
 
     model_vertical = merge(model_vertical, (
         OHC = model_vertical.OHC .- model_vertical.OHC[1:1, :],
-        OFWC = model_vertical.OFWC .- model_vertical.OFWC[1:1, :]
+        OFWC = model_vertical.OFWC .- model_vertical.OFWC[1:1, :],
+        mean_temperature = model_vertical.mean_temperature .- model_vertical.mean_temperature[1:1, :],
+        mean_salinity = model_vertical.mean_salinity .- model_vertical.mean_salinity[1:1, :]
     ))
 
     woa_vertical = merge(woa_vertical, (
         OHC = woa_vertical.OHC .- woa_vertical.OHC[1:1, :],
-        OFWC = woa_vertical.OFWC .- woa_vertical.OFWC[1:1, :]
+        OFWC = woa_vertical.OFWC .- woa_vertical.OFWC[1:1, :],
+        mean_temperature = woa_vertical.mean_temperature .- woa_vertical.mean_temperature[1:1, :],
+        mean_salinity = woa_vertical.mean_salinity .- woa_vertical.mean_salinity[1:1, :]
     ))
 
     delta_global = (
@@ -653,7 +665,9 @@ function main()
 
     delta_vertical = (
         OHC = model_vertical.OHC .- woa_vertical.OHC,
-        OFWC = model_vertical.OFWC .- woa_vertical.OFWC
+        OFWC = model_vertical.OFWC .- woa_vertical.OFWC,
+        mean_temperature = model_vertical.mean_temperature .- woa_vertical.mean_temperature,
+        mean_salinity = model_vertical.mean_salinity .- woa_vertical.mean_salinity
     )
 
     output_file = joinpath(ANALYSIS_OUTPUT_PATH, "compare_1d_WOA_$(RESOLUTION).jld2")

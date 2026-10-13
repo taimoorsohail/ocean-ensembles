@@ -19,7 +19,13 @@ using Oceananigans.Fields: ReducedField, interior, ConstantField, ZeroField, One
 using Oceananigans.ImmersedBoundaries: immersed_cell, peripheral_node
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.TimeSteppers: VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity, AdvectiveFormulation
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
+                                       AdvectiveFormulation,
+                                       VerticalScalarDiffusivity,
+                                       HorizontalScalarBiharmonicDiffusivity
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEMixingLength,
+                                                                            CATKEEquation,
+                                                                            CATKEVerticalDiffusivity
 
 using CFTime
 using Dates
@@ -42,6 +48,11 @@ const Ny = Integer(180)
 const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -100, -500, -1000, -2000]
+
+@inline biharmonic_viscosity(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, timescale) =
+    Az(i, j, k, grid, ℓx, ℓy, ℓz)^2 / timescale
+
+@inline henyey_diffusivity(x, y, z, t) = max(2e-6, 1e-5 * abs(sind(y)))
 
 checkpoint_interval = TimeInterval((365/12)days)
 output_interval = AveragedTimeInterval((365/12)days)
@@ -177,7 +188,7 @@ function build_grid(arch, bathymetry_metadata; halo=(7,7,7))
 
     @info "Defining bottom bathymetry"
     @time bottom_height = regrid_bathymetry(underlying_grid, bathymetry_metadata;
-                                            minimum_depth=15,
+                                            minimum_depth=20,
                                             interpolation_passes=25,
                                             major_basins=2)
 
@@ -501,11 +512,22 @@ function build_simulation(arch, run_id;
     forcing = (; S = FS)
 
     @info "Defining closures"
-    catke_closure = NumericalEarth.Oceans.default_ocean_closure()
-
-
-    eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3, skew_flux_formulation=AdvectiveFormulation())
-    closure = (catke_closure, eddy_closure)
+    mixing_length = CATKEMixingLength(; Cᵇ=0.28)
+    catke_closure = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization();
+                                             mixing_length,
+                                             maximum_viscosity=3,
+                                             maximum_tracer_diffusivity=3,
+                                             maximum_tke_diffusivity=3,
+                                             negative_tke_damping_time_scale=10,
+                                             turbulent_kinetic_energy_equation=CATKEEquation())
+    background_vertical_mixing = VerticalScalarDiffusivity(κ=henyey_diffusivity, ν=3e-5)
+    eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=800,
+                                                     κ_symmetric=800,
+                                                     skew_flux_formulation=AdvectiveFormulation())
+    horizontal_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=biharmonic_viscosity,
+                                                                  discrete_form=true,
+                                                                  parameters=50days)
+    closure = (catke_closure, eddy_closure, horizontal_viscosity, background_vertical_mixing)
 
     @info "Defining free surface"
     free_surface = SplitExplicitFreeSurface(grid; substeps=200)
