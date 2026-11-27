@@ -1,0 +1,16 @@
+[CUDA_Runtime_jll]
+__clear__ = ["local"]
+version = "12.4"
+
+[MPIPreferences]
+__clear__ = ["preloads_env_switch"]
+_format = "1.0"
+abi = "OpenMPI"
+binary = "system"
+cclibs = []
+libmpi = "libmpi"
+mpiexec = "mpiexec"
+preloads = []
+
+[OpenMPI_jll]
+libmpi_path = "/apps/easybuild-2022/easybuild/software/Compiler/GCC/13.3.0/OpenMPI/5.0.3/lib/libmpi.so"

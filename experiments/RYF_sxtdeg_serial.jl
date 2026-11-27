@@ -9,7 +9,96 @@ using NumericalEarth.DataWrangling.SeaWiFS: SeaWiFSMonthly
 using NumericalEarth.EN4
 using NumericalEarth.ECCO
 using NumericalEarth.DataWrangling.ETOPO
-using NumericalEarth.EarthSystemModels.InterfaceComputations: IceBathHeatFlux
+using NumericalEarth.EarthSystemModels.InterfaceComputations: IceBathHeatFlux, ThreeEquationHeatFlux, MomentumBasedFrictionVelocity,
+                                                              ZeroHeatContentMeltwater
+# Pieces of Simone's OMIP air-sea and air-ice flux formulas (added 2026-11-26)
+using NumericalEarth.EarthSystemModels.InterfaceComputations: COARELogarithmicSimilarityProfile,
+                                                              WindDependentWaveFormulation,
+                                                              MomentumRoughnessLength,
+                                                              TemperatureDependentAirViscosity,
+                                                              ScalarRoughnessLength,
+                                                              SimilarityTheoryFluxes,
+                                                              atmosphere_sea_ice_stability_functions,
+                                                              ConvectiveGustiness,
+                                                              AtmosphericThermodynamics,
+                                                              ImpureSaturationSpecificHumidity,
+                                                              GillSaturationEnhancement
+using ClimaSeaIce.SeaIceThermodynamics: ConductiveFlux, UniformThicknessDistribution, PrescribedTemperature,
+                                        snow_slab_thermodynamics
+
+# Ice-ocean heat flux copied unchanged from Simone's OMIP setup (NumericalEarth ss/omip-prototype,
+# experiments/OMIPSimulations/src/omip_simulation.jl). The default (fixed u★ = 0.002) gives a melt rate q
+# in open water too, which added a heat sink of about 7 W/m² to our run (claude-notes, 2026-11-24).
+"""
+    corrected_ice_ocean_heat_flux()
+
+Three-equation ice-ocean heat flux with momentum-based friction velocity
+computed from actual ice-ocean stress (McPhee 1992, 2008; SHEBA median u*≈0.01 m/s).
+
+`heat_transfer_coefficient` defaults to McPhee's Stanton number 0.0057, which is the value
+consistent with a *computed* friction velocity. The 0.0095 of Shi et al. (2021) is calibrated
+against a fixed u* = 0.002 m/s; pairing it with u* = sqrt(|tau|/rho), which is ~0.006 m/s under the
+Arctic pack, inflates the exchange velocity alpha_h u* by a factor of three.
+The salt transfer coefficient follows at the standard ratio R = alpha_h / alpha_s = 35.
+"""
+corrected_ice_ocean_heat_flux(; heat_transfer_coefficient = 0.0057) =
+    ThreeEquationHeatFlux(; heat_transfer_coefficient,
+                            salt_transfer_coefficient = heat_transfer_coefficient / 35,
+                            friction_velocity = MomentumBasedFrictionVelocity())
+
+# The three functions below are copied unchanged from Simone's OMIP setup (NumericalEarth ss/omip-prototype
+# c5ad24b9, experiments/OMIPSimulations/src/omip_simulation.jl), the formulas his runs use by default
+# (OCEAN_FLUXES=corrected, ICE_FLUXES=corrected). Added 2026-11-26 against the warming drift. Compared with the
+# NumericalEarth defaults they add a minimum gust of 0.5 m/s over the ocean, a sea-surface roughness that grows
+# with wind speed, a temperature-dependent air viscosity, the COARE form of the wind and temperature profiles,
+# and fixed roughness lengths over sea ice.
+function corrected_atmosphere_ocean_fluxes(FT = Float64;
+                                           subgrid_velocities = ConvectiveGustiness{FT}(minimum_gustiness = FT(0.5)))
+    air_kinematic_viscosity = TemperatureDependentAirViscosity(FT)
+    return SimilarityTheoryFluxes(FT;
+                                  similarity_form              = COARELogarithmicSimilarityProfile(),
+                                  subgrid_velocities           = subgrid_velocities,
+                                  momentum_roughness_length    = MomentumRoughnessLength(FT;
+                                  wave_formulation             = WindDependentWaveFormulation(FT),
+                                  air_kinematic_viscosity      = TemperatureDependentAirViscosity(FT)),
+                                  temperature_roughness_length = ScalarRoughnessLength(FT; air_kinematic_viscosity),
+                                  water_vapor_roughness_length = ScalarRoughnessLength(FT; air_kinematic_viscosity))
+end
+
+"""
+    corrected_atmosphere_sea_ice_fluxes(FT = Float64; momentum_roughness_length, scalar_roughness_length)
+
+Atmosphere-sea ice flux formulation with:
+- SHEBA/Paulson+Grachev stability functions (existing default, correct)
+- Fixed momentum roughness z0 = 5e-4 m (CICE/SHEBA standard; Andreas et al. 2010)
+- Fixed scalar roughness z0t = z0q = 5e-5 m (Andreas 1987: z0t ≈ z0/10 at R*≈7)
+- COARE logarithmic similarity profile
+- Minimum gustiness = 0.2 m/s
+
+Both roughnesses are geometric constants rather than wind-dependent, because sea ice carries no gravity
+waves; the roughness is set by ridges, floe edges and sastrugi. The SHEBA value describes multiyear pack,
+and smoother first-year ice sits nearer 1e-4 m, so `momentum_roughness_length` is exposed to let the drift
+speed be varied over its observed range.
+"""
+corrected_atmosphere_sea_ice_fluxes(FT = Float64;
+                                    momentum_roughness_length = 5e-4,
+                                    scalar_roughness_length = 5e-5) =
+    SimilarityTheoryFluxes(FT;
+                           stability_functions          = atmosphere_sea_ice_stability_functions(FT),
+                           similarity_form              = COARELogarithmicSimilarityProfile(),
+                           subgrid_velocities           = ConvectiveGustiness{FT}(minimum_gustiness = FT(0.2)),
+                           momentum_roughness_length    = FT(momentum_roughness_length),
+                           temperature_roughness_length = FT(scalar_roughness_length),
+                           water_vapor_roughness_length = FT(scalar_roughness_length))
+
+# The saturation vapor pressure over both the ocean and the sea ice carries the Gill (1982) moist-air enhancement
+function saturation_enhanced_humidities(FT)
+    saturation_enhancement = GillSaturationEnhancement(FT)
+    ocean = ImpureSaturationSpecificHumidity(AtmosphericThermodynamics.Liquid(), convert(FT, 0.98); saturation_enhancement)
+    sea_ice = ImpureSaturationSpecificHumidity(AtmosphericThermodynamics.Ice(); saturation_enhancement)
+    return (; ocean, sea_ice)
+end
+
 
 using ClimaSeaIce
 using ClimaSeaIce.Rheologies: ElastoViscoPlasticRheology
@@ -42,6 +131,69 @@ using Dates
 using Printf
 using Glob
 using JLD2
+using MPI
+using Zarr
+
+# Oceananigans fills a FieldTimeSeries' halos with asyncmap over chunks of time indices. On a distributed
+# grid the chunks' halo exchanges then interleave differently on each rank and the ranks deadlock in
+# MPI_Waitall (seen with the 12-month ECCO salinity restoring). Here the chunks are filled in turn on a
+# distributed grid; other grids keep the original asyncmap.
+using Oceananigans.OutputReaders: InMemoryFTS, MAX_FTS_TUPLE_SIZE, time_indices
+function Oceananigans.BoundaryConditions.fill_halo_regions!(fts::InMemoryFTS)
+    partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
+    fill_chunk(indices) = Oceananigans.BoundaryConditions.fill_halo_regions!(Tuple(fts[n] for n in indices))
+    architecture(fts.grid) isa Distributed ? foreach(fill_chunk, partitioned_indices) :
+                                             asyncmap(fill_chunk, partitioned_indices)
+    return nothing
+end
+
+# Oceananigans wraps the north ranks' reduction condition in PrognosticTripolarCells, which
+# ConditionalOperation(op; ...) does not recognise as already immersed, so it builds a second
+# immersed_column Field on those ranks only. Every Field takes the next halo-message tag, so after any
+# horizontal Average/Integral/sum the north and south ranks' tags differ and the next halo exchange
+# between them deadlocks. Building the ConditionalOperation directly keeps the field count equal.
+using Oceananigans.OrthogonalSphericalShellGrids: PrognosticTripolarCells
+using Oceananigans.ImmersedBoundaries: NotImmersedColumn, immersed_column
+using Oceananigans.AbstractOperations: ConditionalOperation
+function Oceananigans.OrthogonalSphericalShellGrids.immersed_reduced_tripolar_condition_operand(func, op, condition, mask)
+    arch = architecture(op)
+    immersed_cond = NotImmersedColumn(immersed_column(op), condition)
+    last_row = !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2])
+    tripolar_condition = last_row ? PrognosticTripolarCells(immersed_cond) : immersed_cond
+    LX, LY, LZ = location(op)
+    return ConditionalOperation{LX, LY, LZ}(op, func, op.grid, tripolar_condition, mask)
+end
+
+# A Field over only part of the grid (as the output writers build with `with_halos=false`) gets no boundary
+# conditions in its windowed directions, but Oceananigans' distributed Field constructors then add halo
+# communication back on those sides, and the halo exchange indexes past the end of the windowed data. These are
+# the two constructors with the windowing reapplied after the communication boundary conditions are added.
+using Oceananigans.Fields: validate_indices, validate_field_data, validate_boundary_conditions, communication_buffers
+using Oceananigans.DistributedComputations: DistributedGrid, inject_halo_communication_boundary_conditions
+using Oceananigans.OrthogonalSphericalShellGrids: MPITripolarGridOfSomeKind
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions
+rewindow(indices, bcs::FieldBoundaryConditions) = all(i -> i isa Colon, indices) ? bcs : FieldBoundaryConditions(indices, bcs)
+rewindow(indices, bcs) = bcs
+
+function Oceananigans.Fields.Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+    indices = validate_indices(indices, loc, grid)
+    validate_field_data(loc, data, grid, indices)
+    validate_boundary_conditions(loc, grid, global_bcs)
+    arch = architecture(grid)
+    local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
+    local_bcs = rewindow(indices, local_bcs)
+    buffers = communication_buffers(grid, data, local_bcs)
+    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
+end
+
+function Oceananigans.Fields.Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+    indices = validate_indices(indices, loc, grid)
+    validate_field_data(loc, data, grid, indices)
+    validate_boundary_conditions(loc, grid, global_bcs)
+    local_bcs = rewindow(indices, inject_halo_communication_boundary_conditions(global_bcs, loc, grid))
+    buffers = communication_buffers(grid, data, local_bcs, (LX(), LY(), LZ()))
+    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
+end
 
 try
     using CUDA
@@ -53,12 +205,15 @@ const data_path = expanduser("/home/tsohail/uom/ocean-ensembles/data/")
 # One folder per run (RYF_control, member01, ...). Closed yearly output files and every
 # `checkpoint_archive_stride`-th checkpoint are moved to Mediaflux by analysis/storage_watcher.sh.
 const run_name = get(ENV, "RUN_NAME", "RYF_control")
-const output_path = joinpath("/data/gpfs/projects/punim2499/taimoor/gadi-ensembles/outputs", run_name) * "/"
+const output_root = get(ENV, "OUTPUT_ROOT", "/data/gpfs/projects/punim2499/taimoor/gadi-ensembles/outputs")
+const output_path = joinpath(output_root, run_name) * "/"
 mkpath(output_path)
 const figdir = expanduser("/home/tsohail/uom/ocean-ensembles/figures/")
 
-const Nx = Integer(360 * 6)
-const Ny = Integer(180 * 6)
+# Cells per degree: 6 for the ⅙° control, 12 for the distributed 1/12° run
+const cells_per_degree = parse(Int, get(ENV, "CELLS_PER_DEGREE", "6"))
+const Nx = Integer(360 * cells_per_degree)
+const Ny = Integer(180 * cells_per_degree)
 const Nz = Integer(75)
 const depth = -5500.0
 output_depths = [0, -30, -100, -200, -500, -1000]   # discussion #103 item 1
@@ -318,7 +473,7 @@ function apply_minimum_depth_keeping_connections!(bottom_height; depth=global_mi
     return bottom_height
 end
 
-function build_grid(arch, bathymetry_metadata; halo=(7,7,7))
+function build_grid(arch, bathymetry_metadata; halo=(7,7,7), cache=true)
     @info "Defining vertical z faces"
     z = ExponentialDiscretization(Nz, depth, 0, mutable=true)
 
@@ -335,10 +490,30 @@ function build_grid(arch, bathymetry_metadata; halo=(7,7,7))
                                    fold_topology=FaceFolded)
 
     @info "Defining bottom bathymetry"
+    if arch isa Distributed
+        # The closures below need the whole map (connected seas), so it is built on the CPU and every
+        # rank takes its part with set!. All ranks build it, because the dataset code synchronizes ranks;
+        # rank 0 saves it so later segments can skip that.
+        bottom_file = joinpath(output_path, "bottom_height_$(Nx)x$(Ny).jld2")
+        if isfile(bottom_file)
+            global_bottom_height = load(bottom_file, "bottom_height")
+        else
+            # cache=false: the ranks would otherwise write NumericalEarth's regridding cache at the same time
+            global_grid = build_grid(CPU(), bathymetry_metadata; halo, cache=false)
+            global_bottom_height = Array(global_grid.immersed_boundary.bottom_height[1:Nx, 1:Ny, 1:1])
+            arch.local_rank == 0 && jldsave(bottom_file; bottom_height=global_bottom_height)
+        end
+        MPI.Barrier(arch.communicator)
+        bottom_height = Field{Center, Center, Nothing}(underlying_grid)
+        set!(bottom_height, global_bottom_height)
+        return ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+    end
+
     @time bottom_height = regrid_bathymetry(underlying_grid, bathymetry_metadata;
                                             # Kept at 15 so the original bathymetry cache is reused: regridding at 20
                                             # gave different bottoms (13k new ocean cells) and the pickup blew up.
                                             # The 20 m minimum is applied below as a closure instead (2026-11-11).
+                                            cache,
                                             minimum_depth=15,
                                             interpolation_passes=25,
                                             major_basins=1)
@@ -680,6 +855,8 @@ end
 @inline constant_value(ρ) = ρ
 @inline constant_value(ρ::ConstantField) = ρ.constant
 
+@inline ice_covered_valueᶜᶜᵃ(i, j, k, grid, h, ℵ) = @inbounds h[i, j, 1] * ℵ[i, j, 1]
+
 function TotalWaterNormalization(coupled_model)
     grid = coupled_model.ocean.model.grid
     FT = eltype(grid)
@@ -692,8 +869,11 @@ function TotalWaterNormalization(coupled_model)
 
     surface_height = Field{Center, Center, Nothing}(grid)
     ocean_water = Field(Integral(surface_height))
-    sea_ice_water = Field(Integral(sea_ice.ice_thickness * sea_ice.ice_concentration))
-    snow_water = Field(Integral(sea_ice.snow_thickness * sea_ice.ice_concentration))
+    # On a distributed grid the ice thickness and concentration live on the sea-ice velocity grid, whose halos are
+    # wider than the ocean grid's, so they are combined with snow and integrated over the ocean grid by index.
+    ℵ = sea_ice.ice_concentration
+    sea_ice_water = Field(Integral(KernelFunctionOperation{Center, Center, Nothing}(ice_covered_valueᶜᶜᵃ, grid, sea_ice.ice_thickness, ℵ)))
+    snow_water = Field(Integral(KernelFunctionOperation{Center, Center, Nothing}(ice_covered_valueᶜᶜᵃ, grid, sea_ice.snow_thickness, ℵ)))
 
     reference_water, total_water, correction = (similar(interior(ocean_water)) for _ in 1:3)
 
@@ -924,6 +1104,36 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                       freshwater_mass_flux=Field(ρᵒᶜ * freshwater.carrying_flux))                     # kg m⁻² s⁻¹, positive into the ocean
     surface_outputs = merge(surface_outputs, budget_outputs)
 
+    # Air-sea heat flux terms over open water, in W m⁻², positive UP (out of the ocean), each already multiplied
+    # by the open-water fraction (1 - ice concentration) so they are averages over the whole grid cell, like OM2's.
+    # NumericalEarth stores the downward radiation already multiplied by (1 - ice concentration), but the emitted
+    # longwave and the turbulent fluxes are stored per unit area of open water, so those are multiplied here.
+    #   net shortwave absorbed     = shortwave_down_absorbed   (negative: heat into the ocean)
+    #   net longwave               = longwave_up + longwave_down_absorbed
+    #   sensible + latent          = sensible_heat_flux + latent_heat_flux
+    # Check: the five terms add up to about surface_heat_flux - penetrating_shortwave_flux. The two differ by the
+    # ice-ocean heat flux, which surface_heat_flux also contains.
+    radiative = simulation.model.radiation.interface_fluxes.ocean
+    turbulent = simulation.model.interfaces.atmosphere_ocean_interface.fluxes
+    if radiative.upwelling_longwave.grid === sea_ice_model.ice_concentration.grid
+        open_water = 1 - sea_ice_model.ice_concentration
+        flux_term_outputs = (; shortwave_down_absorbed=Field(1 * radiative.downwelling_shortwave),
+                             longwave_down_absorbed=Field(1 * radiative.downwelling_longwave),
+                             longwave_up=Field(open_water * radiative.upwelling_longwave),
+                             sensible_heat_flux=Field(open_water * turbulent.sensible_heat),
+                             latent_heat_flux=Field(open_water * turbulent.latent_heat))
+    else
+        # On several GPUs the coupler keeps these fluxes on its own exchange grid, which cannot be combined
+        # with the sea-ice grid in one expression. Save the three open-water terms per unit area of open water
+        # (multiply by 1 - ice concentration afterwards); the two downwelling terms are already weighted.
+        flux_term_outputs = (; shortwave_down_absorbed=Field(1 * radiative.downwelling_shortwave),
+                             longwave_down_absorbed=Field(1 * radiative.downwelling_longwave),
+                             longwave_up_per_open_water=Field(1 * radiative.upwelling_longwave),
+                             sensible_heat_flux_per_open_water=Field(1 * turbulent.sensible_heat),
+                             latent_heat_flux_per_open_water=Field(1 * turbulent.latent_heat))
+    end
+    surface_outputs = merge(surface_outputs, flux_term_outputs)
+
     # 4. Sea-ice concentration and extent
     ℵ = sea_ice_model.ice_concentration
     extent(hemisphere) = Field(Integral(KernelFunctionOperation{Center, Center, Nothing}(sea_ice_extent_indicatorᶜᶜᵃ, grid, ℵ,
@@ -931,7 +1141,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                                         dims=(1, 2)))
     sea_ice_outputs = (; ice_concentration=ℵ, extent_north=extent(1), extent_south=extent(-1))
 
-    @time simulation.output_writers[:sea_ice] = JLD2Writer(simulation.model, sea_ice_outputs;
+    @time simulation.output_writers[:sea_ice] = ZarrWriter(simulation.model, sea_ice_outputs;
                                                            dir=output_path,
                                                            schedule=sea_ice_output_interval,
                                                            filename="sea_ice_monthly" * suffix,
@@ -944,7 +1154,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     unit = KernelFunctionOperation{Center, Center, Center}(unit_valueᶜᶜᶜ, grid)
     global_outputs = (; T_integral=Field(Integral(T)), S_integral=Field(Integral(S)), volume=Field(Integral(unit)))
 
-    @time ocean.output_writers[:global_integrals] = JLD2Writer(ocean.model, global_outputs;
+    @time ocean.output_writers[:global_integrals] = ZarrWriter(ocean.model, global_outputs;
                                                                dir=output_path,
                                                                schedule=output_interval,
                                                                filename="integrals_5day" * suffix,
@@ -966,7 +1176,7 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
     push!(names, :S_integral_1000m_bottom); push!(fields, Field(column_integral(S, Inf) - column_integral(S, 1000)))
     column_outputs = NamedTuple{Tuple(names)}(Tuple(fields))
 
-    @time simulation.output_writers[:fields_5day] = JLD2Writer(simulation.model,
+    @time simulation.output_writers[:fields_5day] = ZarrWriter(simulation.model,
                                                                merge(slice_outputs, surface_outputs, column_outputs);
                                                                dir=output_path,
                                                                schedule=output_interval,
@@ -1006,7 +1216,10 @@ function build_simulation(arch, run_id;
     restoring_rate = 1 / 30days
 
     # All twelve months stay in memory, so the TEOS-10 conversion below is not lost on reload.
-    salinity_restoring = DatasetRestoring(inputs.salinity, grid;
+    # The months are kept on ECCO's own coarse grid and interpolated to the model grid when used, as in
+    # Simone's OMIP setup. On the 1/12° grid, twelve full 3D months would take ~17 GB on each of 4 GPUs and
+    # the model did not fit (27 Nov 2026); on the ECCO grid they take ~1 GB.
+    salinity_restoring = DatasetRestoring(inputs.salinity, Oceananigans.Architectures.architecture(grid);
                                           rate=restoring_rate,
                                           time_indices_in_memory=length(inputs.salinity))
     parent(salinity_restoring.field_time_series.data) .*= absolute_salinity_per_practical_salinity
@@ -1052,14 +1265,16 @@ function build_simulation(arch, run_id;
                                                                       parameters=tracer_biharmonic_timescale)
     # Tracer biharmonic removed 2026-11-12 (as Simone's 1/4°): along-level mixing was suspected of the 200–1000 m warming drift.
     closure = (catke_closure, background_closure, river_closure, biharmonic_closure)
+    haskey(ENV, "DEBUG_NO_BIHARMONIC") && (closure = (catke_closure, background_closure, river_closure))
 
     @info "Defining free surface"
     # 400 substeps (was 220, then 300): barotropic Courant ≈0.58 at Δt=45min, ≈0.39 at 30min (Ross Sea worst cell).
-    free_surface = SplitExplicitFreeSurface(grid; substeps=400)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=parse(Int, get(ENV, "FREE_SURFACE_SUBSTEPS", "400")))
     # avid=false uses fully explicit vertical advection
     vertical_discretization = avid ? AdaptiveVerticallyImplicitDiscretization(cfl=1) : ExplicitTimeDiscretization()
     @info "Vertical advection" avid vertical_discretization
     momentum_advection = WENOVectorInvariant(time_discretization = vertical_discretization)
+    haskey(ENV, "DEBUG_SIMPLE_MOMENTUM") && (momentum_advection = VectorInvariant())
     # minimum_buffer_upwind_order=3 (Simone's default) since 2026-11-12; it was 1 (monotone 1st-order upwind
     # next to land/seabed, against coastal overshoots such as S = 61 at the Amazon mouth) but suspected of the drift.
     # S back to 1 on 2026-11-13 (run 30): with 3, S spiked to 52-62 / -6 in the bottom cell of the Amazon and Congo mouths.
@@ -1104,16 +1319,35 @@ function build_simulation(arch, run_id;
          T=Metadata(:temperature; dates=first(dates), dataset, dir=data_path),
          S=Metadata(:salinity; dates=first(dates), dataset, dir=data_path))
     convert_ecco_to_teos10!(ocean.model.tracers.T, ocean.model.tracers.S)
+    # Free the temporary GPU arrays left over from reading and regridding the initial state. Without this the
+    # 1/12° run on 4 GPUs ran out of GPU memory while building the sea ice (27 Nov 2026).
+    reclaim_gpu_memory!()
 
     @info "Creating sea ice model"
     # Ice-ocean drag referenced to the top-6 m mean ocean velocity, as Simone's OMIP builder
     # (McPhee's Cᵢₒ is defined against the under-ice boundary layer; the 2.6 m top cell is dragged
     # along by the ice and under-brakes the pack). Added 2026-11-11 against Antarctic ice piling.
-    sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; sea_ice_ocean_drag_reference_depth=6)
+    # On a distributed grid the sea-ice velocities get halos of 2 × substeps + 3, which must fit inside each
+    # rank's subdomain; SEA_ICE_SUBSTEPS lowers the count for the 1° smoke test only.
+    sea_ice_solver = ClimaSeaIce.SeaIceDynamics.SplitExplicitSolver(grid; substeps=parse(Int, get(ENV, "SEA_ICE_SUBSTEPS", "150")))
+    sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; sea_ice_ocean_drag_reference_depth=6,
+                                                               solver=sea_ice_solver)
+    # Four sub-grid ice thickness categories for heat conduction through ice and snow, as Simone's OMIP default
+    # (ICE_CATEGORIES=4, added 2026-11-26). Ice in a cell is spread evenly between zero and twice its mean
+    # thickness; thin ice conducts more heat, so conduction is 1 + 1/3 + 1/5 + 1/7 ≈ 1.68 times the value at
+    # the mean thickness. This only rescales the conductivity, so old checkpoints still load.
+    # Each of the four OMIP changes of 2026-11-26 can be switched off for testing with an environment
+    # variable set to "0": OMIP_ITD, OMIP_AO_FLUX, OMIP_AI_FLUX, OMIP_GILL.
+    itd_shape = UniformThicknessDistribution(eltype(grid); categories = get(ENV, "OMIP_ITD", "1") == "1" ? 4 : 1)
+    snow_surface_temperature = Field{Center, Center, Nothing}(grid)
+    snow_thermodynamics = snow_slab_thermodynamics(grid; conductivity = eltype(grid)(0.31), itd_shape,
+                                                   top_heat_boundary_condition = PrescribedTemperature(snow_surface_temperature.data))
     sea_ice = sea_ice_simulation(grid, ocean;
                                  advection = ClimaSeaIce.IncrementalRemapping(),
-                                 dynamics = sea_ice_dynamics,
-                                 timestepper = :ForwardEuler)
+                                 dynamics = haskey(ENV, "DEBUG_NO_ICE_DYNAMICS") ? nothing : sea_ice_dynamics,
+                                 timestepper = :ForwardEuler,
+                                 internal_heat_flux = ConductiveFlux(eltype(grid); conductivity = 2, itd_shape),
+                                 snow_thermodynamics)
 
     dataset_sea_ice = ECCO4Monthly()
     set!(sea_ice.model,
@@ -1121,11 +1355,39 @@ function build_simulation(arch, run_id;
          ℵ=Metadatum(:sea_ice_concentration; dataset=dataset_sea_ice, dir=data_path))
 
     @info "Defining Atmospheric state"
-    radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory)
+    # Surface radiation settings copied from Simone's OMIP prototype (NumericalEarth ss/omip-prototype,
+    # experiments/OMIPSimulations/src/atmosphere.jl). The NumericalEarth defaults are an ocean albedo of
+    # 0.05, an ocean emissivity of 0.97 and a fixed sea-ice albedo of 0.7. Here the ocean reflects 6% of
+    # the sunlight and is a perfect emitter, and the sea-ice albedo follows the CCSM3 scheme: it depends on
+    # ice thickness, snow depth and surface temperature (lower near melting and for thin ice).
+    hi = sea_ice.model.ice_thickness
+    hs = sea_ice.model.snow_thickness
+    snow_thermo = sea_ice.model.snow_thermodynamics
+    Ts = isnothing(snow_thermo) ? sea_ice.model.ice_thermodynamics.top_surface_temperature :
+                                  snow_thermo.top_surface_temperature
+    sea_ice_albedo = SeaIceAlbedo(hi, hs, Ts)
+    radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory,
+                                         ocean_surface   = NumericalEarth.Radiations.SurfaceRadiationProperties(0.06, 1.0),
+                                         sea_ice_surface = NumericalEarth.Radiations.SurfaceRadiationProperties(sea_ice_albedo, 1.0))
+    @info "Radiation: ocean albedo 0.06, ocean emissivity 1.0, sea-ice albedo $sea_ice_albedo"
     atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory)
 
+    reclaim_gpu_memory!()
     @info "Defining coupled model"
-    @time coupled_model = OceanSeaIceModel(ocean, sea_ice; land, atmosphere, radiation)
+    humidities = saturation_enhanced_humidities(eltype(grid))
+    use(name) = get(ENV, name, "1") == "1"
+    omip_interface_kw = (; (use("OMIP_AO_FLUX") ? (; atmosphere_ocean_fluxes = corrected_atmosphere_ocean_fluxes(eltype(grid))) : (;))...,
+                           (use("OMIP_AI_FLUX") ? (; atmosphere_sea_ice_fluxes = corrected_atmosphere_sea_ice_fluxes(eltype(grid))) : (;))...,
+                           # Gill humidity over the ocean only: this NumericalEarth version has no keyword for the
+                           # sea-ice humidity, so the ice keeps the plain formula.
+                           (use("OMIP_GILL") ? (; atmosphere_ocean_interface_specific_humidity = humidities.ocean) : (;))...)
+    @info "OMIP switches" ITD=use("OMIP_ITD") AO_FLUX=use("OMIP_AO_FLUX") AI_FLUX=use("OMIP_AI_FLUX") GILL=use("OMIP_GILL")
+    @time coupled_model = OceanSeaIceModel(ocean, sea_ice; land, atmosphere, radiation,
+                                                  sea_ice_ocean_heat_flux = corrected_ice_ocean_heat_flux(),
+                                                  ice_meltwater_enthalpy = ZeroHeatContentMeltwater(),
+                                                  # Simone's OMIP flux formulas (2026-11-26): see the functions at the top
+                                                  omip_interface_kw...)
+    @info "Air-sea fluxes: Simone's OMIP formulas (COARE profile, gust ≥ 0.5 m/s, wind-dependent roughness, Gill humidity over the ocean); 4 ice thickness categories"
 
     simulation = Simulation(coupled_model; Δt)
 
@@ -1139,7 +1401,7 @@ function build_simulation(arch, run_id;
     add_callback!(simulation, TotalWaterNormalization(coupled_model), IterationInterval(1); name=:total_water)
 
     add_progress_callback!(simulation)
-    add_spike_logger!(simulation)
+    architecture(grid) isa Distributed || add_spike_logger!(simulation)   # its CSV logs are written by one process
 
     if add_outputs
         add_run_output_writers!(simulation, ocean, grid, run_id)
