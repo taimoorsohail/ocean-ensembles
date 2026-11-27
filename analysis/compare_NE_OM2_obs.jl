@@ -494,7 +494,15 @@ function drift_series()
     ne = (x = collect(0:N-1), Θ = Θa .- Θa[1], S = Sa_ .- Sa_[1])
     om2 = nothing
     sdir = joinpath(OM2_DIR, "ocean_scalar")
-    if isdir(sdir)
+    yearly = joinpath(OM2_DIR, "ts_global_mean_temp_salt_yearly.nc")   # 1900–2179, yearly means
+    if isfile(yearly)
+        # The monthly ocean_scalar files only cover 10 years, so longer NE records use the yearly file
+        NCDataset(yearly) do ds
+            T = nan.(ds["temp_global_ave"][:]); Sa = nan.(ds["salt_global_ave"][:]) .* SA_PER_SP; y = ds["year"][:]
+            r = length(T)-N+1:length(T)
+            om2 = (x = collect(0:N-1), Θ = T[r] .- T[r[1]], S = Sa[r] .- Sa[r[1]], years = (y[r[1]], y[r[end]]))
+        end
+    elseif isdir(sdir)
         files = sort(filter(isfile, [joinpath(sdir, d, "ocean", "ocean_scalar.nc") for d in readdir(sdir)]))
         T = Float64[]; Sa = Float64[]; tm = Any[]
         for f in files
@@ -518,7 +526,7 @@ function drift_panels!(fig, row, ne, om2)
         scatterlines!(ax, ne.x, getproperty(ne, key); color=C_NE, linewidth=2.5, markersize=10, label="NumericalEarth ⅙° (year 0 = first year after setup change)")
         isnothing(om2) || scatterlines!(ax, om2.x, getproperty(om2, key); color=C_OM2, linewidth=2.5, markersize=10, marker=:rect,
                                         label="ACCESS-OM2-01 RYF9091 $(om2.years[1])–$(om2.years[2])")
-        ax.xticks = 0:length(ne.x)-1; xlims!(ax, -0.3, length(ne.x) - 0.7)
+        ax.xticks = 0:max(1, cld(length(ne.x), 10)):length(ne.x)-1; xlims!(ax, -0.3, length(ne.x) - 0.7)
         col == 1 && axislegend(ax; position=:lt, framevisible=false, labelsize=12)
     end
 end

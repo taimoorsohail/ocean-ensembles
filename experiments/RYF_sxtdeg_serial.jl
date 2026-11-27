@@ -9,7 +9,96 @@ using NumericalEarth.DataWrangling.SeaWiFS: SeaWiFSMonthly
 using NumericalEarth.EN4
 using NumericalEarth.ECCO
 using NumericalEarth.DataWrangling.ETOPO
-using NumericalEarth.EarthSystemModels.InterfaceComputations: IceBathHeatFlux
+using NumericalEarth.EarthSystemModels.InterfaceComputations: IceBathHeatFlux, ThreeEquationHeatFlux, MomentumBasedFrictionVelocity,
+                                                              ZeroHeatContentMeltwater
+# Pieces of Simone's OMIP air-sea and air-ice flux formulas (added 2026-11-26)
+using NumericalEarth.EarthSystemModels.InterfaceComputations: COARELogarithmicSimilarityProfile,
+                                                              WindDependentWaveFormulation,
+                                                              MomentumRoughnessLength,
+                                                              TemperatureDependentAirViscosity,
+                                                              ScalarRoughnessLength,
+                                                              SimilarityTheoryFluxes,
+                                                              atmosphere_sea_ice_stability_functions,
+                                                              ConvectiveGustiness,
+                                                              AtmosphericThermodynamics,
+                                                              ImpureSaturationSpecificHumidity,
+                                                              GillSaturationEnhancement
+using ClimaSeaIce.SeaIceThermodynamics: ConductiveFlux, UniformThicknessDistribution, PrescribedTemperature,
+                                        snow_slab_thermodynamics
+
+# Ice-ocean heat flux copied unchanged from Simone's OMIP setup (NumericalEarth ss/omip-prototype,
+# experiments/OMIPSimulations/src/omip_simulation.jl). The default (fixed u★ = 0.002) gives a melt rate q
+# in open water too, which added a heat sink of about 7 W/m² to our run (claude-notes, 2026-11-24).
+"""
+    corrected_ice_ocean_heat_flux()
+
+Three-equation ice-ocean heat flux with momentum-based friction velocity
+computed from actual ice-ocean stress (McPhee 1992, 2008; SHEBA median u*≈0.01 m/s).
+
+`heat_transfer_coefficient` defaults to McPhee's Stanton number 0.0057, which is the value
+consistent with a *computed* friction velocity. The 0.0095 of Shi et al. (2021) is calibrated
+against a fixed u* = 0.002 m/s; pairing it with u* = sqrt(|tau|/rho), which is ~0.006 m/s under the
+Arctic pack, inflates the exchange velocity alpha_h u* by a factor of three.
+The salt transfer coefficient follows at the standard ratio R = alpha_h / alpha_s = 35.
+"""
+corrected_ice_ocean_heat_flux(; heat_transfer_coefficient = 0.0057) =
+    ThreeEquationHeatFlux(; heat_transfer_coefficient,
+                            salt_transfer_coefficient = heat_transfer_coefficient / 35,
+                            friction_velocity = MomentumBasedFrictionVelocity())
+
+# The three functions below are copied unchanged from Simone's OMIP setup (NumericalEarth ss/omip-prototype
+# c5ad24b9, experiments/OMIPSimulations/src/omip_simulation.jl), the formulas his runs use by default
+# (OCEAN_FLUXES=corrected, ICE_FLUXES=corrected). Added 2026-11-26 against the warming drift. Compared with the
+# NumericalEarth defaults they add a minimum gust of 0.5 m/s over the ocean, a sea-surface roughness that grows
+# with wind speed, a temperature-dependent air viscosity, the COARE form of the wind and temperature profiles,
+# and fixed roughness lengths over sea ice.
+function corrected_atmosphere_ocean_fluxes(FT = Float64;
+                                           subgrid_velocities = ConvectiveGustiness{FT}(minimum_gustiness = FT(0.5)))
+    air_kinematic_viscosity = TemperatureDependentAirViscosity(FT)
+    return SimilarityTheoryFluxes(FT;
+                                  similarity_form              = COARELogarithmicSimilarityProfile(),
+                                  subgrid_velocities           = subgrid_velocities,
+                                  momentum_roughness_length    = MomentumRoughnessLength(FT;
+                                  wave_formulation             = WindDependentWaveFormulation(FT),
+                                  air_kinematic_viscosity      = TemperatureDependentAirViscosity(FT)),
+                                  temperature_roughness_length = ScalarRoughnessLength(FT; air_kinematic_viscosity),
+                                  water_vapor_roughness_length = ScalarRoughnessLength(FT; air_kinematic_viscosity))
+end
+
+"""
+    corrected_atmosphere_sea_ice_fluxes(FT = Float64; momentum_roughness_length, scalar_roughness_length)
+
+Atmosphere-sea ice flux formulation with:
+- SHEBA/Paulson+Grachev stability functions (existing default, correct)
+- Fixed momentum roughness z0 = 5e-4 m (CICE/SHEBA standard; Andreas et al. 2010)
+- Fixed scalar roughness z0t = z0q = 5e-5 m (Andreas 1987: z0t ≈ z0/10 at R*≈7)
+- COARE logarithmic similarity profile
+- Minimum gustiness = 0.2 m/s
+
+Both roughnesses are geometric constants rather than wind-dependent, because sea ice carries no gravity
+waves; the roughness is set by ridges, floe edges and sastrugi. The SHEBA value describes multiyear pack,
+and smoother first-year ice sits nearer 1e-4 m, so `momentum_roughness_length` is exposed to let the drift
+speed be varied over its observed range.
+"""
+corrected_atmosphere_sea_ice_fluxes(FT = Float64;
+                                    momentum_roughness_length = 5e-4,
+                                    scalar_roughness_length = 5e-5) =
+    SimilarityTheoryFluxes(FT;
+                           stability_functions          = atmosphere_sea_ice_stability_functions(FT),
+                           similarity_form              = COARELogarithmicSimilarityProfile(),
+                           subgrid_velocities           = ConvectiveGustiness{FT}(minimum_gustiness = FT(0.2)),
+                           momentum_roughness_length    = FT(momentum_roughness_length),
+                           temperature_roughness_length = FT(scalar_roughness_length),
+                           water_vapor_roughness_length = FT(scalar_roughness_length))
+
+# The saturation vapor pressure over both the ocean and the sea ice carries the Gill (1982) moist-air enhancement
+function saturation_enhanced_humidities(FT)
+    saturation_enhancement = GillSaturationEnhancement(FT)
+    ocean = ImpureSaturationSpecificHumidity(AtmosphericThermodynamics.Liquid(), convert(FT, 0.98); saturation_enhancement)
+    sea_ice = ImpureSaturationSpecificHumidity(AtmosphericThermodynamics.Ice(); saturation_enhancement)
+    return (; ocean, sea_ice)
+end
+
 
 using ClimaSeaIce
 using ClimaSeaIce.Rheologies: ElastoViscoPlasticRheology
@@ -924,6 +1013,25 @@ function add_run_output_writers!(simulation, ocean, grid, run_id)
                       freshwater_mass_flux=Field(ρᵒᶜ * freshwater.carrying_flux))                     # kg m⁻² s⁻¹, positive into the ocean
     surface_outputs = merge(surface_outputs, budget_outputs)
 
+    # Air-sea heat flux terms over open water, in W m⁻², positive UP (out of the ocean), each already multiplied
+    # by the open-water fraction (1 - ice concentration) so they are averages over the whole grid cell, like OM2's.
+    # NumericalEarth stores the downward radiation already multiplied by (1 - ice concentration), but the emitted
+    # longwave and the turbulent fluxes are stored per unit area of open water, so those are multiplied here.
+    #   net shortwave absorbed     = shortwave_down_absorbed   (negative: heat into the ocean)
+    #   net longwave               = longwave_up + longwave_down_absorbed
+    #   sensible + latent          = sensible_heat_flux + latent_heat_flux
+    # Check: the five terms add up to about surface_heat_flux - penetrating_shortwave_flux. The two differ by the
+    # ice-ocean heat flux, which surface_heat_flux also contains.
+    radiative = simulation.model.radiation.interface_fluxes.ocean
+    turbulent = simulation.model.interfaces.atmosphere_ocean_interface.fluxes
+    open_water = 1 - sea_ice_model.ice_concentration
+    flux_term_outputs = (; shortwave_down_absorbed=Field(1 * radiative.downwelling_shortwave),
+                         longwave_down_absorbed=Field(1 * radiative.downwelling_longwave),
+                         longwave_up=Field(open_water * radiative.upwelling_longwave),
+                         sensible_heat_flux=Field(open_water * turbulent.sensible_heat),
+                         latent_heat_flux=Field(open_water * turbulent.latent_heat))
+    surface_outputs = merge(surface_outputs, flux_term_outputs)
+
     # 4. Sea-ice concentration and extent
     ℵ = sea_ice_model.ice_concentration
     extent(hemisphere) = Field(Integral(KernelFunctionOperation{Center, Center, Nothing}(sea_ice_extent_indicatorᶜᶜᵃ, grid, ℵ,
@@ -1110,10 +1218,22 @@ function build_simulation(arch, run_id;
     # (McPhee's Cᵢₒ is defined against the under-ice boundary layer; the 2.6 m top cell is dragged
     # along by the ice and under-brakes the pack). Added 2026-11-11 against Antarctic ice piling.
     sea_ice_dynamics = NumericalEarth.SeaIces.sea_ice_dynamics(grid, ocean; sea_ice_ocean_drag_reference_depth=6)
+    # Four sub-grid ice thickness categories for heat conduction through ice and snow, as Simone's OMIP default
+    # (ICE_CATEGORIES=4, added 2026-11-26). Ice in a cell is spread evenly between zero and twice its mean
+    # thickness; thin ice conducts more heat, so conduction is 1 + 1/3 + 1/5 + 1/7 ≈ 1.68 times the value at
+    # the mean thickness. This only rescales the conductivity, so old checkpoints still load.
+    # Each of the four OMIP changes of 2026-11-26 can be switched off for testing with an environment
+    # variable set to "0": OMIP_ITD, OMIP_AO_FLUX, OMIP_AI_FLUX, OMIP_GILL.
+    itd_shape = UniformThicknessDistribution(eltype(grid); categories = get(ENV, "OMIP_ITD", "1") == "1" ? 4 : 1)
+    snow_surface_temperature = Field{Center, Center, Nothing}(grid)
+    snow_thermodynamics = snow_slab_thermodynamics(grid; conductivity = eltype(grid)(0.31), itd_shape,
+                                                   top_heat_boundary_condition = PrescribedTemperature(snow_surface_temperature.data))
     sea_ice = sea_ice_simulation(grid, ocean;
                                  advection = ClimaSeaIce.IncrementalRemapping(),
                                  dynamics = sea_ice_dynamics,
-                                 timestepper = :ForwardEuler)
+                                 timestepper = :ForwardEuler,
+                                 internal_heat_flux = ConductiveFlux(eltype(grid); conductivity = 2, itd_shape),
+                                 snow_thermodynamics)
 
     dataset_sea_ice = ECCO4Monthly()
     set!(sea_ice.model,
@@ -1121,11 +1241,38 @@ function build_simulation(arch, run_id;
          ℵ=Metadatum(:sea_ice_concentration; dataset=dataset_sea_ice, dir=data_path))
 
     @info "Defining Atmospheric state"
-    radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory)
+    # Surface radiation settings copied from Simone's OMIP prototype (NumericalEarth ss/omip-prototype,
+    # experiments/OMIPSimulations/src/atmosphere.jl). The NumericalEarth defaults are an ocean albedo of
+    # 0.05, an ocean emissivity of 0.97 and a fixed sea-ice albedo of 0.7. Here the ocean reflects 6% of
+    # the sunlight and is a perfect emitter, and the sea-ice albedo follows the CCSM3 scheme: it depends on
+    # ice thickness, snow depth and surface temperature (lower near melting and for thin ice).
+    hi = sea_ice.model.ice_thickness
+    hs = sea_ice.model.snow_thickness
+    snow_thermo = sea_ice.model.snow_thermodynamics
+    Ts = isnothing(snow_thermo) ? sea_ice.model.ice_thermodynamics.top_surface_temperature :
+                                  snow_thermo.top_surface_temperature
+    sea_ice_albedo = SeaIceAlbedo(hi, hs, Ts)
+    radiation = JRA55PrescribedRadiation(arch; time_indices_in_memory,
+                                         ocean_surface   = NumericalEarth.Radiations.SurfaceRadiationProperties(0.06, 1.0),
+                                         sea_ice_surface = NumericalEarth.Radiations.SurfaceRadiationProperties(sea_ice_albedo, 1.0))
+    @info "Radiation: ocean albedo 0.06, ocean emissivity 1.0, sea-ice albedo $sea_ice_albedo"
     atmosphere = JRA55PrescribedAtmosphere(arch; time_indices_in_memory)
 
     @info "Defining coupled model"
-    @time coupled_model = OceanSeaIceModel(ocean, sea_ice; land, atmosphere, radiation)
+    humidities = saturation_enhanced_humidities(eltype(grid))
+    use(name) = get(ENV, name, "1") == "1"
+    omip_interface_kw = (; (use("OMIP_AO_FLUX") ? (; atmosphere_ocean_fluxes = corrected_atmosphere_ocean_fluxes(eltype(grid))) : (;))...,
+                           (use("OMIP_AI_FLUX") ? (; atmosphere_sea_ice_fluxes = corrected_atmosphere_sea_ice_fluxes(eltype(grid))) : (;))...,
+                           # Gill humidity over the ocean only: this NumericalEarth version has no keyword for the
+                           # sea-ice humidity, so the ice keeps the plain formula.
+                           (use("OMIP_GILL") ? (; atmosphere_ocean_interface_specific_humidity = humidities.ocean) : (;))...)
+    @info "OMIP switches" ITD=use("OMIP_ITD") AO_FLUX=use("OMIP_AO_FLUX") AI_FLUX=use("OMIP_AI_FLUX") GILL=use("OMIP_GILL")
+    @time coupled_model = OceanSeaIceModel(ocean, sea_ice; land, atmosphere, radiation,
+                                                  sea_ice_ocean_heat_flux = corrected_ice_ocean_heat_flux(),
+                                                  ice_meltwater_enthalpy = ZeroHeatContentMeltwater(),
+                                                  # Simone's OMIP flux formulas (2026-11-26): see the functions at the top
+                                                  omip_interface_kw...)
+    @info "Air-sea fluxes: Simone's OMIP formulas (COARE profile, gust ≥ 0.5 m/s, wind-dependent roughness, Gill humidity over the ocean); 4 ice thickness categories"
 
     simulation = Simulation(coupled_model; Δt)
 
